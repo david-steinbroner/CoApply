@@ -85,7 +85,7 @@ Before I spend anything — this looks like a likely no-go: <one-line reason>.
 Run the full triage + fit-check anyway?  (yes / skip)
 ```
 
-If **skip** → set `_run.json.status="aborted"`, `phase="aborted"`, `abortReason`, `abortCategory`, stop. Cheapest possible no-go — zero agents ran.
+If **skip** → set `_run.json.phase="aborted"`, record `abortReason` + a structured `abortCategory`, stop. Cheapest possible no-go — zero agents ran. (Root run-state lives in `phase`; `status` is only used on individual `artifacts[]`.)
 If **yes** (or no hard dealbreaker is evident) → continue to Step 2.
 
 ## Step 2 — Phase A, Wave A1: Triage (before the checkpoint)
@@ -134,7 +134,7 @@ Worth applying?  (yes / abort / redirect: ... — or run a different tier: full 
 | **standard** | positioning + company-research | cover-letter, outreach, resume-update, interview-prep, followup-plan |
 | **full** | company-research + positioning + work-sample-suggester | cover-letter, outreach, resume-update, interview-prep, followup-plan, application-questions (if present), + docx |
 
-If the user says **abort** → set `_run.json.status = "aborted"`, `phase = "aborted"`, record a one-line `abortReason` AND a structured `abortCategory`, stop. Wave A2 never runs — this is where the gate saves the expensive agents.
+If the user says **abort** → set `_run.json.phase = "aborted"`, record a one-line `abortReason` AND a structured `abortCategory`, stop. Wave A2 never runs — this is where the gate saves the expensive agents. (Root run-state is `phase`; `status` is only for `artifacts[]`.)
 
 `abortCategory` enum:
 - `seniority-gap` — role is above the user's level.

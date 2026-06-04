@@ -59,7 +59,8 @@ Run these, fail fast with clear error messages:
 3. Master prompt exists: `${CLAUDE_PLUGIN_ROOT}/profile/prompts/master-apply.md`.
 4. Required profile files exist: `${PROFILE_DIR}/{skills-experience.md,positioning-modes.md,voice-profile.md}`. (`portfolio-links.md` and `principles.md` are optional — do not abort if absent.)
 5. At least one resume variant exists in `${PROFILE_DIR}/resumes/` (Bash: confirm it contains at least one `*.md`).
-6. **No leftover template placeholders:** grep `identity.md` and `skills-experience.md` for unfilled `<…>` angle-bracket placeholders. If found, abort: "Your profile still has template placeholders (e.g. `<Your Name>`). Fill them in first — run `/coapply:setup` if you haven't set up yet."
+6. **No leftover template placeholders:** grep `identity.md` and `skills-experience.md` for unfilled template tokens — angle-bracket tokens that start with a capital letter (`grep -nE '<[A-Z][^>]*>'`), which catches `<Your Name>`, `<Company>`, `<City, ST...>` without false-tripping on lowercase HTML like `<br>` or comparisons like `< 5`. If found, abort: "Your profile still has template placeholders (e.g. `<Your Name>`). Fill them in first — run `/coapply:setup` if you haven't set up yet."
+7. **Profile depth (soft — warn, don't abort):** if `skills-experience.md` is very thin (under ~250 words) or has no quantified detail (no digits / `%` / `$`), warn before proceeding: "Heads up — your skills-experience.md looks brief. CoApply writes best from specific, quantified stories; a thin profile tends to produce a generic letter. Add more detail for a stronger result, or continue as-is?" Continue if the user wants; this is guidance, not a blocker.
 
 If any check fails, abort and tell the user exactly which file/path is missing.
 
@@ -86,7 +87,7 @@ The master prompt needs these inputs — inject them at the top of your next act
 - `$JD_URL`: the canonicalized URL, or `(text-only)` if pasted text
 - `$JD_TEXT`: the full JD text (from WebFetch, or pasted)
 - `$TIMESTAMP`: current ISO-8601 timestamp
-- `$RUN_ID`: a 4-character hex id — generate cross-platform via Bash `python3 -c "import secrets;print(secrets.token_hex(2))"` (fallback: `date +%s | tail -c 5`). Avoid `openssl` (not present on native Windows).
+- `$RUN_ID`: a 4-character hex id — generate cross-platform via Bash `python3 -c "import secrets;print(secrets.token_hex(2))"` (fallback: `printf '%04x' $((RANDOM % 65536))`). Avoid `openssl` (not on native Windows) and avoid `tail -c` tricks (trailing-newline bugs).
 
 ## Constraints for this skill
 

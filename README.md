@@ -132,8 +132,8 @@ So you always get the newest version *and* keep everything you've written.
 ## Making it your own (optional)
 
 CoApply works great out of the box. When you want to tweak it:
-- **Simple settings** (which model it uses, a cheaper/lighter mode, how strict the gate is) live in a small config file you control — _coming soon_, and they survive updates.
-- **Deeper changes** (rewriting how a specialist works) are possible too; see the full docs.
+- **Budget tiers are live** — `/coapply:tier` (or `/coapply:setup`) sets `lite` / `standard` / `full` in a `coapply.config.json` you own; it survives updates. (Per-agent *model* selection — running cheaper models on lite — is on the roadmap.)
+- **Deeper changes** (rewriting how a specialist works) are possible too; see `CONTRIBUTING.md` and `CLAUDE.md`.
 
 ---
 

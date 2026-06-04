@@ -21,7 +21,7 @@ echo "RUNS_DIR=${APPLY_RUNS_DIR:-$CLAUDE_PLUGIN_OPTION_PROFILE_DIR/runs}"
 ## Step 1 — Pick the run (always confirm before resuming)
 
 - If `$ARGUMENTS` names an existing folder under `${RUNS_DIR}`: that's the likely target — but still show its company / role / status and ask **"Resume this one?"** before doing any work.
-- If `$ARGUMENTS` is empty or doesn't match a folder: list the resumable runs (folders whose `_run.json` status is not `done`), each with company / role / status, and **ask the user which one to resume.** Do NOT auto-pick — even if there is only one run, confirm first.
+- If `$ARGUMENTS` is empty or doesn't match a folder: list the resumable runs (folders whose `_run.json` **`phase`** is not `done` — `phase` is the root run-state; `status` is per-artifact), each with company / role / phase, and **ask the user which one to resume.** Do NOT auto-pick — even if there is only one run, confirm first.
 
 Once the user confirms a run, verify its `_run.json` exists (abort with "No _run.json in that run — use `/coapply:list`." if missing), then proceed.
 
