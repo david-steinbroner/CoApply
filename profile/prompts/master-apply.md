@@ -123,7 +123,7 @@ Show the user this compact summary, then wait for instruction:
 — Cost to finish: ~<estimate> on the <$TIER> tier (<billing label>)
 — Tier: <$TIER>  — change permanently with /coapply:tier, or pick another just for this run below
 
-Worth applying?  (yes = run <$TIER> / full / standard / lite / abort / redirect: ...)
+Worth applying?  (yes / abort / redirect: ... — or run a different tier: full / standard / lite)
 ```
 
 **Tier → what runs** (active tier = the user's `$TIER`, or whatever they pick at this gate):
