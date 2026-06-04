@@ -37,7 +37,7 @@ Spawn these agents in parallel (one message, multiple Task calls, `run_in_backgr
 
 Spawn these 3 agents in parallel:
 
-- Task: agent_type `researcher`, instructed by `${CLAUDE_PLUGIN_ROOT}/profile/prompts/agents/company-research.md` — writes `03-company-research.md` (uses WebSearch + WebFetch)
+- Task: agent_type `general-purpose`, instructed by `${CLAUDE_PLUGIN_ROOT}/profile/prompts/agents/company-research.md` — writes `03-company-research.md` (uses WebSearch + WebFetch)
 - Task: agent_type `general-purpose`, instructed by `${CLAUDE_PLUGIN_ROOT}/profile/prompts/agents/positioning.md` — writes `04-positioning.md`
 - Task: agent_type `general-purpose`, instructed by `${CLAUDE_PLUGIN_ROOT}/profile/prompts/agents/prototype-suggester.md` — writes `05-work-sample-ideas.md`
 
@@ -78,10 +78,14 @@ Wave A1 returns control to `master-apply.md` Step 3 (Checkpoint). Wave A2 return
 When dispatching a Task agent, structure the prompt like this:
 
 ```
-You are the <agent-name> agent in $USER_NAME's /apply pipeline. Follow your instruction file exactly.
+You are the <agent-name> agent in $USER_NAME's CoApply pipeline. Follow your instruction file exactly.
 
-YOUR INSTRUCTION FILE (read first):
-${CLAUDE_PLUGIN_ROOT}/profile/prompts/agents/<agent-name>.md
+YOUR INSTRUCTION FILE (read first) — use the resolved ABSOLUTE path:
+<the real absolute ${CLAUDE_PLUGIN_ROOT}>/profile/prompts/agents/<agent-name>.md
+
+PATHS (absolute — your instruction file may show ${PROFILE_DIR} or ${RUNS_DIR}; treat them as these real paths):
+- PROFILE_DIR = <the real absolute ${PROFILE_DIR}>
+- run folder = <absolute run folder path under ${RUNS_DIR}>
 
 INPUTS (inlined — do not re-fetch):
 <all inline context the agent needs>

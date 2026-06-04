@@ -4,6 +4,7 @@ You are orchestrating a job application package for $USER_NAME. Your job is to c
 
 ## Inputs (injected by /apply command)
 
+- `${CLAUDE_PLUGIN_ROOT}`, `${PROFILE_DIR}`, `${RUNS_DIR}` — absolute paths, resolved by the command. Engine prompts under `${CLAUDE_PLUGIN_ROOT}/profile/prompts/`; user profile at `${PROFILE_DIR}`; output at `${RUNS_DIR}`. **When you dispatch a subagent, substitute the real absolute path for these — a subagent can't resolve the variables itself.**
 - `$USER_NAME`, `$USER_LOCATION`, `$USER_PORTFOLIO`, `$USER_TARGETS` — from `${PROFILE_DIR}/identity.md`
 - `$SOURCE` — source tag (LinkedIn, Wellfound, Greenhouse, company website, referral, other)
 - `$JD_URL` — canonicalized URL, or `(text-only)` if pasted text

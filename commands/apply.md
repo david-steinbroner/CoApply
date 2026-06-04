@@ -7,19 +7,33 @@ argument-hint: "<url-or-text>"
 
 You are orchestrating a job application package for the user. The input is in `$ARGUMENTS`.
 
-## Step 0 — Resolve identity tokens (do this first)
+## Step 0 — Resolve paths and identity (do this first, via Bash)
 
-The profile lives at `${PROFILE_DIR}` (set in `.claude/settings.json`). Outputs go to `${RUNS_DIR}` (defaults to `${PROFILE_DIR}/runs` unless overridden). Engine prompts live under `${CLAUDE_PLUGIN_ROOT}`.
+Resolve all paths to ABSOLUTE values up front. Subagents do NOT inherit these variables, so wherever a prompt or instruction file shows `${CLAUDE_PLUGIN_ROOT}`, `${PROFILE_DIR}`, or `${RUNS_DIR}`, you must substitute the real absolute path before handing it to an agent.
 
-Read `${PROFILE_DIR}/identity.md` and resolve the following tokens. These are injected into the master prompt and every downstream agent (alongside the run tokens in Step 5), so the engine never hardcodes a name, location, or field.
+Run one Bash call to capture them:
 
-- `$USER_NAME`: the `Name` field from identity.md — used for "orchestrating for $USER_NAME", cover-letter signature, resume header.
-- `$USER_FIRST_NAME`: derived from `$USER_NAME` (the first whitespace-delimited token) — used for informal references.
-- `$USER_LOCATION`: the `Location` field — used for location-aware lines in the cover letter / outreach. If empty or absent, skip location-aware lines entirely.
-- `$USER_PORTFOLIO`: the `Portfolio` field — used for links in outreach / cover letter. If empty or literally `(none)`, skip portfolio links.
-- `$USER_TARGETS`: the `Target roles` field — **replaces every field assumption** in fit-score, triage, and role-analysis. This is the kind of roles the user seeks; treat it as "the user's field" wherever a discipline is implied.
+```bash
+echo "CLAUDE_PLUGIN_ROOT=$CLAUDE_PLUGIN_ROOT"
+echo "PROFILE_DIR=$CLAUDE_PLUGIN_OPTION_PROFILE_DIR"
+echo "RUNS_DIR=${APPLY_RUNS_DIR:-$CLAUDE_PLUGIN_OPTION_PROFILE_DIR/runs}"
+```
 
-If `identity.md` is missing one of these fields, use a sensible empty/skip behavior per the notes above; do not invent a value.
+- **`${CLAUDE_PLUGIN_ROOT}`** — the plugin's install dir; engine prompts live under `${CLAUDE_PLUGIN_ROOT}/profile/prompts/`. (Claude Code also substitutes this token inside plugin content.)
+- **`${PROFILE_DIR}`** — the user's profile folder, from the plugin's `profile_dir` config. **If it is empty, abort:** "CoApply isn't configured yet. Run `/plugin`, open CoApply, and set your **Profile folder** — point it at the folder containing your identity.md, skills-experience.md, resumes/, etc."
+- **`${RUNS_DIR}`** — where output is written; defaults to `${PROFILE_DIR}/runs`.
+
+From here on, use these absolute values, and substitute them into every subagent prompt and Task dispatch.
+
+Then read `${PROFILE_DIR}/identity.md` and resolve these identity tokens (injected into the master prompt and every downstream agent, so the engine never hardcodes a name, location, or field):
+
+- `$USER_NAME`: the `Name` field — "orchestrating for $USER_NAME", cover-letter signature, resume header.
+- `$USER_FIRST_NAME`: the first whitespace-delimited token of `$USER_NAME`.
+- `$USER_LOCATION`: the `Location` field — location-aware lines; skip if empty/absent.
+- `$USER_PORTFOLIO`: the `Portfolio` field — portfolio links; skip if empty or `(none)`.
+- `$USER_TARGETS`: the `Target roles` field — **replaces every field assumption** in fit-score, triage, and role-analysis. Treat it as "the user's field" wherever a discipline is implied.
+
+If `identity.md` is missing one of these fields, use a sensible empty/skip behavior; do not invent a value.
 
 ## Step 1 — Resolve input
 
