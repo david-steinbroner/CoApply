@@ -1,0 +1,17 @@
+# os / misc
+.DS_Store
+
+# dependencies / build
+node_modules/
+*.log
+
+# the user's own profile + run output live OUTSIDE the plugin, but ignore them
+# here too in case someone keeps theirs inside the repo
+/profile/identity.md
+/profile/skills-experience.md
+/profile/voice-profile.md
+/profile/positioning-modes.md
+/profile/portfolio-links.md
+/profile/principles.md
+/profile/resumes/*.pdf
+/runs/
