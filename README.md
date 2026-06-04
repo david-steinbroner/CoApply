@@ -15,7 +15,7 @@ CoApply runs inside **Claude Code** — a tool from Anthropic that lets Claude w
 1. Go to **[claude.com/claude-code](https://claude.com/claude-code)** and follow the install steps for your computer (Mac, Windows, or Linux).
 2. You'll sign in with a Claude account. (Using Claude Code requires a paid Claude plan or API credits — that's Anthropic's cost, not ours.)
 
-That's the only prerequisite. **You do not need to know how to use GitHub, git, or write any code.** CoApply installs itself from inside Claude Code with two short commands.
+That's the only prerequisite. **You don't need to touch GitHub or write code** — though you should be comfortable working inside Claude Code (a terminal-based tool). CoApply installs and sets up from there in a few short commands.
 
 ---
 
@@ -45,11 +45,7 @@ That's the only prerequisite. **You do not need to know how to use GitHub, git, 
 
 ## Set up your profile (first time only)
 
-CoApply writes *as you*, so it needs to know your experience and voice. You fill this in once, and it makes every future application better.
-
-**The easy way (coming soon):** run `/coapply:setup` and answer a short interview — CoApply builds your profile from your answers (or from a resume you paste in).
-
-**The manual way (available now):** copy the templates from the `profile.example` folder into your own profile folder and fill in each file. Each template has instructions inside it. Start with `skills-experience.md` and one resume — that's enough for a first run. You can deepen it anytime; **the more you add, the better CoApply gets.**
+Run **`/coapply:setup`** — it copies the profile templates into your folder, checks how your runs are billed, and helps you pick a budget tier. Then open and fill in `identity.md`, `skills-experience.md`, and at least one file in `resumes/` — that's enough for a first run. Deepen the rest over time; **the more you add, the better CoApply gets.**
 
 Your profile lives on **your** computer and is never uploaded anywhere except to your own Claude.
 
@@ -72,7 +68,9 @@ Here's what happens:
 3. **On "go," it writes the full package** — cover letter, resume guidance, outreach email, interview prep, follow-up plan — into a folder for that job.
 4. **You review it, make it yours, and submit it.** CoApply never submits for you.
 
-Other commands you'll find handy:
+Other commands:
+- `/coapply:setup` — first-time setup (templates, billing check, budget tier).
+- `/coapply:tier` — change your budget tier (lite / standard / full) anytime.
 - `/coapply:list` — see your recent applications.
 - `/coapply:resume <run>` — pick a run back up if it got interrupted.
 - `/coapply:help` — a quick orientation.
@@ -169,6 +167,19 @@ No, on purpose. You always review and submit yourself. That's what keeps your ap
 Not yet — today you bring the job posting. Discovering roles from public job boards is on the roadmap.
 
 ---
+
+## Cost & limits
+
+CoApply runs on **your** Claude Code's model access — it doesn't add a subscription or charge you anything itself. What a run costs depends on how your Claude Code is set up:
+
+- **On a Claude subscription (Pro/Max):** runs draw your plan's usage allowance — no per-token charge. A full run is token-heavy (a dozen agents), so a busy application day can eat into your limits.
+- **On an Anthropic API key:** runs bill per-token to that account.
+- *Heads-up:* if you have an `ANTHROPIC_API_KEY` set in your environment, Claude Code may bill per-token even on a subscription. `/coapply:setup` checks this for you.
+
+**You control the spend three ways:**
+1. **Tiers** — `lite` (just the cover letter, cheapest), `standard` (the core package), `full` (everything, incl. live company research + a Word doc). Set a default in `/coapply:setup`; change anytime with `/coapply:tier`.
+2. **The gate** — before any expensive work, CoApply stops, shows an estimated cost to finish, and lets you run full / standard / lite / or stop.
+3. **The pre-screen** — obvious no-go roles get flagged before *any* agent runs, so skipping a bad fit is nearly free.
 
 ## Principles & limits
 

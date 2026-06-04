@@ -13,6 +13,7 @@ You are orchestrating a job application package for $USER_NAME. Your job is to c
 - `$JD_TEXT` — full JD text
 - `$TIMESTAMP` — ISO-8601
 - `$RUN_ID` — 4-char hex hash
+- `$TIER` — budget tier `lite` / `standard` / `full` (from `${PROFILE_DIR}/coapply.config.json`, default `standard`). Controls which agents run — see the tier table in Step 3.
 
 ## Step 0 — Create the run folder + save JD
 
@@ -32,6 +33,7 @@ You are orchestrating a job application package for $USER_NAME. Your job is to c
   "company": "<slug-company>",
   "role": "<slug-role>",
   "phase": "triage",
+  "tier": "$TIER",
   "artifacts": [
     { "name": "jd-parsed", "status": "pending", "path": "00-jd-parsed.json" },
     { "name": "dedup-check", "status": "pending", "path": "00-dedup-check.md" },
@@ -69,6 +71,23 @@ Read these to orient (agents read their own context):
 
 Do NOT rely on this context persisting into Task agents.
 
+## Step 1.5 — Dealbreaker pre-screen (cheap; before ANY agent)
+
+Before spending a single agent, do a quick inline read of the JD against `$USER_TARGETS` and `$USER_LOCATION` only (do NOT read large profile files — keep this near-free). Flag only HARD dealbreakers visible in the JD:
+- **Field mismatch** — the role is clearly a different discipline than `$USER_TARGETS`.
+- **Seniority mismatch** — plainly above or below the user's target level.
+- **Unmeetable hard requirement** — a stated license/credential, work authorization, or on-site location that's a clear blocker.
+
+If a hard dealbreaker is present, surface it and let the user decide BEFORE triage runs:
+
+```
+Before I spend anything — this looks like a likely no-go: <one-line reason>.
+Run the full triage + fit-check anyway?  (yes / skip)
+```
+
+If **skip** → set `_run.json.status="aborted"`, `phase="aborted"`, `abortReason`, `abortCategory`, stop. Cheapest possible no-go — zero agents ran.
+If **yes** (or no hard dealbreaker is evident) → continue to Step 2.
+
 ## Step 2 — Phase A, Wave A1: Triage (before the checkpoint)
 
 Follow `${CLAUDE_PLUGIN_ROOT}/profile/prompts/phases/phase-research.md` — run **Wave A1 only**.
@@ -85,6 +104,10 @@ Runs on **Wave A1 (triage) outputs only**. You (the orchestrator) draft a *provi
 
 **Domain lens (optional):** if `${PROFILE_DIR}/principles.md` exists, scan its lookup section and pick the 1–2 most relevant entries for the `— Domain lens:` line below. If it does not exist, omit that line entirely.
 
+Before showing the summary, compute two things:
+- **Billing label (live):** Bash-check `[ -n "$ANTHROPIC_API_KEY" ]` — if set, label `per-token (API key detected)`; else `subscription allowance`. (Heuristic: we detect the key, not Claude Code's exact billing.)
+- **Cost-to-finish estimate:** count the agents the active `$TIER` will run (tier table below) and estimate ≈ agents × ~25k tokens, expressed roughly (e.g. "~150k tokens"). Don't fabricate a dollar figure for subscription users.
+
 Show the user this compact summary, then wait for instruction:
 
 ```
@@ -97,9 +120,19 @@ Show the user this compact summary, then wait for instruction:
 — Domain lens: <1–2 entries from principles.md lookup + one-line hook>   ← omit this line if no principles.md
 — Dedup: <"never applied" or "you applied to <Company> on <date>, status <X>">
 — Contract detector: <"nothing detected" or "this JD uses 'contract/1099/hourly' — switch to proposal mode?">
+— Cost to finish: ~<estimate> on the <$TIER> tier (<billing label>)
+— Tier: <$TIER>  — change permanently with /coapply:tier, or pick another just for this run below
 
-Worth applying?  (yes / abort / redirect: ...)
+Worth applying?  (yes = run <$TIER> / full / standard / lite / abort / redirect: ...)
 ```
+
+**Tier → what runs** (active tier = the user's `$TIER`, or whatever they pick at this gate):
+
+| Tier | Wave A2 (strategy) | Phase B (content) |
+|---|---|---|
+| **lite** | positioning | cover-letter |
+| **standard** | positioning + company-research | cover-letter, outreach, resume-update, interview-prep, followup-plan |
+| **full** | company-research + positioning + work-sample-suggester | cover-letter, outreach, resume-update, interview-prep, followup-plan, application-questions (if present), + docx |
 
 If the user says **abort** → set `_run.json.status = "aborted"`, `phase = "aborted"`, record a one-line `abortReason` AND a structured `abortCategory`, stop. Wave A2 never runs — this is where the gate saves the expensive agents.
 
@@ -117,9 +150,10 @@ If the user says **abort** → set `_run.json.status = "aborted"`, `phase = "abo
 
 If the user says **redirect: <instruction>** → absorb it (e.g. "use <mode>, not the one you picked"). A mode redirect sets the mode the positioning agent must use in Wave A2. If the user flags this as a contract/freelance role: tell them freelance/proposal mode is not part of this version yet (coming later), and ask whether to proceed as a standard application package or stop — do NOT route to a separate master prompt.
 
-If the user says **yes** (or a redirect that keeps the run alive):
-1. Run **Wave A2 (Strategy)** per `phase-research.md`: company-research, positioning, prototype-suggester (parallel, batch size 3). If the user named a mode override, inline it as the locked mode.
-2. Verify the three A2 files exist + non-empty (retry-once).
+If the user says **yes** (or names a tier, or a redirect that keeps the run alive):
+0. Set the **active tier** = the tier they picked at the gate, else `$TIER`. Record it in `_run.json.tier`.
+1. Run **Wave A2 (Strategy)** per `phase-research.md` — only the agents the active tier lists in the table above (lite: positioning only; standard: positioning + company-research; full: + work-sample-suggester), batch size ≤3. If the user named a mode override, inline it as the locked mode. Mark tier-skipped A2 agents as `skipped`.
+2. Verify the expected A2 files exist + non-empty (retry-once).
 3. **Late red-flag check:** skim `03-company-research.md`. If it surfaced a serious red flag not visible at the gate, surface a one-line heads-up and let the user bail before drafting — a notice, not a second formal checkpoint.
 4. Go to Phase B (Step 4).
 
@@ -127,14 +161,20 @@ If the user says **yes** (or a redirect that keeps the run alive):
 
 Follow `${CLAUDE_PLUGIN_ROOT}/profile/prompts/phases/phase-content.md`.
 
-- Before Phase B: if `00-jd-parsed.json.applicationQuestions` is non-empty, include application-questions agent; else skip and mark its status `skipped`.
-- Wave B1 (parallel, batch size 3): cover-letter, outreach, resume-update
-- Wave B2 (parallel, batch size 3): application-questions (if applicable), interview-prep, followup-plan
-- Between batches: verify files + retry-once.
+Run only the content agents the **active tier** lists (Step 3 tier table):
+- **lite:** cover-letter only (skip the waves below; mark the rest `skipped`).
+- **standard:** Wave B1 = cover-letter, outreach, resume-update; Wave B2 = interview-prep, followup-plan. (application-questions `skipped`.)
+- **full:** Wave B1 = cover-letter, outreach, resume-update; Wave B2 = interview-prep, followup-plan, and application-questions **if** `00-jd-parsed.json.applicationQuestions` is non-empty (else mark it `skipped`).
+- Mark every tier-skipped agent `skipped` in `_run.json`. Batch size ≤3. Between batches: verify files + retry-once.
 
-## Step 5 — Cover letter docx (parent orchestrator only)
+## Step 5 — Cover letter docx (full tier only; never fatal)
 
-After `06-cover-letter.md` is confirmed non-empty: use the `docx` skill (invoke yourself via Skill, not a Task agent) to produce `06-cover-letter.docx` from the markdown.
+Only on the **full** tier, after `06-cover-letter.md` is confirmed non-empty, try to produce `06-cover-letter.docx` — in this order, stopping at the first that works:
+1. If a `docx` skill is available, invoke it via Skill.
+2. Else if `pandoc` is on PATH (Bash `command -v pandoc`), run `pandoc <md> -o <docx>`.
+3. Else **skip gracefully — do NOT fail the run.** Mark `cover-letter-docx` `skipped` and tell the user: "Cover letter is ready as markdown at `06-cover-letter.md` — open in any editor, or print/export to PDF/Word."
+
+On `lite` / `standard`, skip this step entirely and mark `cover-letter-docx` `skipped`. The markdown is the deliverable.
 
 ## Step 6 — Archive mirror (optional)
 
@@ -142,7 +182,7 @@ If `$ARCHIVE_DIR` is configured, mirror the final docx to `$ARCHIVE_DIR/<Company
 
 ## Step 7 — Voice lint safety net
 
-Each user-facing agent (cover-letter, outreach, application-questions) self-lints. This is the safety net. Run ONE bash call that greps `06-cover-letter.md`, `07-outreach.md`, and (if present) `09-application-questions.md` for:
+Each user-facing agent (cover-letter, outreach, application-questions) self-lints. This is the safety net. Run ONE **case-insensitive** bash call (`grep -niE`) over `06-cover-letter.md`, `07-outreach.md`, and (if present) `09-application-questions.md` for:
 - The banned-phrase list (`passionate|I thrive|I excel|resonates|aligns closely|opportunity to discuss|I would welcome|I look forward|Spearheaded|Leveraged|Orchestrated|Facilitated|Championed|Streamlined|Furthermore|Additionally|Moreover|This demonstrates|This experience shows|proven track record|results-driven|synergy|intersection of`)
 - Em-dashes (`—`)
 

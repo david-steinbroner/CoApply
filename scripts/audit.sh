@@ -36,7 +36,7 @@ section "4. Structure & invariants"
 for f in .claude-plugin/plugin.json .claude-plugin/marketplace.json profile/prompts/master-apply.md PRINCIPLES.md LICENSE; do
   [ -f "$f" ] || { note "FAIL: missing $f"; fail=1; }
 done
-for s in start resume list help; do
+for s in start resume list help setup tier; do
   [ -f "skills/$s/SKILL.md" ] || { note "FAIL: missing skills/$s/SKILL.md"; fail=1; }
 done
 [ -d commands ] && { note "FAIL: commands/ exists — entry points must be skills (\${CLAUDE_PLUGIN_ROOT} doesn't resolve in commands)."; fail=1; }

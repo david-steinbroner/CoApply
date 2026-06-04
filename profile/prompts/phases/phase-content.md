@@ -2,6 +2,8 @@
 
 Dispatched from `master-apply.md` after the user confirms at the Phase A checkpoint.
 
+**Run only the content agents the active tier calls for** (tier table in `master-apply.md` Step 3): **lite** = cover-letter only · **standard** = cover-letter, outreach, resume-update, interview-prep, followup-plan · **full** = those + application-questions (if present). Mark tier-skipped agents `skipped`.
+
 ## Wave B1 — Primary content (batch size 3, 3 agents, one batch)
 
 Spawn these 3 agents in parallel:

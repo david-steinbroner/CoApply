@@ -33,9 +33,11 @@ Spawn these agents in parallel (one message, multiple Task calls, `run_in_backgr
 
 **→ Stop here and hand back to `master-apply.md` Step 3 (Checkpoint).** Do NOT run Wave A2 yet. Step 3 dispatches Wave A2 only after the user returns a go (or a `redirect:` that keeps the run alive). On an abort, Wave A2 never runs — this is the whole point of the gate.
 
-## Wave A2 — Strategy (runs ONLY after the checkpoint clears; batch size 3, 3 agents, one batch)
+## Wave A2 — Strategy (runs ONLY after the checkpoint clears; batch size ≤3)
 
-Spawn these 3 agents in parallel:
+Run only the agents the **active tier** calls for (tier table in `master-apply.md` Step 3): **lite** → positioning only · **standard** → positioning + company-research · **full** → company-research + positioning + work-sample-suggester. Mark tier-skipped A2 agents `skipped`.
+
+The available A2 agents:
 
 - Task: agent_type `general-purpose`, instructed by `${CLAUDE_PLUGIN_ROOT}/profile/prompts/agents/company-research.md` — writes `03-company-research.md` (uses WebSearch + WebFetch)
 - Task: agent_type `general-purpose`, instructed by `${CLAUDE_PLUGIN_ROOT}/profile/prompts/agents/positioning.md` — writes `04-positioning.md`

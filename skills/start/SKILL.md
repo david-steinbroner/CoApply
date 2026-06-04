@@ -38,10 +38,13 @@ Then read `${PROFILE_DIR}/identity.md` and resolve these identity tokens (inject
 
 If `identity.md` is missing one of these fields, use a sensible empty/skip behavior; do not invent a value.
 
+Also read `${PROFILE_DIR}/coapply.config.json` for the budget tier → `$TIER` (`lite` / `standard` / `full`; default `standard` if the file is absent). Pass `$TIER` to the master prompt.
+
 ## Step 1 — Resolve input
 
 $ARGUMENTS contains one of:
-- A URL (starts with `http://` or `https://`) — use WebFetch to get the page
+- A **LinkedIn job URL** (`linkedin.com/jobs/...`) — WebFetch is blocked there, so do NOT fetch it. Ask: "LinkedIn blocks automatic reading — paste the job description text and I'll take it from there." Use the pasted text as the JD (source = `LinkedIn`).
+- Another URL (starts with `http://` or `https://`) — use WebFetch to get the page
 - Free-text JD (anything else)
 - Empty — ask the user: "Paste a JD URL or the full text."
 
@@ -56,6 +59,7 @@ Run these, fail fast with clear error messages:
 3. Master prompt exists: `${CLAUDE_PLUGIN_ROOT}/profile/prompts/master-apply.md`.
 4. Required profile files exist: `${PROFILE_DIR}/{skills-experience.md,positioning-modes.md,voice-profile.md}`. (`portfolio-links.md` and `principles.md` are optional — do not abort if absent.)
 5. At least one resume variant exists in `${PROFILE_DIR}/resumes/` (Bash: confirm it contains at least one `*.md`).
+6. **No leftover template placeholders:** grep `identity.md` and `skills-experience.md` for unfilled `<…>` angle-bracket placeholders. If found, abort: "Your profile still has template placeholders (e.g. `<Your Name>`). Fill them in first — run `/coapply:setup` if you haven't set up yet."
 
 If any check fails, abort and tell the user exactly which file/path is missing.
 
@@ -82,7 +86,7 @@ The master prompt needs these inputs — inject them at the top of your next act
 - `$JD_URL`: the canonicalized URL, or `(text-only)` if pasted text
 - `$JD_TEXT`: the full JD text (from WebFetch, or pasted)
 - `$TIMESTAMP`: current ISO-8601 timestamp
-- `$RUN_ID`: a 4-character hash — generate with `openssl rand -hex 2` via Bash
+- `$RUN_ID`: a 4-character hex id — generate cross-platform via Bash `python3 -c "import secrets;print(secrets.token_hex(2))"` (fallback: `date +%s | tail -c 5`). Avoid `openssl` (not present on native Windows).
 
 ## Constraints for this skill
 
