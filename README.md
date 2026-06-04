@@ -170,6 +170,17 @@ Not yet — today you bring the job posting. Discovering roles from public job b
 
 ---
 
+## Principles & limits
+
+CoApply runs on a short set of invariants — it always passes a human gate, never auto-submits, never fabricates (every claim traces to your profile), stays in its lane (reads your profile, writes only to your runs folder), and never sends your data anywhere but your own Claude. The full list: **[PRINCIPLES.md](PRINCIPLES.md)**.
+
+Honest about what it isn't yet:
+- Observability is the inspectable run folder + `_run.json`; a richer cost/tracing dashboard is on the roadmap.
+- Guided setup (`/coapply:setup`) is planned — for now you fill in the `profile.example/` templates.
+- A cheaper "lite" mode, and freelance/proposal mode, are planned but not shipped.
+
+---
+
 ## How this was built
 
 CoApply was built by David Steinbroner with Claude Code — and it's a working example of the thing it does. The same principle runs through the tool and its own construction: direct AI with clear goals, keep a human at the gate, verify before anything ships, never settle for slop. The product thinking, the architecture, and the decisions are mine; Claude Code is the build loop. If you want to see what "AI-native but human-directed" actually looks like, the commit history is part of the demo.
