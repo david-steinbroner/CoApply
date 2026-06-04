@@ -71,6 +71,6 @@ All `_run.json.artifacts` statuses updated. Return control to master-apply.md St
 If any Wave B agent fails its retry:
 1. Update `_run.json.artifacts[].status = "failed"`
 2. Continue Phase B (other agents succeed independently — cover letter success doesn't depend on outreach success)
-3. After B completes: report to the user which artifacts failed and offer `/apply-resume <slug>` to retry them.
+3. After B completes: report to the user which artifacts failed and offer `/coapply:resume <slug>` to retry them.
 
 Don't abort the whole run for a single failure in Phase B. Partial success is useful.

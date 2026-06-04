@@ -1,5 +1,5 @@
 ---
-name: apply-resume
+name: resume
 description: Resume a partial CoApply run — re-runs only the failed or missing artifacts in an existing run folder using its _run.json state.
 argument-hint: "<run-slug>"
 ---
@@ -23,7 +23,7 @@ echo "RUNS_DIR=${APPLY_RUNS_DIR:-$CLAUDE_PLUGIN_OPTION_PROFILE_DIR/runs}"
 - Folder must exist: `${RUNS_DIR}/$ARGUMENTS/`
 - `_run.json` must exist in that folder
 
-If either is missing, abort with: "Run folder or _run.json not found. Use the `runs` command to see valid slugs."
+If either is missing, abort with: "Run folder or _run.json not found. Use `/coapply:list` to see valid slugs."
 
 ## Step 2 — Read state
 

@@ -35,7 +35,7 @@ That's the only prerequisite. **You do not need to know how to use GitHub, git, 
 
 3. **Install it.** Type:
    ```
-   /plugin install apply@coapply-marketplace
+   /plugin install coapply@coapply-marketplace
    ```
    Press Enter and confirm. Done — CoApply is now part of your Claude Code.
 
@@ -47,7 +47,7 @@ That's the only prerequisite. **You do not need to know how to use GitHub, git, 
 
 CoApply writes *as you*, so it needs to know your experience and voice. You fill this in once, and it makes every future application better.
 
-**The easy way (coming soon):** run `/apply-setup` and answer a short interview — CoApply builds your profile from your answers (or from a resume you paste in).
+**The easy way (coming soon):** run `/coapply:setup` and answer a short interview — CoApply builds your profile from your answers (or from a resume you paste in).
 
 **The manual way (available now):** copy the templates from the `profile.example` folder into your own profile folder and fill in each file. Each template has instructions inside it. Start with `skills-experience.md` and one resume — that's enough for a first run. You can deepen it anytime; **the more you add, the better CoApply gets.**
 
@@ -57,13 +57,13 @@ Your profile lives on **your** computer and is never uploaded anywhere except to
 
 ## Your first application
 
-In Claude Code, type `/apply` followed by a job posting — a link or pasted text:
+In Claude Code, type `/coapply:start` followed by a job posting — a link or pasted text:
 
 ```
-/apply https://jobs.example.com/posting/12345
+/coapply:start https://jobs.example.com/posting/12345
 ```
 
-or just `/apply` on its own, and it'll ask you to paste the job description.
+or just `/coapply:start` on its own, and it'll ask you to paste the job description.
 
 Here's what happens:
 
@@ -72,9 +72,10 @@ Here's what happens:
 3. **On "go," it writes the full package** — cover letter, resume guidance, outreach email, interview prep, follow-up plan — into a folder for that job.
 4. **You review it, make it yours, and submit it.** CoApply never submits for you.
 
-Two more commands you'll find handy:
-- `/runs` — see your recent applications.
-- `/apply-resume <job>` — pick a run back up if it got interrupted.
+Other commands you'll find handy:
+- `/coapply:list` — see your recent applications.
+- `/coapply:resume <run>` — pick a run back up if it got interrupted.
+- `/coapply:help` — a quick orientation.
 
 ---
 

@@ -1,5 +1,5 @@
 ---
-name: runs
+name: list
 description: List recent CoApply runs. Default shows the last 10 from the filesystem; pass --notion to query a configured external tracker for full history.
 argument-hint: "[--notion]"
 ---
@@ -24,7 +24,7 @@ List the 10 most recent folders under `${RUNS_DIR}`, sorted by modification time
 - Company + role (from `_run.json` if present, otherwise parse slug)
 - Status summary: `N/M artifacts done` (from `_run.json.artifacts[].status`)
 - Source tag
-- If status is partial/failed: offer the `apply-resume <slug>` command
+- If status is partial/failed: offer `/coapply:resume <slug>`
 
 Format as a compact markdown table, one row per run.
 
@@ -43,4 +43,4 @@ If configured, query the Applications DB (using `$NOTION_DB_ID`) via the Notion 
 ## Errors
 
 - Tracker MCP unavailable → fall back to filesystem + tell the user to retry later.
-- Runs folder missing → tell the user to run the `apply` command at least once first.
+- Runs folder missing → tell the user to run `/coapply:start` at least once first.

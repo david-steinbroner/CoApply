@@ -1,6 +1,6 @@
 # Source Routing
 
-Maps a URL (or lack of URL) to a source tag. Used by the `/apply` command at invocation, by the outreach agent for channel selection, and (when Notion logging is enabled) by the notion-log agent for the Source column.
+Maps a URL (or lack of URL) to a source tag. Used by the start skill at invocation, by the outreach agent for channel selection, and (when tracker logging is enabled) by the tracker-log step for the Source column.
 
 ## Hostname → Source tag
 
@@ -21,7 +21,7 @@ Source tag values are **the exact strings used by the Notion Applications DB Sou
 
 ## Referral and email-intro
 
-The skill cannot auto-detect these. If the user invokes `/apply` and mentions in their message (or the pasted text's framing) that it's a referral or warm intro, **ask once** before Phase A begins: "Is this a referral or warm intro?" If yes, set source to `Referral` and adjust outreach to the warm-reply template.
+The skill cannot auto-detect these. If the user invokes CoApply and mentions in their message (or the pasted text's framing) that it's a referral or warm intro, **ask once** before Phase A begins: "Is this a referral or warm intro?" If yes, set source to `Referral` and adjust outreach to the warm-reply template.
 
 ## Aggregator rejection
 
@@ -71,4 +71,4 @@ Some ATS pages are JS-rendered SPAs — WebFetch will return only the meta descr
 | `jobs.lever.co` | `https://jobs.lever.co/<company>/<id>?format=json` (some companies); otherwise WebFetch the page directly — Lever pages are mostly server-rendered | |
 | `*.myworkdayjobs.com` | WebFetch first; Workday pages vary. If <500 chars returned, ask the user to paste. | |
 
-**Procedure for the /apply orchestrator:** if the JD URL hostname matches a hint above, use Bash `curl -sL` against the transformed endpoint and skip WebFetch entirely. Only fall back to WebFetch if the curl returns non-200 or <500 bytes. Save the raw response to `/tmp/<slug>-jd.<ext>` then read into context.
+**Procedure for the orchestrator:** if the JD URL hostname matches a hint above, use Bash `curl -sL` against the transformed endpoint and skip WebFetch entirely. Only fall back to WebFetch if the curl returns non-200 or <500 bytes. Save the raw response to `/tmp/<slug>-jd.<ext>` then read into context.

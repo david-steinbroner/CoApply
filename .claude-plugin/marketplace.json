@@ -3,7 +3,7 @@
   "owner": { "name": "David Steinbroner" },
   "plugins": [
     {
-      "name": "apply",
+      "name": "coapply",
       "source": "./",
       "description": "CoApply — turn a job posting into a complete, voice-matched, fit-gated application package. Research, a human go/no-go gate, then cover letter, tailored resume guidance, outreach, and interview prep. It drafts, you decide, you send — never an auto-bot."
     }
