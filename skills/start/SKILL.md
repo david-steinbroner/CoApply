@@ -1,6 +1,6 @@
 ---
 name: start
-description: Generate a full job application package from a job posting (URL or text). Runs research → fit-score → a human go/no-go checkpoint → cover letter, tailored resume guidance, outreach, and interview prep, written in the user's voice from their profile. Never auto-submits.
+description: Begin an application from a job posting (URL or text).
 argument-hint: "<url-or-text>"
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: help
-description: Explain what CoApply is and how to use it — the commands, profile setup, the human gate, and privacy. Use when the user asks how CoApply works or what they can do with it.
+description: How CoApply works — commands, setup, and the gate.
 ---
 
 # CoApply — how it works

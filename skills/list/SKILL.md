@@ -1,6 +1,6 @@
 ---
 name: list
-description: List recent CoApply runs. Default shows the last 10 from the filesystem; pass --notion to query a configured external tracker for full history.
+description: List your recent application runs.
 argument-hint: "[--notion]"
 ---
 
