@@ -8,44 +8,45 @@ argument-hint: "<run-slug>"
 
 Input in `$ARGUMENTS` is a run folder slug, e.g. `2026-04-21-acme-senior-role-7f3a`.
 
-## Step 0 — Resolve paths
+## Step 0 — Resolve paths, identity, and tier (same as `start`)
 
-The engine prompts live under `${CLAUDE_PLUGIN_ROOT}/profile/prompts/` (that path is substituted to the real install dir in this skill — use the resolved value, and substitute it wherever an engine file you read shows `${CLAUDE_PLUGIN_ROOT}`; subagents get the real absolute path).
+The engine prompts live under `${CLAUDE_PLUGIN_ROOT}/profile/prompts/` (substituted to the real install dir in this skill — use the resolved value, and substitute it wherever an engine file shows `${CLAUDE_PLUGIN_ROOT}`; subagents get the real absolute path).
 
-Resolve the runs folder with Bash:
+A resumed run needs the SAME inputs a fresh run does. Resolve them with Bash, exactly like `start`:
 
 ```bash
+echo "PROFILE_DIR=$CLAUDE_PLUGIN_OPTION_PROFILE_DIR"
 echo "RUNS_DIR=${APPLY_RUNS_DIR:-$CLAUDE_PLUGIN_OPTION_PROFILE_DIR/runs}"
 ```
 
-## Step 1 — Pick the run (always confirm before resuming)
+Then read `${PROFILE_DIR}/identity.md` → `$USER_NAME`, `$USER_FIRST_NAME`, `$USER_LOCATION`, `$USER_PORTFOLIO`, `$USER_TARGETS`. These get injected into every agent you re-dispatch.
 
-- If `$ARGUMENTS` names an existing folder under `${RUNS_DIR}`: that's the likely target — but still show its company / role / status and ask **"Resume this one?"** before doing any work.
-- If `$ARGUMENTS` is empty or doesn't match a folder: list the resumable runs (folders whose `_run.json` **`phase`** is not `done` — `phase` is the root run-state; `status` is per-artifact), each with company / role / phase, and **ask the user which one to resume.** Do NOT auto-pick — even if there is only one run, confirm first.
+## Step 1 — Pick the run (always confirm)
 
-Once the user confirms a run, verify its `_run.json` exists (abort with "No _run.json in that run — use `/coapply:list`." if missing), then proceed.
+- If `$ARGUMENTS` names an existing folder under `${RUNS_DIR}`: show its company / role / `phase` and ask **"Resume this one?"** before any work.
+- Otherwise: list resumable runs — folders whose `_run.json` `phase` is **not** `done` and **not** `aborted` — with company / role / phase, and ask which to resume. Never auto-pick, even with one run.
 
-## Step 2 — Read state
+Verify the chosen run's `_run.json` exists (abort with "No _run.json — use `/coapply:list`." if missing). Read it: note the root `phase`, the per-artifact `status`, the recorded `tier` (use it; fall back to `${PROFILE_DIR}/coapply.config.json`, default `standard`), and re-read the JD from `jd.txt`.
 
-Read `_run.json`. Identify:
-- `source` (the source tag from the original run)
-- `artifacts` array — each entry has `name`, `status` (pending/done/failed), `path`
-- Any phase checkpoint status
+## Step 2 — Resume BY PHASE (the gate stays mandatory)
 
-Also re-read the JD from `jd.txt` in the run folder.
+Pick up exactly where the run left off — and **never skip the human checkpoint.**
 
-## Step 3 — Determine what to re-run
+- **`done`** → nothing to resume; tell the user it's complete.
+- **`aborted`** → do not resume by default. Ask: "This run was aborted (<reason>). Reopen it anyway?" Continue only on an explicit yes.
+- **`triage`** → finish any missing Wave A1 agents (jd-parser, dedup-check, role-analysis, fit-score), then **go to the checkpoint** (`master-apply.md` Step 3). Do NOT run A2/B yet.
+- **`awaiting_checkpoint`** → the run paused at the gate. **Re-present the go/no-go checkpoint** — rebuild the Step 3 summary from the existing triage files (fit, provisional mode, cost-to-finish, tier, dedup) and wait for the user's decision. Do NOT run A2/B until they say go. *Resuming must never bypass the gate.*
+- **`strategy`** → the gate was already cleared. Resume Wave A2 (only the active tier's agents) for any `pending`/`failed` artifact, then Phase B.
+- **`content`** → resume only the `pending`/`failed` Phase B agents for the active tier.
 
-Look at each artifact with `status` ∈ {`pending`, `failed`}. Group by phase (research, strategy, content). Re-dispatch only those agents, preserving completed outputs.
+## Step 3 — Re-dispatch (follow the master)
 
-## Step 4 — Follow the master's dispatch rules
+For whatever needs to run, follow `master-apply.md`'s rules: active-tier agent set, batch size ≤3, retry-once, inline run-specific context (the JD + prior-wave files), and **substitute real absolute paths** into every subagent prompt.
 
-Read the master prompt (`${CLAUDE_PLUGIN_ROOT}/profile/prompts/master-apply.md`) and follow its agent-level rules for the agents you need to re-run. Batch size 3. Retry-once on failure. Substitute real absolute paths into every subagent prompt.
+## Step 4 — Update state
 
-## Step 5 — Update _run.json after each success
+Rewrite `_run.json` after each agent completes: update the artifact `status`, advance the root `phase`, set `lastResumedAt`.
 
-Rewrite `_run.json` after each agent completes. Update artifact status. Update `lastResumedAt`.
+## Step 5 — Final summary
 
-## Step 6 — Final summary
-
-When all artifacts are `done`, print the same "what now" block as a fresh run (cover-letter docx path, outreach URLs, run folder path). If a tracker is configured (`$NOTION_DB_ID`), offer to log it; otherwise skip.
+When the active tier's artifacts are all `done`, print the same "what now" block as a fresh run, listing ONLY the artifacts actually produced. The optional tracker step runs only if the user connected one.

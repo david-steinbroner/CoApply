@@ -53,7 +53,7 @@ Apply the anti-ai-detection.md input EXACTLY. Never use: "proven track record," 
 You MUST run all five checks before writing the output file. If any check fails, rewrite and re-check. Do NOT write the file with a known violation — the orchestrator's post-write lint is a safety net, not the primary check.
 
 - **Specificity test:** could this opening be sent to 100 different companies? If yes, rewrite.
-- **Company references:** must name at least 2 specific things about the company with real context.
+- **Company references:** name at least 2 specific things about the company, drawn from the JD or `03-company-research.md` (if it ran). If you lack enough real company facts (e.g. a lite run with no research), write a sharper role/JD-grounded opening instead — never invent company specifics.
 - **Keyword mirror:** weave 3-5 keywords from the JD naturally. Don't force.
 - **Gap test:** is there a sharp gap between this voice and how the user would actually talk in an interview? If yes, simplify.
 - **Self-lint grep:** before writing, scan your draft text for every banned phrase from humanizer-rules.md and anti-ai-detection.md (the ones you Read at the start). Also scan for `—` (em-dash) — replace every one with ` - ` (hyphen with spaces). If any banned phrase or em-dash is found, rewrite that sentence and re-scan. Treat this as a hard gate.

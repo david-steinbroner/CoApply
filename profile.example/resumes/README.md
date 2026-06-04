@@ -14,20 +14,20 @@ Plain markdown, one file per variant. A workable structure:
 # <Variant name — e.g. "Generalist," "Management track," "Design-focused">
 
 ## SUMMARY
-<2–3 lines. Lead with the identity this variant sells.>
+<Summary — 2–3 lines. Lead with the identity this variant sells.>
 
 ## EXPERIENCE
 
-### <Company> | <location> | <dates>
+### <Company> | <Location> | <Dates>
 **<Title>**
 - <Achievement bullet — action + outcome + metric>
-- <...>
+- <More bullets…>
 
 ## SKILLS & TOOLS
-**<Category>:** <skills>
+**<Category>:** <Skills>
 
 ## EDUCATION
-<degree, school, year — optional>
+<Degree, school, year — optional>
 ```
 
 > Keep the markdown as the source of truth; export to PDF when you actually apply. PDFs are gitignored by default (they're binaries and often contain the most PII).

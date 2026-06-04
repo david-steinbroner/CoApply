@@ -13,14 +13,16 @@ Your partner for the jobs you actually want. Point it at a job posting and it re
 
 ## The commands
 
+- **`/coapply:setup`** — first-time setup. Copies the profile templates into your folder, checks how runs are billed, and helps you pick a budget tier.
 - **`/coapply:start <job url or text>`** — begin an application. Does triage, then stops at a fit-check gate for your go/no-go. On a go, it generates the full package into a run folder.
+- **`/coapply:tier`** — change your budget tier (`lite` / `standard` / `full`) anytime.
 - **`/coapply:resume <run>`** — pick a run back up if it was interrupted.
 - **`/coapply:list`** — list your recent runs.
 - **`/coapply:help`** — this.
 
 ## First-time setup
 
-CoApply writes *as you*, so it reads a profile folder you control. Set it once: run `/plugin`, open CoApply, and set your **Profile folder** to a directory containing your `identity.md`, `skills-experience.md`, `voice-profile.md`, `positioning-modes.md`, and a `resumes/` folder. Templates to copy live in the plugin's `profile.example/`. Start with `identity.md`, `skills-experience.md`, and one resume — that's enough for a first run; deepen it over time and every run gets better.
+CoApply writes *as you*, so it reads a profile folder you control. Set it once: run `/plugin`, open CoApply, and set your **Profile folder** to a directory you control. Then run **`/coapply:setup`**, which copies the templates in for you (`identity.md`, `skills-experience.md`, `voice-profile.md`, `positioning-modes.md`, and a `resumes/` folder), checks billing, and helps you pick a budget tier. Start by filling in `identity.md`, `skills-experience.md`, and one resume — that's enough for a first run; deepen it over time and every run gets better.
 
 ## The gate
 
@@ -32,5 +34,5 @@ Your profile and your run output stay on your machine. Nothing is uploaded excep
 
 ## If they ask "what should I do right now?"
 
-- No profile yet → walk them through setup (above), or point at the `profile.example/` templates.
+- No profile yet → tell them to run `/coapply:setup`, which copies the templates in for you.
 - Profile ready → tell them to run `/coapply:start` with a job posting.

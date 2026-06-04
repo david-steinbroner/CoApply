@@ -3,13 +3,13 @@
 > _Anything you'd point a hiring manager to. Apply weaves the relevant ones into cover letters, outreach, and follow-ups._
 
 ## Case Studies
-- _<Title> — <URL> — <one line on what it shows>_
+- _<Title> — <URL> — <One line on what it shows>_
 
 ## Project / Feature Details
-- _<Title> — <URL or "see skills-experience.md"> — <what it demonstrates>_
+- _<Title> — <URL or "see skills-experience.md"> — <What it demonstrates>_
 
 ## Existing Cover Letters (polished versions worth reusing)
-- _<Role/company> — <URL or path> — <why it's good>_
+- _<Role/company> — <URL or path> — <Why it's good>_
 
 ## Resume
 - _<Link to a hosted/PDF resume, if you have one>_

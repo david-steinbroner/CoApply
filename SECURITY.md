@@ -5,8 +5,8 @@ CoApply is a Claude Code plugin that runs in your environment and reads your per
 ## What it does and doesn't touch
 
 - **Reads:** your profile folder (the one you configure) and the plugin's own engine files.
-- **Writes:** only your runs folder (application output).
-- **Never:** sends your data anywhere except your own Claude (no server, no telemetry, no third party), submits applications on your behalf, or logs into job sites.
+- **Writes:** your runs folder (application output); setup and tier also write to your own profile folder (config and templates). Both are on your machine, not a third party.
+- **Never:** sends your data anywhere except your own Claude — unless you explicitly connect an optional integration (e.g. a Notion tracker, off by default) — submits applications on your behalf, or logs into job sites. No server, no telemetry, no hidden sends.
 
 These are enforced invariants, not just intentions — see `PRINCIPLES.md`.
 

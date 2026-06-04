@@ -21,25 +21,24 @@ If `$CLAUDE_PLUGIN_OPTION_PROFILE_DIR` is **empty**, stop and tell the user:
 
 Do not continue past this step until it resolves. From here on, use the resolved absolute path wherever this file shows `${PROFILE_DIR}`. The engine's templates live under `${CLAUDE_PLUGIN_ROOT}/profile.example/` — `${CLAUDE_PLUGIN_ROOT}` is already substituted to the real install path in this skill, so use that resolved value.
 
-## Step 1 — Copy the profile templates
+## Step 1 — Copy the profile templates (only the missing ones)
 
-Check whether the profile is already populated:
+Copy in any template files the profile doesn't already have, and **never overwrite** files the user has filled in. Don't skip the whole copy just because one file (e.g. `identity.md`) exists — fill in only what's missing.
+
+Use `cp -Rn` (no-clobber) so existing files are left untouched, then report what was added vs. already present:
 
 ```bash
-test -f "${PROFILE_DIR}/identity.md" && echo EXISTS || echo MISSING
+mkdir -p "${PROFILE_DIR}"
+before=$(cd "${PROFILE_DIR}" && find . -type f | sort)
+cp -Rn "${CLAUDE_PLUGIN_ROOT}/profile.example/." "${PROFILE_DIR}/"
+after=$(cd "${PROFILE_DIR}" && find . -type f | sort)
+echo "ADDED:"; comm -13 <(echo "$before") <(echo "$after")
+echo "ALREADY PRESENT:"; echo "$before"
 ```
 
-- **If MISSING:** copy the templates in, then list what landed:
+Report to the user which files were **added** and which were **already present** (left as-is). If everything was already present, say so — nothing was overwritten.
 
-  ```bash
-  mkdir -p "${PROFILE_DIR}" && cp -R "${CLAUDE_PLUGIN_ROOT}/profile.example/." "${PROFILE_DIR}/" && ls -1 "${PROFILE_DIR}"
-  ```
-
-  Confirm to the user which files landed.
-
-- **If EXISTS:** say the profile's already set up and **skip the copy** — do not overwrite anything they've already filled in.
-
-Either way, tell them what to fill in next:
+Then tell them what to fill in next:
 
 > Open and fill in **`identity.md`**, **`skills-experience.md`**, and at least one file in **`resumes/`** — that's the minimum for a first run. Deepen `voice-profile.md`, `positioning-modes.md`, and the rest over time; every run gets better as the profile grows.
 
@@ -81,7 +80,22 @@ printf '{"tier": "%s"}\n' "<choice>" > "${PROFILE_DIR}/coapply.config.json"
 
 Confirm it's saved, and note they can change it anytime with `/coapply:tier`.
 
-## Step 5 — Done
+## Step 5 — Optional: connect a tracker
+
+Offer this as clearly optional and **off by default** — most people skip it:
+
+> Want CoApply to log each application to a Notion database? **Most people skip this.** If yes, I'll set a `NOTION_DB_ID` in your config — and you should know this will send application data to Notion, a third party. If no (the default), nothing is logged anywhere but your own machine.
+
+- **If they decline (default):** do nothing — no tracker, no data leaves their machine. Move on.
+- **If they want it:** ask for their Notion database ID, then add it to the config (preserving the tier already written):
+
+  ```bash
+  printf '{"tier": "%s", "notion_db_id": "%s"}\n' "<choice>" "<notion-db-id>" > "${PROFILE_DIR}/coapply.config.json"
+  ```
+
+  Confirm it's saved and remind them application data will now be sent to Notion. They can remove `notion_db_id` from the config anytime to turn logging back off.
+
+## Step 6 — Done
 
 Tell them they're set:
 

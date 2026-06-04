@@ -8,7 +8,7 @@ CoApply generates applications from **your** material. These files are that mate
 2. **Fill in each file** below. Replace every `<placeholder>` and the italic _instructions_. Delete guidance you don't need.
 3. **Run `/coapply:start <a job posting>`.** The more complete your profile, the better the output.
 
-> Tip: you don't have to fill everything in at once. Start with `skills-experience.md` and one resume variant — that's enough for a first run. Come back and deepen it; **the more you put in, the better CoApply gets.** (A future `/coapply:setup` command will turn this into a guided interview.)
+> Tip: you don't have to fill everything in at once. Start with `skills-experience.md` and one resume variant — that's enough for a first run. Come back and deepen it; **the more you put in, the better CoApply gets.** (`/coapply:setup` copies these templates into your profile folder for you; a fuller guided interview is on the roadmap.)
 
 ## The files
 
@@ -16,7 +16,7 @@ CoApply generates applications from **your** material. These files are that mate
 |---|---|
 | `skills-experience.md` | Your master reference — every role, achievement, metric, and story CoApply can draw from. The single most important file. |
 | `voice-profile.md` | How you write, so cover letters and outreach sound like *you*, not generic AI. |
-| `positioning-modes.md` | Pre-defined ways to frame yourself for different kinds of role (e.g. a teacher's "Classroom Lead" vs "Curriculum Designer" framing). CoCoApply picks the right mode per job. |
+| `positioning-modes.md` | Pre-defined ways to frame yourself for different kinds of role (e.g. a teacher's "Classroom Lead" vs "Curriculum Designer" framing). CoApply picks the right mode per job. |
 | `portfolio-links.md` | Case studies, project links, hosted cover letters — anything you'd link a hiring manager to. |
 | `resumes/` | One or more resume variants in markdown. CoApply recommends which to send and which bullets to swap per job. |
 

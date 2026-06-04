@@ -8,9 +8,9 @@ _(Used to sign cover letters and head your resume.)_
 **Location:** <City, ST (Time Zone)>
 _(Or leave blank. Used for location-aware lines, e.g. timezone overlap in outreach.)_
 
-**Contact:** <email · phone (optional) · LinkedIn URL>
+**Contact:** <Email · phone (optional) · LinkedIn URL>
 
-**Portfolio:** <https://your-site.com (your website / portfolio), or "(none)">
+**Portfolio:** <Website / portfolio URL, or "(none)">
 
-**Target roles:** <e.g. "senior product management roles" / "UX design roles" / "data analyst roles">
+**Target roles:** <Target roles — e.g. "senior product management roles" / "UX design roles" / "data analyst roles">
 _(This is how CoApply knows your field. It replaces any assumption about what kind of job you're applying for — be specific about the discipline and level.)_

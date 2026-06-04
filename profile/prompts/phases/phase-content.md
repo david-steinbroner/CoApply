@@ -4,9 +4,9 @@ Dispatched from `master-apply.md` after the user confirms at the Phase A checkpo
 
 **Run only the content agents the active tier calls for** (tier table in `master-apply.md` Step 3): **lite** = cover-letter only · **standard** = cover-letter, outreach, resume-update, interview-prep, followup-plan · **full** = those + application-questions (if present). Mark tier-skipped agents `skipped`.
 
-## Wave B1 — Primary content (batch size 3, 3 agents, one batch)
+## Wave B1 — Primary content
 
-Spawn these 3 agents in parallel:
+On **lite**: run ONLY cover-letter, then skip the rest of B1 and all of B2. On **standard** and **full**: spawn these 3 in parallel (batch size 3):
 
 - Task: agent_type `general-purpose`, instructed by `${CLAUDE_PLUGIN_ROOT}/profile/prompts/agents/cover-letter.md` — writes `06-cover-letter.md`
 - Task: agent_type `general-purpose`, instructed by `${CLAUDE_PLUGIN_ROOT}/profile/prompts/agents/outreach.md` — writes `07-outreach.md`
@@ -31,9 +31,10 @@ For **resume-update**:
 ## Wave B2 — Follow-up content (batch size 3)
 
 Determine which agents to run:
-- `application-questions` — only if `00-jd-parsed.json.applicationQuestions` has items AND `_run.json.artifacts` status for it is `pending`
-- `interview-prep` — always runs
-- `followup-plan` — always runs
+- `application-questions` — **full tier only**, and only if `00-jd-parsed.json.applicationQuestions` has items
+- `interview-prep` — runs on standard / full
+- `followup-plan` — runs on standard / full
+(On **lite**, none of Wave B2 runs — mark them `skipped`.)
 
 Spawn the applicable agents in parallel (1-3 depending on whether application-questions applies):
 

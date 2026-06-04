@@ -146,7 +146,7 @@ A local dashboard — a private web page showing your applications, what each st
 ## Your privacy
 
 - Your profile and your applications **stay on your computer.**
-- Nothing is sent anywhere except to **your own** Claude, the same as any Claude Code session.
+- Nothing is sent anywhere except to **your own** Claude, the same as any Claude Code session — unless you explicitly connect an optional integration (like a Notion tracker, off by default).
 - CoApply **never** submits applications for you and **never** logs into job sites on your behalf.
 - We don't run a server, we don't see your data, and there's no account to sign up for beyond your own Claude.
 
@@ -177,18 +177,23 @@ CoApply runs on **your** Claude Code's model access — it doesn't add a subscri
 - *Heads-up:* if you have an `ANTHROPIC_API_KEY` set in your environment, Claude Code may bill per-token even on a subscription. `/coapply:setup` checks this for you.
 
 **You control the spend three ways:**
-1. **Tiers** — `lite` (just the cover letter, cheapest), `standard` (the core package), `full` (everything, incl. live company research + a Word doc). Set a default in `/coapply:setup`; change anytime with `/coapply:tier`.
+1. **Tiers** — `lite` (just the cover letter, cheapest), `standard` (the core package — outreach, resume guidance, interview prep, follow-up, role analysis, and light company research), `full` (everything in standard, plus live company web research, a work-sample suggestion, application questions, and a Word doc). Set a default in `/coapply:setup`; change anytime with `/coapply:tier`.
 2. **The gate** — before any expensive work, CoApply stops, shows an estimated cost to finish, and lets you run full / standard / lite / or stop.
 3. **The pre-screen** — obvious no-go roles get flagged before *any* agent runs, so skipping a bad fit is nearly free.
 
+*Optional tracker:* if you want CoApply to log each application to a Notion database, you can connect one during `/coapply:setup`. It's off by default — most people skip it — and nothing is logged anywhere but your own machine unless you turn it on.
+
 ## Principles & limits
 
-CoApply runs on a short set of invariants — it always passes a human gate, never auto-submits, never fabricates (every claim traces to your profile), stays in its lane (reads your profile, writes only to your runs folder), and never sends your data anywhere but your own Claude. The full list: **[PRINCIPLES.md](PRINCIPLES.md)**.
+CoApply runs on a short set of invariants — it always passes a human gate, never auto-submits, never fabricates (every claim traces to your profile), stays in its lane (reads your profile, writes only to your own folders), and never sends your data anywhere but your own Claude — unless you opt into an integration like a Notion tracker. The full list: **[PRINCIPLES.md](PRINCIPLES.md)**.
+
+Available today:
+- Guided setup (`/coapply:setup`) copies the `profile.example/` templates into your folder and walks you through billing and a budget tier.
+- Budget tiers (`lite` / `standard` / `full`) are live — set a default in setup, change anytime with `/coapply:tier`.
 
 Honest about what it isn't yet:
 - Observability is the inspectable run folder + `_run.json`; a richer cost/tracing dashboard is on the roadmap.
-- Guided setup (`/coapply:setup`) is planned — for now you fill in the `profile.example/` templates.
-- A cheaper "lite" mode, and freelance/proposal mode, are planned but not shipped.
+- A freelance/proposal mode is planned but not shipped.
 
 ---
 

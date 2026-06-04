@@ -3,7 +3,7 @@
 > _This is the deepest well Apply draws from. Be specific and bring receipts — real numbers, real outcomes, real constraints. Vague inputs produce vague applications. It's fine for this file to get long._
 
 **Location:** <City, State (Time Zone)>
-**Target roles:** <the roles you're targeting — e.g. "ICU nurse," "senior UX designer," "staff accountant," "high-school science teacher">
+**Target roles:** <Target roles — e.g. "ICU nurse," "senior UX designer," "staff accountant," "high-school science teacher">
 
 ## Professional Identity
 
@@ -17,7 +17,7 @@
 
 ## Career Summary
 
-### <Company> (<start> – <end>) — <location / remote>
+### <Company> (<Start> – <End>) — <Location / remote>
 
 **Title(s) held:** _<List roles + dates. If you held several, note how you'd consolidate them on a resume.>_
 
@@ -28,22 +28,22 @@
 > _List your strongest work. For each: what it was, what YOU did (not the team), the constraints, and the measurable outcome. These become your proof points._
 
 ### <Achievement / project name>
-- **What it was:** _<context>_
-- **What you did:** _<your specific role and decisions>_
-- **Constraints:** _<what made it hard — stakeholders, regulation, headcount, deadline>_
-- **Outcome:** _<the metric or result — be concrete>_
-- **Skill demonstrated:** _<what this proves about you>_
+- **What it was:** _<Context>_
+- **What you did:** _<Your specific role and decisions>_
+- **Constraints:** _<What made it hard — stakeholders, regulation, headcount, deadline>_
+- **Outcome:** _<The metric or result — be concrete>_
+- **Skill demonstrated:** _<What this proves about you>_
 
 _(Duplicate the block above for each achievement.)_
 
 ## Skills & Tools
 
-**<Category — e.g. "Core skills," "Tools & software," "Certifications & licenses">:** _<list>_
-**<Category>:** _<list>_
-**<Category>:** _<list>_
+**<Category — e.g. "Core skills," "Tools & software," "Certifications & licenses">:** _<List>_
+**<Category>:** _<List>_
+**<Category>:** _<List>_
 
 ## Honest Gaps
 
 > _What you haven't done yet. Apply uses this to address weaknesses head-on rather than pretend. Naming a gap and how you'd close it beats hoping nobody notices._
 
-- _<gap> — <how you'd close it / adjacent experience that transfers>_
+- _<Gap> — <How you'd close it / adjacent experience that transfers>_

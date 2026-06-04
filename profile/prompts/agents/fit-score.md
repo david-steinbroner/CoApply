@@ -73,7 +73,7 @@ If no seniority gap, `seniorityGapFlag: false`.
 
 - Start with `{`. No preamble, no code fences.
 - Valid JSON.
-- compRange: exact string from JD, or your estimate (if estimating, precede with "estimated: ").
+- compRange: exact string from JD, or `not listed` if absent. **Never estimate a comp range** — inventing numbers violates the never-fabricate rule.
 
 ## Confirmation
 

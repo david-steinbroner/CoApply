@@ -26,7 +26,8 @@ A Claude Code plugin that turns a job posting into a complete, voice-matched, fi
 - Robustness: cross-platform run-ID (no `openssl`); LinkedIn URLs prompt for pasted text; unfilled-`<placeholder>` preflight guard; case-insensitive voice lint; `.docx` is full-tier-only and degrades gracefully (never crashes the run).
 
 ### Profile & governance
-- `profile.example/` field-neutral templates; `/coapply:setup` copies them in.
+- `profile.example/` field-neutral templates; `/coapply:setup` copies in only the missing ones (never overwrites filled-in files).
+- **Optional Notion tracker** — off by default; can be connected during `/coapply:setup` to log applications to a Notion database. Most users skip it; nothing leaves your machine unless you turn it on.
 - `PRINCIPLES.md` (invariants), `CLAUDE.md` (contributor rules), `CONTRIBUTING.md`, `SECURITY.md`, `scripts/audit.sh` (release audit), MIT license.
 
 ### Known limitations

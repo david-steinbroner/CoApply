@@ -17,14 +17,14 @@ _<A sentence on your written persona — plainspoken? warm? dry? technical?>_
 
 ## Things I say / how I phrase things
 
-- _<characteristic phrasings, sentence rhythms, words you reach for>_
+- _<Characteristic phrasings, sentence rhythms, words you reach for>_
 
 ## Voice Examples
 
 > _Paste real excerpts of your best writing here. Apply matches against these. This is the highest-signal part of the file._
 
-**Example 1 (from <context>):**
-> _<paste>_
+**Example 1 (from <Context>):**
+> _<Paste>_
 
-**Example 2 (from <context>):**
-> _<paste>_
+**Example 2 (from <Context>):**
+> _<Paste>_

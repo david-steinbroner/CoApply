@@ -20,7 +20,7 @@ Spawn these agents in parallel (one message, multiple Task calls, `run_in_backgr
 **Batch 2 of A1 (1 agent):**
 - Task: agent_type `general-purpose`, instructed by `${CLAUDE_PLUGIN_ROOT}/profile/prompts/agents/fit-score.md` — writes `02-fit-score.json`
 
-(Batch 2 can go in parallel with Batch 1 if rate limits allow — you'll see at run-time.)
+Wave A1 agents each get the raw `$JD_TEXT` inlined (jd-parser runs in this same wave, so `00-jd-parsed.json` isn't available yet to its siblings).
 
 **After Wave A1 returns:**
 

@@ -21,7 +21,7 @@ When a new job description comes in, Apply will:
 
 **Lead proof points:**
 - _<Your strongest evidence for THIS framing — pull from skills-experience.md>_
-- _<...>_
+- _<More proof points…>_
 
 **Key phrases / framing:** _<Words and angles that resonate for this role type.>_
 

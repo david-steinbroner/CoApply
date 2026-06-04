@@ -106,7 +106,7 @@ Runs on **Wave A1 (triage) outputs only**. You (the orchestrator) draft a *provi
 
 Before showing the summary, compute two things:
 - **Billing label (live):** Bash-check `[ -n "$ANTHROPIC_API_KEY" ]` — if set, label `per-token (API key detected)`; else `subscription allowance`. (Heuristic: we detect the key, not Claude Code's exact billing.)
-- **Cost-to-finish estimate:** count the agents the active `$TIER` will run (tier table below) and estimate ≈ agents × ~25k tokens, expressed roughly (e.g. "~150k tokens"). Don't fabricate a dollar figure for subscription users.
+- **Cost-to-finish estimate:** count the agents the active `$TIER` will run (tier table below) and estimate ≈ agents × ~25k tokens, expressed roughly (e.g. "~150k tokens"). **NEVER print a dollar amount — tokens only.** (Subscription users don't pay per token; a dollar figure would mislead.)
 
 Show the user this compact summary, then wait for instruction:
 
@@ -176,13 +176,9 @@ Only on the **full** tier, after `06-cover-letter.md` is confirmed non-empty, tr
 
 On `lite` / `standard`, skip this step entirely and mark `cover-letter-docx` `skipped`. The markdown is the deliverable.
 
-## Step 6 — Archive mirror (optional)
-
-If `$ARCHIVE_DIR` is configured, mirror the final docx to `$ARCHIVE_DIR/<Company Name>/<YYYY-MM-DD>-cover-letter.docx` (create the company folder if needed; use the real company name from `00-jd-parsed.json.companyName`). If `$ARCHIVE_DIR` is not set, skip this step.
-
 ## Step 7 — Voice lint safety net
 
-Each user-facing agent (cover-letter, outreach, application-questions) self-lints. This is the safety net. Run ONE **case-insensitive** bash call (`grep -niE`) over `06-cover-letter.md`, `07-outreach.md`, and (if present) `09-application-questions.md` for:
+Each user-facing agent (cover-letter, outreach, application-questions) self-lints. This is the safety net. Run ONE **case-insensitive** bash call (`grep -niE`) over only the user-facing files the active tier actually produced (always `06-cover-letter.md`; `07-outreach.md` and `09-application-questions.md` only if they exist) for:
 - The banned-phrase list (`passionate|I thrive|I excel|resonates|aligns closely|opportunity to discuss|I would welcome|I look forward|Spearheaded|Leveraged|Orchestrated|Facilitated|Championed|Streamlined|Furthermore|Additionally|Moreover|This demonstrates|This experience shows|proven track record|results-driven|synergy|intersection of`)
 - Em-dashes (`—`)
 
@@ -194,35 +190,30 @@ Update all artifact statuses to `done` / `skipped` / `failed`. Add `completedAt`
 
 ## Step 9 — Post-run "what now" block
 
+Print a block listing ONLY the artifacts this run produced (tier-dependent — on lite that's just the cover letter). Skip the line for anything not generated:
+
 ```
 Applied package ready at: <absolute run folder path>
-Cover letter docx: <path to .docx>
-<Mirror copy: <path>   — only if $ARCHIVE_DIR set>
-
-Outreach next:
-  LinkedIn search: <URL from 07-outreach.md>
-  Message: (300-char DM in 07-outreach.md, or email draft)
-
-Interview prep: 10-interview-prep.md
-Follow-up dates: 11-followup-plan.json
+Cover letter: 06-cover-letter.md   <append "· docx: 06-cover-letter.docx" only if a docx was produced>
+<Outreach: 07-outreach.md — LinkedIn search URL + message   (only if produced)>
+<Resume guidance: 08-resume-update.md   (only if produced)>
+<Interview prep: 10-interview-prep.md   (only if produced)>
+<Follow-up dates: 11-followup-plan.json   (only if produced)>
 
 Open files? (all / main / folder / no)
-<Log to tracker? (yes / no / not yet)   — only if a tracker integration is configured>
+<Log to a tracker? (yes / no)   — only if the user connected an optional tracker (Step 10)>
 ```
 
-**Handle the Open-files choice immediately (before asking about the tracker):**
+**Handle the Open-files choice immediately:**
 - `all` → open every artifact in the run folder.
-- `main` → open the 3 you'll actually use: `06-cover-letter.md`, `07-outreach.md`, `08-resume-update.md`.
-- `folder` → open the run folder in the file browser.
-- `no` → skip.
+- `main` → open whichever of `06-cover-letter.md`, `07-outreach.md`, `08-resume-update.md` exist.
+- `folder` → open the run folder. `no` → skip.
 
-On macOS, copy the primary outreach message to clipboard with `pbcopy` and open files with `open`. On other platforms, print the paths instead of opening.
+Detect the OS first (Bash `uname -s`): on `Darwin`, copy the primary outreach message (if one exists) to clipboard with `pbcopy` and open files with `open`; otherwise just print the paths. If the user's reply answers both questions (e.g. "main, yes"), handle both at once.
 
-If the user's first reply answers both questions (e.g. "main, yes"), handle both in one response — don't force them to answer sequentially.
+## Step 10 — Optional tracker log (only if the user connected one)
 
-## Step 10 — External tracker log (optional, conditional)
-
-Only if a tracker integration is configured (e.g. `$NOTION_DB_ID`). If configured and the user says yes, log the application (company, role, date, status, source, JD URL, cover-letter path, follow-up date, notes). If the integration fails, write `_tracker_log_pending.md` with the formatted payload so the user can enter it manually. If no tracker is configured, omit Steps 9's tracker line and this step.
+CoApply logs nowhere by default. ONLY if the user connected an optional tracker during `/coapply:setup` (e.g. `$NOTION_DB_ID` is configured): if they say yes, log the application (company, role, date, status, source, JD URL, cover-letter path, follow-up date, notes) — this sends that data to the third-party tracker the user chose. If it fails, write `_tracker_log_pending.md` with the payload. If no tracker is configured, omit the Step 9 tracker line and skip this step entirely.
 
 ## Constraints
 
