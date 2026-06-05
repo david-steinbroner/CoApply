@@ -2,6 +2,14 @@
 
 All notable changes to CoApply. Versioned on the `plugin.json` version line.
 
+## [0.1.3] — 2026-06-05 — Docs: saving & parallel-session behavior
+
+Make the persistence/concurrency model explicit so users aren't surprised.
+
+### Added
+- **README FAQ** — "Do I need to save before I close?" (no — file-based, auto-saved; mid-run → `/coapply:resume`) and "Can I run several at once / edit my profile in another window?" (parallel runs are safe; don't edit the *same* profile file in two sessions — last save wins, no merge).
+- **`/coapply:setup`** ends with a short "good to know": work saves automatically, run as many applications in parallel as you want, don't edit the same profile file in two windows at once.
+
 ## [0.1.2] — 2026-06-04 — Fix: profile folder not found (blocked all commands)
 
 **Critical fix.** Every command aborted with "CoApply isn't configured" even when the Profile folder was set, because the skills read `$CLAUDE_PLUGIN_OPTION_PROFILE_DIR` in a Bash-tool call — and Claude Code only exports that variable to plugin *subprocesses* (hooks, MCP), never to the Bash tool a skill runs. So it was always empty for users.

@@ -101,3 +101,10 @@ Offer this as clearly optional and **off by default** — most people skip it:
 Tell them they're set:
 
 > All set. Once your profile is filled in, run `/coapply:start <job posting>` (a URL or pasted text) to begin.
+
+Then add this short "good to know" so they're never surprised:
+
+> A couple of things worth knowing:
+> - Your work **saves automatically** — there's no save button. Every draft and profile edit is written to disk as it's made, so closing a window never loses it.
+> - You can run **as many applications in parallel as you want** — each gets its own folder.
+> - Just don't edit the **same** profile file in two windows at once (there's no merge — the last save wins).

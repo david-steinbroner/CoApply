@@ -179,6 +179,14 @@ No, on purpose. You always review and submit yourself. That's what keeps your ap
 **Can it find jobs for me?**
 Not yet — today you bring the job posting. Discovering roles from public job boards is on the roadmap.
 
+**Do I need to save my work before I close?**
+No. CoApply writes everything to disk as it goes — every draft, and every edit to your profile, is a real file saved the moment it's made. Closing a session loses the *chat*, never your *work*. If you close in the middle of a run, just reopen and run `/coapply:resume` — finished pieces are kept, and only the unfinished one re-runs.
+
+**Can I run several applications at once, or edit my profile in another window?**
+- Run as many applications in parallel as you like — each gets its own folder, so they never collide. ✅
+- Running an application in one window while editing a profile doc in another is fine — just not the *same* file.
+- The one thing to avoid: two sessions editing the **same** profile file at the same time (e.g., both re-working the same reference doc). There's no merge step, so the last save wins and one change can be lost.
+
 ---
 
 ## Cost & limits
