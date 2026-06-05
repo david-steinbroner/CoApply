@@ -2,6 +2,18 @@
 
 All notable changes to CoApply. Versioned on the `plugin.json` version line.
 
+## [0.1.1] — 2026-06-04 — Onboarding next-step guidance
+
+Closes the "now what?" gaps in the first-run experience.
+
+### Added
+- **First-run nudge** — a `SessionStart` hook points new users at `/coapply:setup` (or, if no profile folder is set, at `/plugin`) until their profile is configured, then goes permanently silent (keys off whether `identity.md` exists — no state file).
+- **Next-step lines** — `/coapply:tier`, `/coapply:list`, and the post-run summary (`/coapply:start` and `/coapply:resume`) now end with an explicit `Next:` line so the user is never left at a blank prompt.
+- **README** — the install section now spells out the post-install screens (install scope, the Profile-folder prompt, the confirmation line) and the first step after; plus an optional status-line snippet for a persistent next-step hint.
+
+### Changed
+- `/coapply:setup`'s "not configured" message now tells the user to make a profile folder first.
+
 ## [0.1.0] — 2026-06-04 — Initial public release
 
 A Claude Code plugin that turns a job posting into a complete, voice-matched, fit-gated application package — pre-screen → research → fit-score → a human go/no-go gate → cover letter, tailored resume guidance, outreach, interview prep. Profile-driven and field-agnostic; never auto-submits.
