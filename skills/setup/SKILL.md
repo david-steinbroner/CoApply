@@ -12,10 +12,11 @@ Walk the user through getting CoApply ready: copy the profile templates into the
 Run one Bash call:
 
 ```bash
-echo "PROFILE_DIR=$CLAUDE_PLUGIN_OPTION_PROFILE_DIR"
+PROFILE_DIR="$("${CLAUDE_PLUGIN_ROOT}/scripts/resolve-profile-dir.sh")"
+echo "PROFILE_DIR=$PROFILE_DIR"
 ```
 
-If `$CLAUDE_PLUGIN_OPTION_PROFILE_DIR` is **empty**, stop and tell the user:
+If `PROFILE_DIR` (printed above) is **empty**, stop and tell the user:
 
 > CoApply doesn't have a Profile folder set yet — that's the folder where your profile and applications will live. First make a new empty folder (e.g. `~/coapply-profile`), then run `/plugin`, open **CoApply**, set the **Profile folder** to that path, and re-run `/coapply:setup`.
 

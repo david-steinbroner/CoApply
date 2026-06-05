@@ -2,6 +2,15 @@
 
 All notable changes to CoApply. Versioned on the `plugin.json` version line.
 
+## [0.1.2] — 2026-06-04 — Fix: profile folder not found (blocked all commands)
+
+**Critical fix.** Every command aborted with "CoApply isn't configured" even when the Profile folder was set, because the skills read `$CLAUDE_PLUGIN_OPTION_PROFILE_DIR` in a Bash-tool call — and Claude Code only exports that variable to plugin *subprocesses* (hooks, MCP), never to the Bash tool a skill runs. So it was always empty for users.
+
+### Fixed
+- Added `scripts/resolve-profile-dir.sh`, which resolves the profile folder from the env var when present, then falls back to reading `pluginConfigs."coapply@*".options.profile_dir` from `settings.json` (the value Claude Code reliably saves). Portable: `python3` → `jq`.
+- `start`, `setup`, `tier`, `list`, and `resume` now resolve the profile folder via the resolver instead of reading the env var directly.
+- The SessionStart nudge hook uses the same resolver as a fallback.
+
 ## [0.1.1] — 2026-06-04 — Onboarding next-step guidance
 
 Closes the "now what?" gaps in the first-run experience.

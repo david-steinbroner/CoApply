@@ -16,11 +16,12 @@ You are orchestrating a job application package for the user. The input is in `$
 
 `${CLAUDE_PLUGIN_ROOT}` is substituted to the real install path in this skill — so the line above already shows the real absolute base. Use that resolved value, and substitute it wherever any engine file you later read shows `${CLAUDE_PLUGIN_ROOT}`. Subagents cannot resolve the variable, so always hand them the real absolute path.
 
-**User paths.** Resolve these with one Bash call (they come from the plugin's config + your shell env):
+**User paths.** Resolve these with one Bash call. The resolver reads your saved profile folder from the plugin config — it checks `$CLAUDE_PLUGIN_OPTION_PROFILE_DIR` first, then falls back to `settings.json`, because that env var is NOT exported into skill Bash calls (only into plugin subprocesses):
 
 ```bash
-echo "PROFILE_DIR=$CLAUDE_PLUGIN_OPTION_PROFILE_DIR"
-echo "RUNS_DIR=${APPLY_RUNS_DIR:-$CLAUDE_PLUGIN_OPTION_PROFILE_DIR/runs}"
+PROFILE_DIR="$("${CLAUDE_PLUGIN_ROOT}/scripts/resolve-profile-dir.sh")"
+echo "PROFILE_DIR=$PROFILE_DIR"
+echo "RUNS_DIR=${APPLY_RUNS_DIR:-$PROFILE_DIR/runs}"
 ```
 
 - **`${PROFILE_DIR}`** — the user's profile folder. **If it is empty, abort:** "CoApply isn't configured yet. Run `/plugin`, open CoApply, and set your **Profile folder** — point it at the folder containing your identity.md, skills-experience.md, resumes/, etc."

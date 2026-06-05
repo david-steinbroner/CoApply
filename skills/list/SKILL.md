@@ -9,10 +9,11 @@ argument-hint: "[--notion]"
 ## Step 0 — Resolve the runs folder
 
 ```bash
-echo "RUNS_DIR=${APPLY_RUNS_DIR:-$CLAUDE_PLUGIN_OPTION_PROFILE_DIR/runs}"
+PROFILE_DIR="$("${CLAUDE_PLUGIN_ROOT}/scripts/resolve-profile-dir.sh")"
+echo "RUNS_DIR=${APPLY_RUNS_DIR:-$PROFILE_DIR/runs}"
 ```
 
-If `$CLAUDE_PLUGIN_OPTION_PROFILE_DIR` is empty, tell the user CoApply isn't configured yet (set the Profile folder via `/plugin`).
+If `PROFILE_DIR` resolves empty, tell the user CoApply isn't configured yet (set the Profile folder via `/plugin`).
 
 ## Default (filesystem)
 

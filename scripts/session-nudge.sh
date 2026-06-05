@@ -7,6 +7,11 @@
 set -euo pipefail
 
 PROFILE_DIR="${CLAUDE_PLUGIN_OPTION_PROFILE_DIR:-}"
+# A SessionStart hook is a subprocess, so the env var is normally present here —
+# but fall back to the shared resolver (settings.json) so this matches the skills.
+if [ -z "$PROFILE_DIR" ] && [ -n "${CLAUDE_PLUGIN_ROOT:-}" ]; then
+  PROFILE_DIR="$("${CLAUDE_PLUGIN_ROOT}/scripts/resolve-profile-dir.sh" 2>/dev/null || true)"
+fi
 
 # Configured (profile folder set AND has identity.md) → say nothing.
 if [ -n "$PROFILE_DIR" ] && [ -f "$PROFILE_DIR/identity.md" ]; then
