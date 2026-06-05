@@ -40,6 +40,13 @@ Requires an external tracker to be configured — the Applications DB id must be
 
 If configured, query the Applications DB (using `$NOTION_DB_ID`) via the Notion MCP. Return the most recent 20 entries (Company, Role, Date, Status, Source) as a compact table, date descending.
 
+## Always end with the next step
+
+After the table, close with one forward-pointing line so the user always has a next move:
+
+- If any listed run is partial/failed (resumable): **Next:** `/coapply:resume <slug>` to finish it, or `/coapply:start <job>` for a new application.
+- Otherwise: **Next:** `/coapply:start <job url or text>` to begin a new application.
+
 ## Errors
 
 - Tracker MCP unavailable → fall back to filesystem + tell the user to retry later.

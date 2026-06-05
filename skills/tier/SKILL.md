@@ -50,3 +50,9 @@ If no tier was passed, show the current tier, then list all three with their com
 - **full** *(most expensive)* — everything in standard, plus live company web research, a work-sample suggestion, application questions, and a `.docx`.
 
 When they answer, write the config as in Step 2 and confirm.
+
+## Always end with the next step
+
+Whether you set the tier or just showed it, close with one forward-pointing line so the user is never left at a blank prompt:
+
+> **Next:** `/coapply:start <job url or text>` to run an application at this tier.

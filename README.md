@@ -37,9 +37,12 @@ That's the only prerequisite. **You don't need to touch GitHub or write code** �
    ```
    /plugin install coapply@coapply-marketplace
    ```
-   Press Enter and confirm. Done — CoApply is now part of your Claude Code.
+   Press Enter. Claude Code then walks you through three quick screens:
+   - **Where to install** → choose **Install for you (user scope)** — the default. This makes CoApply available in every folder you work in, not just one project.
+   - **Profile folder** → Claude Code asks for a folder to hold your profile and your applications. **Make a new empty folder first** (e.g. `~/coapply-profile`), then enter its path here. This folder is *yours* — your profile lives in it, every application is saved into it, and updates never touch it.
+   - **Confirmation** → you'll see a line like `Reloaded: 1 plugin…`. **That means it worked.**
 
-> **What just happened?** You didn't download anything manually or touch GitHub directly. Claude Code fetched CoApply for you. If those two commands worked, you're fully installed.
+> **What just happened?** You didn't download anything manually or touch GitHub directly — Claude Code fetched CoApply for you and saved your profile-folder choice. **Next step:** fill that folder with your details by running `/coapply:setup` (just below).
 
 ---
 
@@ -133,6 +136,16 @@ So you always get the newest version *and* keep everything you've written.
 
 CoApply works great out of the box. When you want to tweak it:
 - **Budget tiers are live** — `/coapply:tier` (or `/coapply:setup`) sets `lite` / `standard` / `full` in a `coapply.config.json` you own; it survives updates. (Per-agent *model* selection — running cheaper models on lite — is on the roadmap.)
+- **A persistent next-step hint (optional).** CoApply already nudges you at session start and ends every command with a "Next:" line. If you want a reminder always pinned at the bottom of Claude Code, add a status line to your **own** `~/.claude/settings.json` (this is a Claude Code setting, not part of CoApply — and it replaces any status line you already use):
+  ```json
+  {
+    "statusLine": {
+      "type": "command",
+      "command": "echo '📋 CoApply · /coapply:start <job> · /coapply:list · /coapply:help'"
+    }
+  }
+  ```
+  For a richer, dynamic status line (model, cost, git branch), see Claude Code's [status line docs](https://code.claude.com/docs/en/statusline).
 - **Deeper changes** (rewriting how a specialist works) are possible too; see `CONTRIBUTING.md` and `CLAUDE.md`.
 
 ---

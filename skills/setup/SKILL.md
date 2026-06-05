@@ -17,7 +17,7 @@ echo "PROFILE_DIR=$CLAUDE_PLUGIN_OPTION_PROFILE_DIR"
 
 If `$CLAUDE_PLUGIN_OPTION_PROFILE_DIR` is **empty**, stop and tell the user:
 
-> CoApply doesn't have a Profile folder yet. Run `/plugin`, open **CoApply**, set the **Profile folder** to a directory you control, then re-run `/coapply:setup`.
+> CoApply doesn't have a Profile folder set yet — that's the folder where your profile and applications will live. First make a new empty folder (e.g. `~/coapply-profile`), then run `/plugin`, open **CoApply**, set the **Profile folder** to that path, and re-run `/coapply:setup`.
 
 Do not continue past this step until it resolves. From here on, use the resolved absolute path wherever this file shows `${PROFILE_DIR}`. The engine's templates live under `${CLAUDE_PLUGIN_ROOT}/profile.example/` — `${CLAUDE_PLUGIN_ROOT}` is already substituted to the real install path in this skill, so use that resolved value.
 

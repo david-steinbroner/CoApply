@@ -202,7 +202,11 @@ Cover letter: 06-cover-letter.md   <append "· docx: 06-cover-letter.docx" only 
 
 Open files? (all / main / folder / no)
 <Log to a tracker? (yes / no)   — only if the user connected an optional tracker (Step 10)>
+
+Next: review 06-cover-letter.md, make it yours, and submit it yourself — then /coapply:start your next role (or /coapply:list to see all your runs).
 ```
+
+Always end with that `Next:` line so the user is never left at a blank prompt — CoApply drafts, but the user reviews and submits. (Adjust the primary file if the cover letter wasn't the headline artifact, but it always is.)
 
 **Handle the Open-files choice immediately:**
 - `all` → open every artifact in the run folder.
