@@ -91,9 +91,17 @@ if [ "$total_rules" -gt 0 ]; then
 fi
 rm -f "$TMP_BULLETS" 2>/dev/null
 
-# --- count saved examples that applied this run --------------------------------
+# --- count saved examples used / set aside this run ----------------------------
+# Prefer the actual selection logged by context-pack.sh (truth of what was sent);
+# fall back to a glob of available examples only if no log exists.
 ex_used=0
-if [ -d "$EX_DIR" ]; then
+ex_setaside=0
+LOG="$RUN_DIR/.receipt.log"
+if [ -f "$LOG" ]; then
+  ex_used=$(awk -F'\t' '$1=="LOADED" && $2=="example"{u[$3]=1} END{print length(u)+0}' "$LOG" 2>/dev/null)
+  # a file dropped in one role but loaded in another counts as used, not set aside
+  ex_setaside=$(awk -F'\t' '$1=="LOADED" && $2=="example"{u[$3]=1} $1=="DROPPED" && $2=="example"{d[$3]=1} END{c=0; for(k in d) if(!(k in u)) c++; print c+0}' "$LOG" 2>/dev/null)
+elif [ -d "$EX_DIR" ]; then
   for role in $ROLES; do
     [ "$role" = "general" ] && continue
     for g in "$EX_DIR/$role"--*.md; do
@@ -101,6 +109,8 @@ if [ -d "$EX_DIR" ]; then
     done
   done
 fi
+[ -n "$ex_used" ] || ex_used=0
+[ -n "$ex_setaside" ] || ex_setaside=0
 
 # --- render --------------------------------------------------------------------
 printf 'What shaped this application\n'
@@ -115,6 +125,10 @@ fi
 if [ "$ex_used" -gt 0 ]; then
   printf '  Your examples:    %s of your saved letters, used as a style reference only —\n' "$ex_used"
   printf '                    none of their facts were reused.\n'
+fi
+if [ "$ex_setaside" -gt 0 ]; then
+  printf '  Set aside:        %s saved letter(s) not used this time (keeping the run lean).\n' "$ex_setaside"
+  printf '                    Say "use more of my examples" to include them.\n'
 fi
 if [ "$total_rules" -eq 0 ] && [ "$ex_used" -eq 0 ]; then
   printf '                    (Add your own writing rules with "add this to my profile"\n'

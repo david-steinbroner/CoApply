@@ -184,9 +184,18 @@ Each user-facing agent (cover-letter, outreach, application-questions) self-lint
 
 If clean → done. If a hit is in scaffold text only, fix in place. If in voice content, re-dispatch that agent with stricter instruction. Second violation → surface to the user.
 
-## Step 8 — Finalize _run.json
+## Step 8 — Finalize _run.json + watermark outputs
 
 Update all artifact statuses to `done` / `skipped` / `failed`. Add `completedAt`, `filesGenerated`, `fitScore` (from 02), `positioningModeChosen` (from 04, first line).
+
+Then **watermark the generated user-facing artifacts** so CoApply can recognize its own output later (this powers the "don't feed the tool its own writing back as an example" guard). Append a trailing comment to each produced markdown artifact if it isn't already tagged — it's an HTML comment, invisible in rendered markdown:
+
+```bash
+for f in 06-cover-letter.md 07-outreach.md 09-application-questions.md; do
+  p="<run-folder>/$f"
+  [ -f "$p" ] && ! grep -q 'coapply:generated' "$p" && printf '\n<!-- coapply:generated v0.2.0 run=%s -->\n' "$RUN_ID" >> "$p"
+done
+```
 
 ## Step 9 — Post-run "what now" block
 

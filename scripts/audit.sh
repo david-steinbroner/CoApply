@@ -75,5 +75,22 @@ _rr_ok=$(bash scripts/render-receipt.sh "$_rr_p" "$_rr_r" 2>/dev/null)
 case "$_rr_ok" in *"2 of your own writing rules"*) note "clean — counts rules + renders a sample." ;; *) note "FAIL: receipt did not report rules: [$_rr_ok]"; fail=1 ;; esac
 rm -rf "$_rr_p" "$_rr_r"
 
+section "7. context-pack.sh — JD-ranked, byte-capped, logs its selection"
+# Standard tier caps examples at 2; the most JD-relevant must rank first and the
+# overflow must be logged DROPPED (so the receipt can show "set aside").
+_cp_p=$(mktemp -d); _cp_r=$(mktemp -d); mkdir -p "$_cp_p/examples"
+printf '{"tier":"standard"}\n' > "$_cp_p/coapply.config.json"
+printf 'fintech growth activation retention\n' > "$_cp_r/jd.txt"
+printf '<!-- tags: fintech, growth, activation, retention -->\nx\n' > "$_cp_p/examples/cover-letter--fintech--a.md"
+printf '<!-- tags: retention -->\nx\n' > "$_cp_p/examples/cover-letter--mid--b.md"
+printf '<!-- tags: gaming -->\nx\n' > "$_cp_p/examples/cover-letter--gaming--c.md"
+bash scripts/context-pack.sh "$_cp_p" "cover-letter" "$_cp_r/jd.txt" "$_cp_r" >/dev/null 2>&1
+_cp_loaded=$(awk -F'\t' '$1=="LOADED" && $2=="example"{c++} END{print c+0}' "$_cp_r/.receipt.log" 2>/dev/null)
+_cp_drop=$(awk -F'\t' '$1=="DROPPED" && $2=="example"{c++} END{print c+0}' "$_cp_r/.receipt.log" 2>/dev/null)
+_cp_top=$(awk -F'\t' '$1=="LOADED" && $5 ~ /rank=1/{print $3}' "$_cp_r/.receipt.log" 2>/dev/null)
+if [ "$_cp_loaded" = "2" ] && [ "$_cp_drop" = "1" ]; then note "clean — caps at 2, logs 1 dropped."; else note "FAIL: expected 2 loaded / 1 dropped, got $_cp_loaded / $_cp_drop."; fail=1; fi
+if [ "$_cp_top" = "cover-letter--fintech--a.md" ]; then note "clean — most JD-relevant example ranks first."; else note "FAIL: rank=1 was [$_cp_top], expected the fintech example."; fail=1; fi
+rm -rf "$_cp_p" "$_cp_r"
+
 section "Result"
 if [ "$fail" = 0 ]; then echo "PASS — safe to release."; exit 0; else echo "FAIL — fix the items above before releasing."; exit 1; fi

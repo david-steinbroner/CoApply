@@ -10,6 +10,17 @@ the `profile-library-0.2.0` branch; `plugin.json` bumps to `0.2.0` when the libr
 is complete. Build order + rationale: `roadmap docs/coapply-modular-profile-spec-v3.md`.
 
 ### Added (so far)
+- **Examples (voice few-shot)** — drop real letters/messages in `<profile>/examples/`
+  (named `<role>--<tag>--<name>.md`); CoApply uses the most JD-relevant ones as a
+  **voice reference only** (imitate cadence, never reuse facts). `scripts/context-pack.sh`
+  ranks them by header/JD word-overlap (deterministic `sort` with a filename
+  tiebreak), caps by tier (lite none / standard ≤2 / full ≤3) under a byte budget,
+  and logs every pick/drop to the run's `.receipt.log`. Wired into the cover-letter,
+  outreach, and application-questions agents. The trust receipt now reports which
+  examples were **used** vs **set aside** from that log (glob fallback otherwise).
+- **Output watermarking** — generated artifacts get an invisible `coapply:generated`
+  tag so the upcoming ingest flow can refuse to re-ingest CoApply's own output as an
+  "example" (the AI-cannibalism guard).
 - **Trust receipt** — every run now ends with a plain-language "What shaped this
   application" block (your background, your rules with a JD-relevant sample, your
   examples) rendered by `scripts/render-receipt.sh`. **Deterministic by design:**

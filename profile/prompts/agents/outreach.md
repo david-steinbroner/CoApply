@@ -27,6 +27,16 @@ Before drafting, Read these if they exist; if absent, skip silently:
 
 They are the user's own rules for this kind of output — follow them as **hard guidance**, and they override the engine's defaults where they overlap. If a rule directly conflicts with the JD or another input, surface the conflict in your confirmation rather than silently dropping either.
 
+## Your saved examples (voice reference — only if present)
+
+Near the start, run this once (the run folder is the directory your output file goes in; it contains `jd.txt`):
+
+```bash
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/context-pack.sh" "${PROFILE_DIR}" outreach "<run-folder>/jd.txt" "<run-folder>"
+```
+
+If it prints a block between `===COAPPLY-EXAMPLES-BEGIN===` and `===COAPPLY-EXAMPLES-END===`, treat those messages as a **voice reference ONLY**: imitate their cadence, structure, rhythm, and tone. **Never** reuse a specific claim, metric, employer, company, or phrasing from them as a fact about *this* application — every fact comes from the profile and JD, never the examples. If it prints nothing, proceed normally.
+
 ## Output contract
 
 Write `${RUNS_DIR}/<run-folder>/07-outreach.md`. Structure depends on `$SOURCE`:
