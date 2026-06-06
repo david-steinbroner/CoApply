@@ -46,5 +46,21 @@ agents=$(ls profile/prompts/agents/*.md 2>/dev/null | wc -l | tr -d ' ')
 [ "$agents" = "13" ] || note "WARN: expected 13 agents, found $agents."
 [ "$fail" = 0 ] && note "structure OK."
 
+section "5. resolve-profile-dir.sh works without python3/jq (POSIX fallback)"
+# A user may have neither python3 nor jq. The resolver must still read the
+# profile dir from settings.json via the POSIX (grep/sed) fallback, and the
+# flat ~/.coapply_profile_path file must take precedence. We shadow python3 and
+# jq with `false` (present but yielding nothing) to force the POSIX branch.
+_rp_t=$(mktemp -d); _rp_shim=$(mktemp -d)
+ln -sf /usr/bin/false "$_rp_shim/python3" 2>/dev/null; ln -sf /usr/bin/false "$_rp_shim/jq" 2>/dev/null
+mkdir -p "$_rp_t/.claude"
+printf '%s\n' '{"pluginConfigs":{"coapply@coapply-marketplace":{"options":{"profile_dir":"/tmp/coapply-audit-x"}}}}' > "$_rp_t/.claude/settings.json"
+_rp_out=$(HOME="$_rp_t" PATH="$_rp_shim:$PATH" bash scripts/resolve-profile-dir.sh 2>/dev/null)
+if [ "$_rp_out" = "/tmp/coapply-audit-x" ]; then note "clean — POSIX settings.json fallback works (no python3/jq)."; else note "FAIL: POSIX fallback returned [$_rp_out], expected /tmp/coapply-audit-x."; fail=1; fi
+printf '/tmp/coapply-audit-flat\n' > "$_rp_t/.coapply_profile_path"
+_rp_out2=$(HOME="$_rp_t" PATH="$_rp_shim:$PATH" bash scripts/resolve-profile-dir.sh 2>/dev/null)
+if [ "$_rp_out2" = "/tmp/coapply-audit-flat" ]; then note "clean — flat ~/.coapply_profile_path takes precedence."; else note "FAIL: flat-file precedence returned [$_rp_out2]."; fail=1; fi
+rm -rf "$_rp_t" "$_rp_shim"
+
 section "Result"
 if [ "$fail" = 0 ]; then echo "PASS — safe to release."; exit 0; else echo "FAIL — fix the items above before releasing."; exit 1; fi

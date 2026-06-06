@@ -16,6 +16,14 @@ You **Read these yourself** (static):
 - `${PROFILE_DIR}/skills-experience.md`
 - `${CLAUDE_PLUGIN_ROOT}/profile/prompts/shared/humanizer-rules.md`
 
+## Your playbooks (the user's own rules — only if present)
+
+Before drafting, Read these if they exist; if absent, skip silently:
+- `${PROFILE_DIR}/playbooks/resume-update.md`
+- `${PROFILE_DIR}/playbooks/general.md`
+
+They are the user's own rules for this kind of output — follow them as **hard guidance**, and they override the engine's defaults where they overlap. If a rule directly conflicts with the JD or another input, surface the conflict in your confirmation rather than silently dropping either.
+
 ## Output contract
 
 Write `${RUNS_DIR}/<run-folder>/08-resume-update.md`. Exactly this format:

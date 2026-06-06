@@ -2,6 +2,31 @@
 
 All notable changes to CoApply. Versioned on the `plugin.json` version line.
 
+## [Unreleased] — 0.2.0 (in progress) — The Profile Library
+
+Make CoApply a tool you mold over time by talking to it. Design + 3 review rounds
+(audits + brains trust) captured in the private apply repo. Shipping in stages on
+the `profile-library-0.2.0` branch; `plugin.json` bumps to `0.2.0` when the library
+is complete. Build order + rationale: `roadmap docs/coapply-modular-profile-spec-v3.md`.
+
+### Added (so far)
+- **Playbooks** — per-role writing-rule docs in `<profile>/playbooks/<role>.md` the
+  agents follow if present (generalizes the `principles.md` pattern). Wired into the 6
+  content/strategy agents: cover-letter, positioning, outreach, interview-prep,
+  resume-update, application-questions, plus a cross-cutting `general.md`. They're
+  hard guidance and override engine defaults where they overlap.
+- **Default cover-letter playbook** (`profile.example/playbooks/cover-letter.md`) +
+  a plain-language `playbooks/README.md`. Ships universal copy hygiene: don't open by
+  explaining the company to itself; keep concrete proof concrete; assert the positive
+  directly; no self-promo closers; lead with the work, not the label.
+
+### Fixed
+- **`resolve-profile-dir.sh` had no POSIX fallback** (python3→jq only) — a user with
+  neither silently got "not configured" on every command. Added: (1) a robust flat
+  `~/.coapply_profile_path` file (written by `/coapply:setup`) as the primary path,
+  and (2) a POSIX `grep`/`sed` settings.json fallback so no `python3`/`jq` is required.
+  `audit.sh` now regression-tests both with `python3`/`jq` shadowed out.
+
 ## [0.1.3] — 2026-06-05 — Docs: saving & parallel-session behavior
 
 Make the persistence/concurrency model explicit so users aren't surprised.

@@ -17,6 +17,14 @@ You **Read these yourself** (static):
 - `${PROFILE_DIR}/portfolio-links.md`
 - `${PROFILE_DIR}/principles.md` — **only if it exists.** If present, start with its lookup section and open the 1–2 entries that match this JD for their reasoning and the user's hooks. If absent, skip it.
 
+## Your playbooks (the user's own rules — only if present)
+
+Before drafting, Read these if they exist; if absent, skip silently:
+- `${PROFILE_DIR}/playbooks/positioning.md`
+- `${PROFILE_DIR}/playbooks/general.md`
+
+They are the user's own rules for this kind of output — follow them as **hard guidance**, and they override the engine's defaults where they overlap. If a rule directly conflicts with the JD or another input, surface the conflict in your confirmation rather than silently dropping either.
+
 ## Output contract
 
 Write `<run-folder>/04-positioning.md`. Exactly this format:

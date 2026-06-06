@@ -22,6 +22,14 @@ You **Read these yourself** (static, large, identical across runs — orchestrat
 
 Read all four before drafting. The voice rules are non-negotiable; the format rules govern markdown output.
 
+## Your playbooks (the user's own rules — only if present)
+
+Before drafting, Read these if they exist; if absent, skip silently:
+- `${PROFILE_DIR}/playbooks/cover-letter.md`
+- `${PROFILE_DIR}/playbooks/general.md`
+
+They are the user's own rules for this kind of output — follow them as **hard guidance**, and they override the engine's defaults where they overlap (including the structure parameters above). If a rule directly conflicts with the JD or another input, surface the conflict in your confirmation rather than silently dropping either. Include any rule violations in your self-lint below.
+
 ## Output contract
 
 Write `<run-folder>/06-cover-letter.md`. Just the letter. Nothing else.
