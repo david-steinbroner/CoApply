@@ -62,5 +62,18 @@ _rp_out2=$(HOME="$_rp_t" PATH="$_rp_shim:$PATH" bash scripts/resolve-profile-dir
 if [ "$_rp_out2" = "/tmp/coapply-audit-flat" ]; then note "clean — flat ~/.coapply_profile_path takes precedence."; else note "FAIL: flat-file precedence returned [$_rp_out2]."; fail=1; fi
 rm -rf "$_rp_t" "$_rp_shim"
 
+section "6. render-receipt.sh — deterministic + fail-closed"
+# Receipt must fail closed (never imply nothing was used) and must report a
+# playbook's rules + a sample when one is present.
+_rr_p=$(mktemp -d); _rr_r=$(mktemp -d)
+_rr_bad=$(bash scripts/render-receipt.sh "/no/such/dir/xyz" "$_rr_r" 2>/dev/null)
+case "$_rr_bad" in *"Receipt unavailable"*) note "clean — fails closed on a bad profile dir." ;; *) note "FAIL: receipt did not fail closed: [$_rr_bad]"; fail=1 ;; esac
+mkdir -p "$_rr_p/playbooks"; printf '{"tier":"lite"}\n' > "$_rr_p/coapply.config.json"
+printf -- '- Lead with the work, not the label.\n- Keep concrete proof concrete.\n' > "$_rr_p/playbooks/cover-letter.md"
+printf 'role wants concrete proof and measurable results\n' > "$_rr_r/jd.txt"
+_rr_ok=$(bash scripts/render-receipt.sh "$_rr_p" "$_rr_r" 2>/dev/null)
+case "$_rr_ok" in *"2 of your own writing rules"*) note "clean — counts rules + renders a sample." ;; *) note "FAIL: receipt did not report rules: [$_rr_ok]"; fail=1 ;; esac
+rm -rf "$_rr_p" "$_rr_r"
+
 section "Result"
 if [ "$fail" = 0 ]; then echo "PASS — safe to release."; exit 0; else echo "FAIL — fix the items above before releasing."; exit 1; fi

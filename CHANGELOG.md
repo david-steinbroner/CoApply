@@ -10,6 +10,12 @@ the `profile-library-0.2.0` branch; `plugin.json` bumps to `0.2.0` when the libr
 is complete. Build order + rationale: `roadmap docs/coapply-modular-profile-spec-v3.md`.
 
 ### Added (so far)
+- **Trust receipt** — every run now ends with a plain-language "What shaped this
+  application" block (your background, your rules with a JD-relevant sample, your
+  examples) rendered by `scripts/render-receipt.sh`. **Deterministic by design:**
+  derived from the filesystem + the run's tier, never the model's recollection.
+  Fails closed to "Receipt unavailable" rather than ever implying nothing was used.
+  Wired into `master-apply` Step 9, printed verbatim. `audit.sh` regression-tests it.
 - **Playbooks** — per-role writing-rule docs in `<profile>/playbooks/<role>.md` the
   agents follow if present (generalizes the `principles.md` pattern). Wired into the 6
   content/strategy agents: cover-letter, positioning, outreach, interview-prep,

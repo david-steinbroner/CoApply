@@ -190,10 +190,19 @@ Update all artifact statuses to `done` / `skipped` / `failed`. Add `completedAt`
 
 ## Step 9 — Post-run "what now" block
 
-Print a block listing ONLY the artifacts this run produced (tier-dependent — on lite that's just the cover letter). Skip the line for anything not generated:
+**First, render the trust receipt.** Run this and print its output **verbatim** in the block below (do not paraphrase, summarize, or add to it — it is deterministic by design, and rewriting it defeats the point):
+
+```bash
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/render-receipt.sh" "${PROFILE_DIR}" "<absolute run folder path>"
+```
+
+Then print a block listing ONLY the artifacts this run produced (tier-dependent — on lite that's just the cover letter). Skip the line for anything not generated:
 
 ```
 Applied package ready at: <absolute run folder path>
+
+<paste the render-receipt.sh output here, verbatim>
+
 Cover letter: 06-cover-letter.md   <append "· docx: 06-cover-letter.docx" only if a docx was produced>
 <Outreach: 07-outreach.md — LinkedIn search URL + message   (only if produced)>
 <Resume guidance: 08-resume-update.md   (only if produced)>
