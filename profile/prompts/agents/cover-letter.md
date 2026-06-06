@@ -16,6 +16,7 @@ The orchestrator passes these **inline** (run-specific, small):
 You **Read these yourself** (static, large, identical across runs — orchestrator passes paths only):
 - `${PROFILE_DIR}/skills-experience.md`
 - `${PROFILE_DIR}/voice-profile.md`
+- `${PROFILE_DIR}/facts.md` — **only if it exists.** The user's everyday facts (e.g. location, work setup). Use only if genuinely relevant to the letter; never force them in.
 - `${CLAUDE_PLUGIN_ROOT}/profile/prompts/shared/humanizer-rules.md`
 - `${CLAUDE_PLUGIN_ROOT}/profile/prompts/shared/anti-ai-detection.md`
 - `${CLAUDE_PLUGIN_ROOT}/profile/prompts/shared/format-rules.md`

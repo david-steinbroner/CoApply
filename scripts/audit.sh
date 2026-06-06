@@ -92,5 +92,17 @@ if [ "$_cp_loaded" = "2" ] && [ "$_cp_drop" = "1" ]; then note "clean — caps a
 if [ "$_cp_top" = "cover-letter--fintech--a.md" ]; then note "clean — most JD-relevant example ranks first."; else note "FAIL: rank=1 was [$_cp_top], expected the fintech example."; fail=1; fi
 rm -rf "$_cp_p" "$_cp_r"
 
+section "8. scan-pii.sh — flags true secrets, allows the middle tier, leaks no digits"
+_pi_f=$(mktemp)
+printf 'My SSN is 123-45-6789\n' > "$_pi_f"
+_pi_out=$(bash scripts/scan-pii.sh "$_pi_f"); _pi_rc=$?
+if [ "$_pi_rc" = "3" ] && printf '%s' "$_pi_out" | grep -q 'SSN' && ! printf '%s' "$_pi_out" | grep -q '6789'; then
+  note "clean — flags SSN, exit 3, redacts the digits."
+else note "FAIL: SSN scan rc=$_pi_rc out=[$_pi_out]"; fail=1; fi
+printf 'Targeting $140k, based in Austin, authorized to work in the US, call 512-555-0199\n' > "$_pi_f"
+bash scripts/scan-pii.sh "$_pi_f" >/dev/null 2>&1
+if [ "$?" = "0" ]; then note "clean — middle-tier facts (salary/city/work-auth/phone) not flagged."; else note "FAIL: middle-tier facts were flagged as secrets."; fail=1; fi
+rm -f "$_pi_f"
+
 section "Result"
 if [ "$fail" = 0 ]; then echo "PASS — safe to release."; exit 0; else echo "FAIL — fix the items above before releasing."; exit 1; fi

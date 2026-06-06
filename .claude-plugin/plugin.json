@@ -1,7 +1,7 @@
 {
   "name": "coapply",
   "description": "CoApply — your partner for the jobs you actually want. Turns a job posting into a complete, voice-matched, fit-gated application package: research → fit-score → human checkpoint → cover letter, tailored resume guidance, outreach, interview prep. It drafts, you decide, you send — never auto-submits.",
-  "version": "0.1.3",
+  "version": "0.2.0",
   "author": { "name": "David Steinbroner" },
   "homepage": "https://github.com/david-steinbroner/CoApply",
   "repository": "https://github.com/david-steinbroner/CoApply",
@@ -10,7 +10,7 @@
     "profile_dir": {
       "type": "directory",
       "title": "Profile folder",
-      "description": "Folder holding your CoApply profile (identity.md, skills-experience.md, voice-profile.md, positioning-modes.md, resumes/, optional principles.md). Application output is written to a 'runs' subfolder inside it.",
+      "description": "Folder holding your CoApply profile (identity.md, skills-experience.md, voice-profile.md, positioning-modes.md, resumes/, optional principles.md, and your playbooks/, examples/, facts.md). Application output is written to a 'runs' subfolder inside it.",
       "required": true
     }
   }

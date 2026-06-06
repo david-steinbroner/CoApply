@@ -2,14 +2,29 @@
 
 All notable changes to CoApply. Versioned on the `plugin.json` version line.
 
-## [Unreleased] — 0.2.0 (in progress) — The Profile Library
+## [0.2.0] — 2026-06-05 — The Profile Library
 
-Make CoApply a tool you mold over time by talking to it. Design + 3 review rounds
-(audits + brains trust) captured in the private apply repo. Shipping in stages on
-the `profile-library-0.2.0` branch; `plugin.json` bumps to `0.2.0` when the library
-is complete. Build order + rationale: `roadmap docs/coapply-modular-profile-spec-v3.md`.
+Make CoApply a tool you mold over time by talking to it: give it your own writing
+rules, your real letters as voice references, and your everyday facts — and it shows
+you exactly what shaped each application. Designed + hardened across 3 review rounds
+(2 audits + a 3-model brains trust each); rationale in the private apply repo
+(`roadmap docs/coapply-modular-profile-spec-v3.md`). Everything lives in your profile
+folder, so plugin updates never touch it. Secrets (SSN-grade) are deliberately out of
+scope and refused — that's a later, separate design.
 
-### Added (so far)
+### Added
+- **`/coapply:add`** — add a rule, an example, or a fact in plain language ("from now
+  on never…", "save this as an example", "remember I'm based in Austin"). It confirms
+  where each thing goes (never silent), refuses to store true secrets (no override),
+  and caps a rules file at ~20 with a consolidate-or-prune offer so rules don't bloat
+  and dilute. `scripts/scan-pii.sh` is the deterministic secret guard: it flags only
+  true secrets (SSN, card/bank/account numbers, passwords, API keys, IBANs, exact
+  street address), **allows** the everyday middle tier (salary, city, work-auth,
+  phone), and prints redacted flags that never include the actual digits.
+- **`facts.md`** — a home for everyday personal facts (location, target comp,
+  work-authorization, start date) the AI legitimately needs to fill in applications.
+  Honest framing: it's sent like the rest of your profile, not a private vault. Read
+  by the application-questions and cover-letter agents.
 - **Examples (voice few-shot)** — drop real letters/messages in `<profile>/examples/`
   (named `<role>--<tag>--<name>.md`); CoApply uses the most JD-relevant ones as a
   **voice reference only** (imitate cadence, never reuse facts). `scripts/context-pack.sh`
