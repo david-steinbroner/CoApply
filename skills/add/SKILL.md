@@ -39,9 +39,11 @@ COAPPLY_EOF
 
 **If `scan_rc` is 3 (a secret was found):** refuse to store it. Make this message
 visually distinct (lead with a clear warning line) and give it **no "save anyway"
-option** — there is no override:
+option** — there is no override. **NEVER repeat the secret value back** — refer to it
+only by the redacted type scan-pii printed (e.g. "a possible SSN"); do not quote or
+paraphrase the digits/value, here or anywhere:
 
-> ⚠️ That looks like it contains a secret (e.g. `<the flag(s) the script printed>`).
+> ⚠️ That looks like it contains a secret (`<the redacted flag type scan-pii printed, e.g. "possible SSN" — value NOT included>`).
 > I won't save it — your profile is sent to the AI when it writes for you, so things
 > like SSNs, passwords, and account numbers don't belong here.
 
