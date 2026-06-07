@@ -52,6 +52,14 @@ scope and refused — that's a later, separate design.
   explaining the company to itself; keep concrete proof concrete; assert the positive
   directly; no self-promo closers; lead with the work, not the label.
 
+### Version visibility
+- **The SessionStart hook now announces the real version when it changes** — e.g.
+  `✅ CoApply updated to v0.2.0` on the first session after an update, then stays
+  silent. Claude Code auto-applies plugin updates and only shows a generic reload
+  notice (the update flow and its lack of an approval step are host behavior a
+  plugin can't change), so this is how you confirm which version you're actually on.
+- **`/coapply:help` now prints the version** (`CoApply v0.2.0`) as its first line.
+
 ### Hardened (after a 7-agent adversarial stress swarm — 0 blockers, 0 serious found)
 - **`scan-pii.sh` rewritten to whole-file passes** — ~500× faster on large pastes (no
   per-line subprocess loop); pins `LC_ALL=C` (deterministic, robust to invalid UTF-8);

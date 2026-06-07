@@ -5,7 +5,12 @@ description: How CoApply works — commands, setup, and the gate.
 
 # CoApply — how it works
 
-Give the user a short, friendly orientation. Keep it concise and plain; adapt to what they ask.
+**First, show the version** so the user can confirm what they're running. Read
+`${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json` and print its `version` as the
+first line, e.g. `CoApply v0.2.0`. (Claude Code auto-applies plugin updates and
+doesn't show the version; this is how you check it.)
+
+Then give the user a short, friendly orientation. Keep it concise and plain; adapt to what they ask.
 
 ## What CoApply is
 

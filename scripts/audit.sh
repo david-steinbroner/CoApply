@@ -127,5 +127,15 @@ bash scripts/scan-pii.sh "$_pi_f" >/dev/null 2>&1
 if [ "$?" = "0" ]; then note "clean — year runs / 'passwordless' not false-flagged."; else note "FAIL: false positive on years/passwordless."; fail=1; fi
 rm -f "$_pi_f"
 
+section "9. session-nudge.sh — announces the real version on change, silent otherwise"
+_sn_h=$(mktemp -d); _sn_p=$(mktemp -d); printf 'x\n' > "$_sn_p/identity.md"
+_pjv=$(grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' .claude-plugin/plugin.json | head -1 | sed 's/.*:[[:space:]]*"//; s/"$//')
+printf '0.0.0-old\n' > "$_sn_h/.coapply_last_version"
+_sn_out=$(HOME="$_sn_h" CLAUDE_PLUGIN_ROOT="$(pwd)" CLAUDE_PLUGIN_OPTION_PROFILE_DIR="$_sn_p" bash scripts/session-nudge.sh)
+if printf '%s' "$_sn_out" | grep -q "updated to v$_pjv"; then note "clean — announces the real version after a change."; else note "FAIL: version-change not announced: [$_sn_out]"; fail=1; fi
+_sn_out2=$(HOME="$_sn_h" CLAUDE_PLUGIN_ROOT="$(pwd)" CLAUDE_PLUGIN_OPTION_PROFILE_DIR="$_sn_p" bash scripts/session-nudge.sh)
+if [ -z "$_sn_out2" ]; then note "clean — silent when the version is unchanged."; else note "FAIL: not silent on unchanged version: [$_sn_out2]"; fail=1; fi
+rm -rf "$_sn_h" "$_sn_p"
+
 section "Result"
 if [ "$fail" = 0 ]; then echo "PASS — safe to release."; exit 0; else echo "FAIL — fix the items above before releasing."; exit 1; fi
