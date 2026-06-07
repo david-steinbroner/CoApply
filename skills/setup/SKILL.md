@@ -22,6 +22,14 @@ If `PROFILE_DIR` (printed above) is **empty**, stop and tell the user:
 
 Do not continue past this step until it resolves. From here on, use the resolved absolute path wherever this file shows `${PROFILE_DIR}`. The engine's templates live under `${CLAUDE_PLUGIN_ROOT}/profile.example/` — `${CLAUDE_PLUGIN_ROOT}` is already substituted to the real install path in this skill, so use that resolved value.
 
+Once `PROFILE_DIR` resolves to a non-empty path, **record it to a flat file** so every later command resolves it reliably without depending on parsing `settings.json`:
+
+```bash
+printf '%s\n' "$PROFILE_DIR" > "${HOME}/.coapply_profile_path"
+```
+
+This is the robust primary path the resolver checks first (after the env var). It's just the absolute path, one line — safe to overwrite anytime the folder changes.
+
 ## Step 1 — Copy the profile templates (only the missing ones)
 
 Copy in any template files the profile doesn't already have, and **never overwrite** files the user has filled in. Don't skip the whole copy just because one file (e.g. `identity.md`) exists — fill in only what's missing.

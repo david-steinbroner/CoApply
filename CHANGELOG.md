@@ -2,6 +2,89 @@
 
 All notable changes to CoApply. Versioned on the `plugin.json` version line.
 
+## [0.2.0] — 2026-06-05 — The Profile Library
+
+Make CoApply a tool you mold over time by talking to it: give it your own writing
+rules, your real letters as voice references, and your everyday facts — and it shows
+you exactly what shaped each application. Designed + hardened across 3 review rounds
+(2 audits + a 3-model brains trust each); rationale in the private apply repo
+(`roadmap docs/coapply-modular-profile-spec-v3.md`). Everything lives in your profile
+folder, so plugin updates never touch it. Secrets (SSN-grade) are deliberately out of
+scope and refused — that's a later, separate design.
+
+### Added
+- **`/coapply:add`** — add a rule, an example, or a fact in plain language ("from now
+  on never…", "save this as an example", "remember I'm based in Austin"). It confirms
+  where each thing goes (never silent), refuses to store true secrets (no override),
+  and caps a rules file at ~20 with a consolidate-or-prune offer so rules don't bloat
+  and dilute. `scripts/scan-pii.sh` is the deterministic secret guard: it flags only
+  true secrets (SSN, card/bank/account numbers, passwords, API keys, IBANs, exact
+  street address), **allows** the everyday middle tier (salary, city, work-auth,
+  phone), and prints redacted flags that never include the actual digits.
+- **`facts.md`** — a home for everyday personal facts (location, target comp,
+  work-authorization, start date) the AI legitimately needs to fill in applications.
+  Honest framing: it's sent like the rest of your profile, not a private vault. Read
+  by the application-questions and cover-letter agents.
+- **Examples (voice few-shot)** — drop real letters/messages in `<profile>/examples/`
+  (named `<role>--<tag>--<name>.md`); CoApply uses the most JD-relevant ones as a
+  **voice reference only** (imitate cadence, never reuse facts). `scripts/context-pack.sh`
+  ranks them by header/JD word-overlap (deterministic `sort` with a filename
+  tiebreak), caps by tier (lite none / standard ≤2 / full ≤3) under a byte budget,
+  and logs every pick/drop to the run's `.receipt.log`. Wired into the cover-letter,
+  outreach, and application-questions agents. The trust receipt now reports which
+  examples were **used** vs **set aside** from that log (glob fallback otherwise).
+- **Output watermarking** — generated artifacts get an invisible `coapply:generated`
+  tag so the upcoming ingest flow can refuse to re-ingest CoApply's own output as an
+  "example" (the AI-cannibalism guard).
+- **Trust receipt** — every run now ends with a plain-language "What shaped this
+  application" block (your background, your rules with a JD-relevant sample, your
+  examples) rendered by `scripts/render-receipt.sh`. **Deterministic by design:**
+  derived from the filesystem + the run's tier, never the model's recollection.
+  Fails closed to "Receipt unavailable" rather than ever implying nothing was used.
+  Wired into `master-apply` Step 9, printed verbatim. `audit.sh` regression-tests it.
+- **Playbooks** — per-role writing-rule docs in `<profile>/playbooks/<role>.md` the
+  agents follow if present (generalizes the `principles.md` pattern). Wired into the 6
+  content/strategy agents: cover-letter, positioning, outreach, interview-prep,
+  resume-update, application-questions, plus a cross-cutting `general.md`. They're
+  hard guidance and override engine defaults where they overlap.
+- **Default cover-letter playbook** (`profile.example/playbooks/cover-letter.md`) +
+  a plain-language `playbooks/README.md`. Ships universal copy hygiene: don't open by
+  explaining the company to itself; keep concrete proof concrete; assert the positive
+  directly; no self-promo closers; lead with the work, not the label.
+
+### Version visibility
+- **The SessionStart hook now announces the real version when it changes** — e.g.
+  `✅ CoApply updated to v0.2.0` on the first session after an update, then stays
+  silent. Claude Code auto-applies plugin updates and only shows a generic reload
+  notice (the update flow and its lack of an approval step are host behavior a
+  plugin can't change), so this is how you confirm which version you're actually on.
+- **`/coapply:help` now prints the version** (`CoApply v0.2.0`) as its first line.
+
+### Hardened (after a 7-agent adversarial stress swarm — 0 blockers, 0 serious found)
+- **`scan-pii.sh` rewritten to whole-file passes** — ~500× faster on large pastes (no
+  per-line subprocess loop); pins `LC_ALL=C` (deterministic, robust to invalid UTF-8);
+  now catches modern token shapes (GitHub `ghp_`/`github_pat_`, Stripe `sk_live_`,
+  Google `AIza`, GitLab `glpat-`, OpenAI `sk-proj-`, JWTs) and PEM private keys; widens
+  card detection to 13-19 digits; and kills false positives (consecutive years read as a
+  card, `passwordless`/`secret keynote` substring matches). Still never leaks a digit.
+- **`resolve-profile-dir.sh`** — POSIX fallback is now **scoped to CoApply's own config**
+  (a different plugin's `profile_dir` can't be picked); honors `settings.local.json` over
+  `settings.json`; and truly always exits 0 (no crash when `HOME` is unset).
+- **`context-pack.sh`** — pins `LC_ALL=C` for locale-independent ranking; logs the real
+  drop reason (count-cap vs over-budget); and skips control-char filenames that could
+  make the receipt claim a file was used without emitting it.
+- **`render-receipt.sh`** — `- ` lines inside fenced code blocks are no longer counted as
+  rules; strips CR so a CRLF-authored playbook doesn't corrupt the quoted sample.
+- **`/coapply:help`** now documents `/coapply:add` and the Profile Library (was undiscoverable).
+- `audit.sh` extended to 14 checks locking in all of the above.
+
+### Fixed
+- **`resolve-profile-dir.sh` had no POSIX fallback** (python3→jq only) — a user with
+  neither silently got "not configured" on every command. Added: (1) a robust flat
+  `~/.coapply_profile_path` file (written by `/coapply:setup`) as the primary path,
+  and (2) a POSIX `grep`/`sed` settings.json fallback so no `python3`/`jq` is required.
+  `audit.sh` now regression-tests both with `python3`/`jq` shadowed out.
+
 ## [0.1.3] — 2026-06-05 — Docs: saving & parallel-session behavior
 
 Make the persistence/concurrency model explicit so users aren't surprised.

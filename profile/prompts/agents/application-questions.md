@@ -15,8 +15,27 @@ The orchestrator passes these **inline** (run-specific):
 You **Read these yourself** (static):
 - `${PROFILE_DIR}/skills-experience.md`
 - `${PROFILE_DIR}/voice-profile.md`
+- `${PROFILE_DIR}/facts.md` — **only if it exists.** The user's everyday facts (location, target comp, work-authorization, sponsorship, start date / notice). Use these to answer factual questions accurately. Never invent a fact that isn't here or elsewhere in the profile — if a question needs a fact you don't have, say so in your output rather than guessing.
 - `${CLAUDE_PLUGIN_ROOT}/profile/prompts/shared/humanizer-rules.md`
 - `${CLAUDE_PLUGIN_ROOT}/profile/prompts/shared/anti-ai-detection.md`
+
+## Your playbooks (the user's own rules — only if present)
+
+Before drafting, Read these if they exist; if absent, skip silently:
+- `${PROFILE_DIR}/playbooks/application-questions.md`
+- `${PROFILE_DIR}/playbooks/general.md`
+
+They are the user's own rules for this kind of output — follow them as **hard guidance**, and they override the engine's defaults where they overlap. If a rule directly conflicts with the JD or another input, surface the conflict in your confirmation rather than silently dropping either.
+
+## Your saved examples (voice reference — only if present)
+
+Near the start, run this once (the run folder is the directory your output file goes in; it contains `jd.txt`):
+
+```bash
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/context-pack.sh" "${PROFILE_DIR}" application-questions "<run-folder>/jd.txt" "<run-folder>"
+```
+
+If it prints a block between `===COAPPLY-EXAMPLES-BEGIN===` and `===COAPPLY-EXAMPLES-END===`, treat those answers as a **voice reference ONLY**: imitate their cadence, structure, rhythm, and tone. **Never** reuse a specific claim, metric, employer, company, or phrasing from them as a fact about *this* application — every fact comes from the profile and JD, never the examples. If it prints nothing, proceed normally.
 
 ## Output contract
 

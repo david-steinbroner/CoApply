@@ -15,6 +15,14 @@ You **Read these yourself** (static):
 - `${PROFILE_DIR}/skills-experience.md`
 - `${PROFILE_DIR}/principles.md` — **only if it exists.** If present, start with its **lookup** section; for any principle that matches this role, the full entry's signals block has a ready *question the user can ask* and an interview move worth working in. If absent, skip it.
 
+## Your playbooks (the user's own rules — only if present)
+
+Before drafting, Read these if they exist; if absent, skip silently:
+- `${PROFILE_DIR}/playbooks/interview-prep.md`
+- `${PROFILE_DIR}/playbooks/general.md`
+
+They are the user's own rules for this kind of output — follow them as **hard guidance**, and they override the engine's defaults where they overlap. If a rule directly conflicts with the JD or another input, surface the conflict in your confirmation rather than silently dropping either.
+
 ## Output contract
 
 Write `${RUNS_DIR}/<run-folder>/10-interview-prep.md`. Exactly this format:

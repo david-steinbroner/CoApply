@@ -16,11 +16,30 @@ The orchestrator passes these **inline** (run-specific, small):
 You **Read these yourself** (static, large, identical across runs — orchestrator passes paths only):
 - `${PROFILE_DIR}/skills-experience.md`
 - `${PROFILE_DIR}/voice-profile.md`
+- `${PROFILE_DIR}/facts.md` — **only if it exists.** The user's everyday facts (e.g. location, work setup). Use only if genuinely relevant to the letter; never force them in.
 - `${CLAUDE_PLUGIN_ROOT}/profile/prompts/shared/humanizer-rules.md`
 - `${CLAUDE_PLUGIN_ROOT}/profile/prompts/shared/anti-ai-detection.md`
 - `${CLAUDE_PLUGIN_ROOT}/profile/prompts/shared/format-rules.md`
 
 Read all four before drafting. The voice rules are non-negotiable; the format rules govern markdown output.
+
+## Your playbooks (the user's own rules — only if present)
+
+Before drafting, Read these if they exist; if absent, skip silently:
+- `${PROFILE_DIR}/playbooks/cover-letter.md`
+- `${PROFILE_DIR}/playbooks/general.md`
+
+They are the user's own rules for this kind of output — follow them as **hard guidance**, and they override the engine's defaults where they overlap (including the structure parameters above). If a rule directly conflicts with the JD or another input, surface the conflict in your confirmation rather than silently dropping either. Include any rule violations in your self-lint below.
+
+## Your saved examples (voice reference — only if present)
+
+Near the start, run this once (the run folder is the directory your output file goes in; it contains `jd.txt`):
+
+```bash
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/context-pack.sh" "${PROFILE_DIR}" cover-letter "<run-folder>/jd.txt" "<run-folder>"
+```
+
+If it prints a block between `===COAPPLY-EXAMPLES-BEGIN===` and `===COAPPLY-EXAMPLES-END===`, treat those letters as a **voice reference ONLY**: imitate their cadence, structure, rhythm, and tone. **Never** reuse a specific claim, metric, employer, company, or phrasing from them as a fact about *this* application — every fact comes from the profile and JD, never the examples. If it prints nothing, proceed normally.
 
 ## Output contract
 

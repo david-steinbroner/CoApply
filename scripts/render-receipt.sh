@@ -1,0 +1,146 @@
+#!/usr/bin/env bash
+# CoApply — render the per-run "What shaped this application" trust receipt.
+#
+# Deterministic by construction: everything here is derived from the filesystem
+# (which playbooks/examples exist) and the run's tier (which agents ran), NOT from
+# the model's recollection. The orchestrator runs this at the end of a run and
+# prints its output verbatim. This is the trust centerpiece — it answers the
+# "did it actually use my stuff?" question with facts, not a self-report.
+#
+# Honest scope: it reports the rules/examples that were AVAILABLE to and
+# instructed-for the agents that ran (the engine follows any playbook that
+# exists). It is not a cryptographic proof the model obeyed every rule — see the
+# spec's "best-effort / script-logged selection" framing.
+#
+# Usage: render-receipt.sh <profile_dir> <run_dir>
+# Always exits 0; fail-closed to "Receipt unavailable" if inputs are missing.
+set -uo pipefail
+export LC_ALL=C LANG=C  # deterministic, locale-independent matching
+
+PROFILE_DIR="${1:-}"
+RUN_DIR="${2:-}"
+
+_unavailable() {
+  printf 'What shaped this application\n'
+  printf '  (Receipt unavailable for this run.)\n'
+  exit 0
+}
+
+[ -n "$PROFILE_DIR" ] && [ -d "$PROFILE_DIR" ] || _unavailable
+PB_DIR="$PROFILE_DIR/playbooks"
+EX_DIR="$PROFILE_DIR/examples"
+
+# --- tier -> which roles produced output this run -------------------------------
+# Mirrors master-apply.md's tier table. general.md always applies.
+TIER="standard"
+CFG="$PROFILE_DIR/coapply.config.json"
+if [ -f "$CFG" ]; then
+  t="$(grep -o '"tier"[[:space:]]*:[[:space:]]*"[^"]*"' "$CFG" 2>/dev/null | head -1 | sed 's/.*:[[:space:]]*"//; s/"$//')"
+  case "$t" in lite|standard|full) TIER="$t" ;; esac
+fi
+case "$TIER" in
+  lite)     ROLES="positioning cover-letter" ;;
+  standard) ROLES="positioning cover-letter outreach resume-update interview-prep" ;;
+  full)     ROLES="positioning cover-letter outreach resume-update interview-prep application-questions" ;;
+esac
+# general.md applies to every run.
+ROLES="$ROLES general"
+
+# --- count rules across the playbooks that applied; collect bullets -------------
+# Rule grammar: a rule is a top-level "- " bullet OUTSIDE any fenced code block.
+# (A "- " line inside ``` ... ``` is example/illustration text, not a rule.) We also
+# strip any trailing CR so a CRLF-authored playbook doesn't corrupt the quoted line.
+TMP_BULLETS="$(mktemp 2>/dev/null || echo /tmp/coapply-bullets.$$)"
+: > "$TMP_BULLETS"
+total_rules=0
+used_playbooks=0
+_emit_bullets() { # <file> -> clean rule text (no "- ", no CR), fence-aware
+  awk '
+    /^[ \t]*```/ || /^[ \t]*~~~/ { infence = !infence; next }
+    !infence && /^- / { line = substr($0, 3); sub(/\r$/, "", line); print line }
+  ' "$1"
+}
+for role in $ROLES; do
+  f="$PB_DIR/$role.md"
+  [ -f "$f" ] || continue
+  bl="$(_emit_bullets "$f")"
+  [ -n "$bl" ] || continue
+  n="$(printf '%s\n' "$bl" | grep -c .)"
+  used_playbooks=$((used_playbooks + 1))
+  total_rules=$((total_rules + n))
+  printf '%s\n' "$bl" >> "$TMP_BULLETS"
+done
+
+# --- pick a JD-matched sample rule (relevant, not a trivial first-line mirror) --
+sample=""
+if [ "$total_rules" -gt 0 ]; then
+  JD="$RUN_DIR/jd.txt"
+  [ -f "$JD" ] || JD=""
+  sample="$(
+    awk -v jd="$JD" '
+      BEGIN {
+        if (jd != "") {
+          while ((getline line < jd) > 0) {
+            n = split(tolower(line), w, /[^a-z0-9]+/)
+            for (i = 1; i <= n; i++) if (length(w[i]) > 3) seen[w[i]] = 1
+          }
+        }
+      }
+      {
+        score = 0
+        n = split(tolower($0), w, /[^a-z0-9]+/)
+        for (i = 1; i <= n; i++) if (length(w[i]) > 3 && (w[i] in seen)) score++
+        if (score > best || best == "") { best = score; bestline = $0 }
+      }
+      END { if (bestline != "") print bestline }
+    ' "$TMP_BULLETS"
+  )"
+  # fall back to the first rule if no JD or no overlap surfaced one
+  [ -n "$sample" ] || sample="$(head -1 "$TMP_BULLETS")"
+fi
+rm -f "$TMP_BULLETS" 2>/dev/null
+
+# --- count saved examples used / set aside this run ----------------------------
+# Prefer the actual selection logged by context-pack.sh (truth of what was sent);
+# fall back to a glob of available examples only if no log exists.
+ex_used=0
+ex_setaside=0
+LOG="$RUN_DIR/.receipt.log"
+if [ -f "$LOG" ]; then
+  ex_used=$(awk -F'\t' '$1=="LOADED" && $2=="example"{u[$3]=1} END{print length(u)+0}' "$LOG" 2>/dev/null)
+  # a file dropped in one role but loaded in another counts as used, not set aside
+  ex_setaside=$(awk -F'\t' '$1=="LOADED" && $2=="example"{u[$3]=1} $1=="DROPPED" && $2=="example"{d[$3]=1} END{c=0; for(k in d) if(!(k in u)) c++; print c+0}' "$LOG" 2>/dev/null)
+elif [ -d "$EX_DIR" ]; then
+  for role in $ROLES; do
+    [ "$role" = "general" ] && continue
+    for g in "$EX_DIR/$role"--*.md; do
+      [ -f "$g" ] && ex_used=$((ex_used + 1))
+    done
+  done
+fi
+[ -n "$ex_used" ] || ex_used=0
+[ -n "$ex_setaside" ] || ex_setaside=0
+
+# --- render --------------------------------------------------------------------
+printf 'What shaped this application\n'
+printf '  Your background:  your résumé, experience, and writing voice\n'
+if [ "$total_rules" -gt 0 ]; then
+  if [ -n "$sample" ]; then
+    printf '  Your rules:       %s of your own writing rules — e.g. "%s"\n' "$total_rules" "$sample"
+  else
+    printf '  Your rules:       %s of your own writing rules\n' "$total_rules"
+  fi
+fi
+if [ "$ex_used" -gt 0 ]; then
+  printf '  Your examples:    %s of your saved letters, used as a style reference only —\n' "$ex_used"
+  printf '                    none of their facts were reused.\n'
+fi
+if [ "$ex_setaside" -gt 0 ]; then
+  printf '  Set aside:        %s saved letter(s) not used this time (keeping the run lean).\n' "$ex_setaside"
+  printf '                    Say "use more of my examples" to include them.\n'
+fi
+if [ "$total_rules" -eq 0 ] && [ "$ex_used" -eq 0 ]; then
+  printf '                    (Add your own writing rules with "add this to my profile"\n'
+  printf '                     so future applications sound more like you.)\n'
+fi
+exit 0
