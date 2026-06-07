@@ -2,6 +2,18 @@
 
 All notable changes to CoApply. Versioned on the `plugin.json` version line.
 
+## [0.2.2] — 2026-06-07 — Setup-override safety + help polish
+
+### Fixed
+- **`/coapply:setup` no longer clobbers the global profile path when an explicit
+  `CLAUDE_PLUGIN_OPTION_PROFILE_DIR` override is active.** Previously, running setup
+  under a per-session override (e.g. dogfooding the new-user flow with a temp folder)
+  wrote that temp path into `~/.coapply_profile_path`, silently redirecting the user's
+  *normal* sessions to it. Setup now writes the flat file only when no env-var override
+  is set. Makes the "experience it as a new user" test safe.
+- **`/coapply:help` closing line no longer prints a stray `"`** — the deterministic
+  next-step line is shown as plain bold text, not wrapped in literal quotes.
+
 ## [0.2.1] — 2026-06-07 — Onboarding clarity (help skill)
 
 Sharpened the first-run experience using onboarding-CRO + copy-editing passes.

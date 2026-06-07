@@ -67,10 +67,10 @@ elif ! grep -q '[A-Za-z]' "$PROFILE_DIR/identity.md" 2>/dev/null; then echo "STA
 else echo "STATE=ready"; fi
 ```
 
-Then print exactly one closing line based on `STATE`:
-- `no-folder` → **"Next: run `/coapply:setup` to get started."**
-- `no-files` → **"Next: run `/coapply:setup` to add your starter files."**
-- `empty` → **"Almost there — fill in `identity.md`, `skills-experience.md`, and one resume in `resumes/`, then run `/coapply:start <job>`."**
-- `ready` → **"You're set up. Run `/coapply:start <job posting>` to make your application."**
+Then print exactly one closing line based on `STATE` (print the bold text only — do NOT wrap it in quotation marks):
+- `no-folder` → **Next: run `/coapply:setup` to get started.**
+- `no-files` → **Next: run `/coapply:setup` to add your starter files.**
+- `empty` → **Almost there — fill in `identity.md`, `skills-experience.md`, and one resume in `resumes/`, then run `/coapply:start <job>`.**
+- `ready` → **You're set up. Run `/coapply:start <job posting>` to make your application.**
 
 Never end with "want me to check?" — you just did.
