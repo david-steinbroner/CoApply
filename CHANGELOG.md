@@ -2,6 +2,22 @@
 
 All notable changes to CoApply. Versioned on the `plugin.json` version line.
 
+## [0.2.1] — 2026-06-07 — Onboarding clarity (help skill)
+
+Sharpened the first-run experience using onboarding-CRO + copy-editing passes.
+
+### Changed
+- **`/coapply:help` now opens with a numbered "Getting started (first run — ~5 min)"
+  path** — set Profile folder → `/coapply:setup` → fill in 3 files → `/coapply:start`.
+  Gives a new user one clear, faceplant-proof sequence instead of a flat command list.
+- **Help ends with a real next action, not a question.** It now resolves the profile
+  state (no-folder / no-files / empty / ready) and prints exactly one definitive next
+  step, instead of asking the user "want me to check?".
+- **Reworded "checks billing"** → "confirms how runs are paid (usually your Claude plan
+  — no extra charge)" so the cost line reassures instead of alarming.
+- (No engine change — `/coapply:start` already guards empty/template profiles via its
+  pre-flight placeholder + profile-depth checks.)
+
 ## [0.2.0] — 2026-06-05 — The Profile Library
 
 Make CoApply a tool you mold over time by talking to it: give it your own writing
