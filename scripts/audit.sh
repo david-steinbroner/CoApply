@@ -60,6 +60,13 @@ if [ "$_rp_out" = "/tmp/coapply-audit-x" ]; then note "clean — POSIX settings.
 printf '/tmp/coapply-audit-flat\n' > "$_rp_t/.coapply_profile_path"
 _rp_out2=$(HOME="$_rp_t" PATH="$_rp_shim:$PATH" bash scripts/resolve-profile-dir.sh 2>/dev/null)
 if [ "$_rp_out2" = "/tmp/coapply-audit-flat" ]; then note "clean — flat ~/.coapply_profile_path takes precedence."; else note "FAIL: flat-file precedence returned [$_rp_out2]."; fail=1; fi
+# Scoping: a different plugin's profile_dir appearing BEFORE coapply must not be picked.
+rm -f "$_rp_t/.coapply_profile_path"
+printf '%s\n' '{"pluginConfigs":{"other@m":{"options":{"profile_dir":"/WRONG"}},"coapply@m":{"options":{"profile_dir":"/RIGHT"}}}}' > "$_rp_t/.claude/settings.json"
+_rp_scope=$(HOME="$_rp_t" PATH="$_rp_shim:$PATH" bash scripts/resolve-profile-dir.sh 2>/dev/null)
+if [ "$_rp_scope" = "/RIGHT" ]; then note "clean — POSIX fallback is scoped to CoApply's config."; else note "FAIL: scoping picked [$_rp_scope], expected /RIGHT."; fail=1; fi
+# HOME unset must still exit 0 (documented contract).
+( env -u HOME bash scripts/resolve-profile-dir.sh >/dev/null 2>&1 ); if [ "$?" = "0" ]; then note "clean — exits 0 even with HOME unset."; else note "FAIL: nonzero exit with HOME unset."; fail=1; fi
 rm -rf "$_rp_t" "$_rp_shim"
 
 section "6. render-receipt.sh — deterministic + fail-closed"
@@ -73,6 +80,10 @@ printf -- '- Lead with the work, not the label.\n- Keep concrete proof concrete.
 printf 'role wants concrete proof and measurable results\n' > "$_rr_r/jd.txt"
 _rr_ok=$(bash scripts/render-receipt.sh "$_rr_p" "$_rr_r" 2>/dev/null)
 case "$_rr_ok" in *"2 of your own writing rules"*) note "clean — counts rules + renders a sample." ;; *) note "FAIL: receipt did not report rules: [$_rr_ok]"; fail=1 ;; esac
+# Fenced "- " lines must NOT be counted as rules.
+printf '# Rules\n- Real rule one.\n- Real rule two.\n\n```\n- not a rule\n- also not\n```\n' > "$_rr_p/playbooks/cover-letter.md"
+_rr_fence=$(bash scripts/render-receipt.sh "$_rr_p" "$_rr_r" 2>/dev/null)
+case "$_rr_fence" in *"2 of your own writing rules"*) note "clean — fenced '- ' lines are not counted as rules." ;; *) note "FAIL: fenced lines miscounted: [$_rr_fence]"; fail=1 ;; esac
 rm -rf "$_rr_p" "$_rr_r"
 
 section "7. context-pack.sh — JD-ranked, byte-capped, logs its selection"
@@ -102,6 +113,18 @@ else note "FAIL: SSN scan rc=$_pi_rc out=[$_pi_out]"; fail=1; fi
 printf 'Targeting $140k, based in Austin, authorized to work in the US, call 512-555-0199\n' > "$_pi_f"
 bash scripts/scan-pii.sh "$_pi_f" >/dev/null 2>&1
 if [ "$?" = "0" ]; then note "clean — middle-tier facts (salary/city/work-auth/phone) not flagged."; else note "FAIL: middle-tier facts were flagged as secrets."; fail=1; fi
+# Modern token shapes must be flagged.
+printf 'key ghp_abcdefghij0123456789ABCDEFGHIJ012345 and sk_live_abcdefghij0123456789\n' > "$_pi_f"
+bash scripts/scan-pii.sh "$_pi_f" >/dev/null 2>&1
+if [ "$?" = "3" ]; then note "clean — modern API token shapes (ghp_/sk_live_) flagged."; else note "FAIL: modern token shapes not flagged."; fail=1; fi
+# PEM private key flagged.
+printf -- '-----BEGIN RSA PRIVATE KEY-----\n' > "$_pi_f"
+bash scripts/scan-pii.sh "$_pi_f" >/dev/null 2>&1
+if [ "$?" = "3" ]; then note "clean — PEM private key flagged."; else note "FAIL: PEM private key not flagged."; fail=1; fi
+# False positives: a run of consecutive years must NOT look like a card.
+printf 'I worked across 2019 2020 2021 2022 on growth and passwordless login\n' > "$_pi_f"
+bash scripts/scan-pii.sh "$_pi_f" >/dev/null 2>&1
+if [ "$?" = "0" ]; then note "clean — year runs / 'passwordless' not false-flagged."; else note "FAIL: false positive on years/passwordless."; fail=1; fi
 rm -f "$_pi_f"
 
 section "Result"

@@ -15,10 +15,15 @@ Your partner for the jobs you actually want. Point it at a job posting and it re
 
 - **`/coapply:setup`** — first-time setup. Copies the profile templates into your folder, checks how runs are billed, and helps you pick a budget tier.
 - **`/coapply:start <job url or text>`** — begin an application. Does triage, then stops at a fit-check gate for your go/no-go. On a go, it generates the full package into a run folder.
+- **`/coapply:add <thing>`** — teach CoApply in plain language so future runs sound more like you: a **writing rule** ("from now on, never open by explaining the company to itself"), an **example** of your own writing to match your voice ("save this as an example"), or a **personal fact** like your location or target salary. It confirms where each goes and refuses to store true secrets.
 - **`/coapply:tier`** — change your budget tier (`lite` / `standard` / `full`) anytime.
 - **`/coapply:resume <run>`** — pick a run back up if it was interrupted.
 - **`/coapply:list`** — list your recent runs.
 - **`/coapply:help`** — this.
+
+## Making it yours over time
+
+CoApply gets more "you" the more you use it. Tell it your **rules** and it follows them on every future letter; give it **examples** of your own writing and it matches your voice (it imitates how you sound, never copies your facts); add **facts** (location, target comp, work-authorization) and it fills them into applications. Just say `/coapply:add` or talk to it in plain language ("remember I'm based in Austin"). Every run ends with a short receipt showing exactly which of your rules and examples shaped that application — so you can see it actually used your input.
 
 ## First-time setup
 

@@ -14,6 +14,7 @@
 # Prints the example pack (sentinel-wrapped) on stdout, or nothing if there are
 # none / the tier excludes them. Always exits 0 (never breaks a run).
 set -uo pipefail
+export LC_ALL=C LANG=C  # deterministic, locale-independent sort/awk ranking
 
 PROFILE_DIR="${1:-}"
 ROLE="${2:-}"
@@ -52,6 +53,10 @@ _log "PACK${TAB}${ROLE}${TAB}done"
 cand="$(
   for f in "$EX_DIR/$ROLE"--*.md; do
     [ -f "$f" ] || continue
+    # Skip filenames containing control chars (tab/newline): they would break the
+    # tab-delimited candidate rows and the per-line read below, which would make
+    # the receipt log claim a file was used while its content was never emitted.
+    printf '%s' "$f" | grep -q '[[:cntrl:]]' && continue
     b="$(wc -c < "$f" | tr -d ' ')"
     h="$(sed -n '1p' "$f" | tr '\t' ' ')"
     printf '%s\t%s\t%s\n' "$b" "$f" "$h"
@@ -93,7 +98,8 @@ printf '%s\n' "$scored" | while IFS="$TAB" read -r sc b f hasH; do
     printf '%s\n' "$f" >> "$picklist"
     _log "LOADED${TAB}example${TAB}${base}${TAB}${b}${TAB}rank=${rank} score=${sc}"
   else
-    _log "DROPPED${TAB}example${TAB}${base}${TAB}${b}${TAB}over-budget"
+    if [ "$count" -ge "$EX_MAX" ]; then reason="count-cap (tier max ${EX_MAX})"; else reason="over-budget"; fi
+    _log "DROPPED${TAB}example${TAB}${base}${TAB}${b}${TAB}${reason}"
   fi
 done
 

@@ -29,9 +29,12 @@ if [ -n "${CLAUDE_PLUGIN_OPTION_PROFILE_DIR:-}" ]; then
   exit 0
 fi
 
+# HOME may be unset in odd environments; degrade gracefully (still exit 0).
+H="${HOME:-}"
+
 # 2) Flat file — the robust, dependency-free path. One line: the absolute path.
-FLAT="${HOME}/.coapply_profile_path"
-if [ -f "$FLAT" ]; then
+FLAT="${H:-/nonexistent}/.coapply_profile_path"
+if [ -n "$H" ] && [ -f "$FLAT" ]; then
   # first non-empty line, trimmed of surrounding whitespace
   val="$(sed -n '1{s/^[[:space:]]*//;s/[[:space:]]*$//;p;}' "$FLAT" 2>/dev/null)"
   if [ -n "$val" ]; then
@@ -63,20 +66,32 @@ _read_jq() {
          | .value.options.profile_dir // empty' "$1" 2>/dev/null | head -1
 }
 
-# POSIX fallback — no python3/jq. `profile_dir` is CoApply's own userConfig key,
-# so the first match is ours. Handles minified or pretty-printed JSON and spaces.
-_read_posix() {
-  grep -o '"profile_dir"[[:space:]]*:[[:space:]]*"[^"]*"' "$1" 2>/dev/null \
-    | head -1 \
-    | sed 's/.*:[[:space:]]*"//; s/"$//'
+# POSIX fallback — no python3/jq. SCOPED to CoApply's own plugin config: find the
+# "coapply@..." key first, then the first profile_dir AFTER it — so a different
+# plugin's profile_dir earlier in the file can't be picked by mistake. Reads the
+# whole file as one record, so it works for minified or pretty-printed JSON and
+# paths containing spaces.
+_read_awk() {
+  awk 'BEGIN { RS="\1" }
+    {
+      i = index($0, "coapply@"); if (i == 0) next
+      rest = substr($0, i)
+      if (match(rest, /"profile_dir"[ \t\r\n]*:[ \t\r\n]*"[^"]*"/)) {
+        s = substr(rest, RSTART, RLENGTH)
+        sub(/^"profile_dir"[ \t\r\n]*:[ \t\r\n]*"/, "", s); sub(/"$/, "", s)
+        print s
+      }
+    }' "$1" 2>/dev/null | head -1
 }
 
-for cfg in "$HOME/.claude/settings.json" "$HOME/.claude/settings.local.json"; do
+[ -n "$H" ] || exit 0
+# settings.local.json overrides settings.json (Claude Code precedence), so try it first.
+for cfg in "$H/.claude/settings.local.json" "$H/.claude/settings.json"; do
   [ -f "$cfg" ] || continue
   val=""
   if command -v python3 >/dev/null 2>&1; then val="$(_read_python "$cfg")"; fi
   if [ -z "$val" ] && command -v jq >/dev/null 2>&1; then val="$(_read_jq "$cfg")"; fi
-  if [ -z "$val" ]; then val="$(_read_posix "$cfg")"; fi
+  if [ -z "$val" ]; then val="$(_read_awk "$cfg")"; fi
   if [ -n "$val" ]; then
     printf '%s\n' "$val"
     exit 0

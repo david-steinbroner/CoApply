@@ -52,6 +52,24 @@ scope and refused — that's a later, separate design.
   explaining the company to itself; keep concrete proof concrete; assert the positive
   directly; no self-promo closers; lead with the work, not the label.
 
+### Hardened (after a 7-agent adversarial stress swarm — 0 blockers, 0 serious found)
+- **`scan-pii.sh` rewritten to whole-file passes** — ~500× faster on large pastes (no
+  per-line subprocess loop); pins `LC_ALL=C` (deterministic, robust to invalid UTF-8);
+  now catches modern token shapes (GitHub `ghp_`/`github_pat_`, Stripe `sk_live_`,
+  Google `AIza`, GitLab `glpat-`, OpenAI `sk-proj-`, JWTs) and PEM private keys; widens
+  card detection to 13-19 digits; and kills false positives (consecutive years read as a
+  card, `passwordless`/`secret keynote` substring matches). Still never leaks a digit.
+- **`resolve-profile-dir.sh`** — POSIX fallback is now **scoped to CoApply's own config**
+  (a different plugin's `profile_dir` can't be picked); honors `settings.local.json` over
+  `settings.json`; and truly always exits 0 (no crash when `HOME` is unset).
+- **`context-pack.sh`** — pins `LC_ALL=C` for locale-independent ranking; logs the real
+  drop reason (count-cap vs over-budget); and skips control-char filenames that could
+  make the receipt claim a file was used without emitting it.
+- **`render-receipt.sh`** — `- ` lines inside fenced code blocks are no longer counted as
+  rules; strips CR so a CRLF-authored playbook doesn't corrupt the quoted sample.
+- **`/coapply:help`** now documents `/coapply:add` and the Profile Library (was undiscoverable).
+- `audit.sh` extended to 14 checks locking in all of the above.
+
 ### Fixed
 - **`resolve-profile-dir.sh` had no POSIX fallback** (python3→jq only) — a user with
   neither silently got "not configured" on every command. Added: (1) a robust flat

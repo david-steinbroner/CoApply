@@ -15,6 +15,7 @@
 # Usage: render-receipt.sh <profile_dir> <run_dir>
 # Always exits 0; fail-closed to "Receipt unavailable" if inputs are missing.
 set -uo pipefail
+export LC_ALL=C LANG=C  # deterministic, locale-independent matching
 
 PROFILE_DIR="${1:-}"
 RUN_DIR="${2:-}"
@@ -46,20 +47,28 @@ esac
 ROLES="$ROLES general"
 
 # --- count rules across the playbooks that applied; collect bullets -------------
-# Rule grammar: a rule is a line beginning with "- " (a markdown bullet).
+# Rule grammar: a rule is a top-level "- " bullet OUTSIDE any fenced code block.
+# (A "- " line inside ``` ... ``` is example/illustration text, not a rule.) We also
+# strip any trailing CR so a CRLF-authored playbook doesn't corrupt the quoted line.
 TMP_BULLETS="$(mktemp 2>/dev/null || echo /tmp/coapply-bullets.$$)"
 : > "$TMP_BULLETS"
 total_rules=0
 used_playbooks=0
+_emit_bullets() { # <file> -> clean rule text (no "- ", no CR), fence-aware
+  awk '
+    /^[ \t]*```/ || /^[ \t]*~~~/ { infence = !infence; next }
+    !infence && /^- / { line = substr($0, 3); sub(/\r$/, "", line); print line }
+  ' "$1"
+}
 for role in $ROLES; do
   f="$PB_DIR/$role.md"
   [ -f "$f" ] || continue
-  n="$(grep -c '^- ' "$f" 2>/dev/null || echo 0)"
-  [ "$n" -gt 0 ] 2>/dev/null || continue
+  bl="$(_emit_bullets "$f")"
+  [ -n "$bl" ] || continue
+  n="$(printf '%s\n' "$bl" | grep -c .)"
   used_playbooks=$((used_playbooks + 1))
   total_rules=$((total_rules + n))
-  # strip the leading "- " and append each rule for sampling
-  sed -n 's/^- //p' "$f" >> "$TMP_BULLETS"
+  printf '%s\n' "$bl" >> "$TMP_BULLETS"
 done
 
 # --- pick a JD-matched sample rule (relevant, not a trivial first-line mirror) --
