@@ -2,6 +2,42 @@
 
 All notable changes to CoApply. Versioned on the `plugin.json` version line.
 
+## [0.3.0] — 2026-06-08 — `/coapply:feedback`
+
+A frictionless way to report a bug or send an idea — so the soft launch has a real
+channel back. Describe what happened in plain words and CoApply turns it into a
+**ready-to-file GitHub issue**: a clear title, a structured body (with `_(fill this in)_`
+prompts where you didn't cover a section), and auto-collected context — all of which you
+review before anything is sent. Same drafts-you-decide ethos as the application gate:
+it hands you the issue to post, it never submits for you.
+
+### Added
+- **`/coapply:feedback` skill** — infers bug vs. idea from your words (near-zero turns;
+  one short question at most), assembles the issue, and gives you (1) a complete
+  paste-ready block and (2) a one-click prefilled `issues/new?title=…&labels=…&body=…`
+  link. If `gh` is installed and authenticated, it offers — opt-in only, never default —
+  to file the issue for you.
+- **`scripts/feedback-context.sh`** — deterministic helper so the agent doesn't spend
+  tokens (or make mistakes) on context-gathering and URL-encoding. `context` prints the
+  reviewable block (CoApply version, Claude Code version, OS, tier, and — only when the
+  feedback is about a specific run — that run's phase + which step failed, parsed from
+  `_run.json` whether compact or pretty-printed). `url` percent-encodes the prefilled
+  issue URL; `repo` prints the repository URL.
+- **`.github/ISSUE_TEMPLATE/`** — `bug_report.md` + `idea.md` (same section structure as
+  the skill emits) and a `config.yml` pointing usage questions at the README. Guides
+  anyone who files directly on GitHub without the skill.
+
+### Privacy
+- No silent diagnostics: every byte of collected context is shown before anything is
+  sent. The skill and script never read profile contents, cover letters, or resumes —
+  only the tool's own version/config and a run's structural state. The bug template
+  carries a "kept my profile/letters/secrets out" checkbox.
+
+### Other
+- `/coapply:help` now lists `/coapply:feedback`.
+- `scripts/audit.sh` gains a section covering the feedback context block, URL encoding,
+  and the failed-step parser; `feedback` added to the skill-presence check.
+
 ## [0.2.2] — 2026-06-07 — Setup-override safety + help polish
 
 ### Fixed

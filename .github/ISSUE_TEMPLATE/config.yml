@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: How CoApply works
+    url: https://github.com/david-steinbroner/CoApply#readme
+    about: Setup, commands, and the gate — check here before filing a usage question.

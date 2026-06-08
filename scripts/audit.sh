@@ -36,7 +36,7 @@ section "4. Structure & invariants"
 for f in .claude-plugin/plugin.json .claude-plugin/marketplace.json profile/prompts/master-apply.md PRINCIPLES.md LICENSE; do
   [ -f "$f" ] || { note "FAIL: missing $f"; fail=1; }
 done
-for s in start resume list help setup tier; do
+for s in start resume list help setup tier add feedback; do
   [ -f "skills/$s/SKILL.md" ] || { note "FAIL: missing skills/$s/SKILL.md"; fail=1; }
 done
 [ -d commands ] && { note "FAIL: commands/ exists — entry points must be skills (\${CLAUDE_PLUGIN_ROOT} doesn't resolve in commands)."; fail=1; }
@@ -136,6 +136,38 @@ if printf '%s' "$_sn_out" | grep -q "updated to v$_pjv"; then note "clean — an
 _sn_out2=$(HOME="$_sn_h" CLAUDE_PLUGIN_ROOT="$(pwd)" CLAUDE_PLUGIN_OPTION_PROFILE_DIR="$_sn_p" bash scripts/session-nudge.sh)
 if [ -z "$_sn_out2" ]; then note "clean — silent when the version is unchanged."; else note "FAIL: not silent on unchanged version: [$_sn_out2]"; fail=1; fi
 rm -rf "$_sn_h" "$_sn_p"
+
+section "10. feedback-context.sh — context block, URL encoding, run state"
+# The context block must report the real version + tier; the URL builder must
+# percent-encode title/labels/body; the run block must name the failed step.
+_fb_p=$(mktemp -d); printf '{"tier":"lite"}\n' > "$_fb_p/coapply.config.json"
+_fb_ctx=$(bash scripts/feedback-context.sh context "$_fb_p")
+if printf '%s' "$_fb_ctx" | grep -q 'CoApply version:' && printf '%s' "$_fb_ctx" | grep -q 'Tier: lite'; then
+  note "clean — context block reports version + tier."
+else note "FAIL: context block: [$_fb_ctx]"; fail=1; fi
+# URL: spaces/colon in title encoded, label literal, body specials encoded.
+_fb_bf=$(mktemp); printf 'line one\nwith #hash & ampersand' > "$_fb_bf"
+_fb_url=$(bash scripts/feedback-context.sh url "Bug: it broke" "bug" "$_fb_bf")
+case "$_fb_url" in
+  *"/issues/new?title=Bug%3A%20it%20broke&labels=bug&body="*) note "clean — title/labels percent-encoded." ;;
+  *) note "FAIL: url title/labels: [$_fb_url]"; fail=1 ;;
+esac
+if printf '%s' "$_fb_url" | grep -q '%0A' && printf '%s' "$_fb_url" | grep -q '%23' && printf '%s' "$_fb_url" | grep -q '%26'; then
+  note "clean — body newline/#/& encoded (%0A/%23/%26)."
+else note "FAIL: body encoding: [$_fb_url]"; fail=1; fi
+# Run block: names the FAILED artifact, not the first one (compact + pretty JSON).
+mkdir -p "$_fb_p/runs/r1" "$_fb_p/runs/r2"
+printf '{ "phase": "content", "artifacts": [ { "name": "role-analysis", "status": "done", "path": "x" }, { "name": "cover-letter", "status": "failed", "path": "y" } ] }\n' > "$_fb_p/runs/r1/_run.json"
+printf '{\n "phase": "strategy",\n "artifacts": [\n  { "name": "fit-score",\n    "status": "failed" }\n ]\n}\n' > "$_fb_p/runs/r2/_run.json"
+_fb_r1=$(bash scripts/feedback-context.sh context "$_fb_p" "r1")
+_fb_r2=$(bash scripts/feedback-context.sh context "$_fb_p" "r2")
+if printf '%s' "$_fb_r1" | grep -q 'failed step: cover-letter' && printf '%s' "$_fb_r2" | grep -q 'failed step: fit-score'; then
+  note "clean — run block names the failed step (compact + pretty JSON)."
+else note "FAIL: run block: r1=[$_fb_r1] r2=[$_fb_r2]"; fail=1; fi
+# A bad/unknown run slug must omit the run block, not error.
+_fb_none=$(bash scripts/feedback-context.sh context "$_fb_p" "nonexistent")
+if ! printf '%s' "$_fb_none" | grep -q 'Run:'; then note "clean — unknown run slug omits the run block."; else note "FAIL: phantom run block: [$_fb_none]"; fail=1; fi
+rm -rf "$_fb_p" "$_fb_bf"
 
 section "Result"
 if [ "$fail" = 0 ]; then echo "PASS — safe to release."; exit 0; else echo "FAIL — fix the items above before releasing."; exit 1; fi

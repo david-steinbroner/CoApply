@@ -37,6 +37,7 @@ Your partner for the jobs you actually want. Point it at a job posting and it re
 - **`/coapply:tier`** — change your budget tier (`lite` / `standard` / `full`) anytime.
 - **`/coapply:resume <run>`** — pick a run back up if it was interrupted.
 - **`/coapply:list`** — list your recent runs.
+- **`/coapply:feedback`** — hit a bug or have an idea? Describe it in plain words and CoApply turns it into a ready-to-file GitHub issue (structured, with version/OS auto-filled) plus a one-click link. You review and post it — it never submits for you.
 - **`/coapply:help`** — this.
 
 ## Making it yours over time
