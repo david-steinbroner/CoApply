@@ -26,9 +26,13 @@ case "$cmd" in
     [ -n "$file" ] || { echo "usage: resume-import.sh sanity <file>" >&2; exit 2; }
     [ -f "$file" ] || { echo "NO_FILE"; exit 0; }
     n="$(words_in "$file")"; n="${n:-0}"
-    if [ "$n" -lt 100 ]; then echo "TOO_SHORT ($n)"; exit 0; fi
-    # Resume keywords — if none, the read is probably garbled/not a resume; fail closed.
-    if grep -iqE 'experience|education|employ|work|skills|projects?|summary' "$file"; then
+    # Near-empty: nothing to build from. (A real resume — even a new grad's — clears this.)
+    if [ "$n" -lt 15 ]; then echo "EMPTY ($n)"; exit 0; fi
+    # Keyword presence is the "is this resume-like" signal, NOT length: short real resumes
+    # are common and legitimate. No resume keywords at a real length => wrong paste / not a
+    # resume. (Jumbled-but-keyworded text passes here on purpose — the script can't detect
+    # column-merge garble; the model's reflect-back step is the catch for that.)
+    if grep -iqE 'experience|education|employ|work|skills|projects?|summary|volunteer|certification' "$file"; then
       echo "OK ($n words)"
     else
       echo "NO_KEYWORDS ($n)"

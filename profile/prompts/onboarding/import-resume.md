@@ -52,14 +52,24 @@ COAPPLY_EOF
 "${CLAUDE_PLUGIN_ROOT}/scripts/resume-import.sh" sanity "$TMP"
 ```
 
-- `TOO_SHORT` or `NO_KEYWORDS` → **do not draft.** The read failed. Say so plainly and ask
-  them to paste the plain text: *"That didn't come through as readable resume text — your
-  PDF's layout may be tripping the reader. Paste the text directly and it'll be clean."*
-- `OK` → continue, but **reflect back before drafting** (catches jumbled-but-long reads):
-  > Here's what I read from your resume — does it look complete and in the right order?
-  > *(If it's jumbled or interleaved, your PDF's layout is the culprit — paste the text instead.)*
+- `EMPTY` → almost nothing came through. Don't draft. Offer more text or the Q&A:
+  > There's almost nothing here to work from. Paste your full resume text — or I can just ask
+  > you a few questions instead, no resume needed.
 
-  Show a short excerpt. Only proceed once they confirm it read cleanly.
+  (If they'd rather answer questions, go to **Step 1b**.)
+- `NO_KEYWORDS` → there's text, but it doesn't look like a resume — usually a wrong paste, or
+  a PDF whose columns scrambled into non-resume soup. Don't draft:
+  > That doesn't look like readable resume text — if you pasted from a PDF, the column layout
+  > may have scrambled it. Paste the plain text, or just tell me about your roles and I'll build from that.
+- `OK` → resume-like — **but the script cannot see jumbling.** A two-column PDF that merged
+  line-by-line still has the right keywords and length and will pass as `OK`. So this is where
+  the real garble catch lives: **always reflect back before drafting.** Show a short excerpt and ask:
+  > Here's what I read from your resume — does it look complete and in the right order?
+  > *(If it's jumbled or interleaved, your PDF's layout is the culprit — paste the text instead,
+  > or just tell me about your roles.)*
+
+  Only proceed once they confirm it read cleanly and in order. A short-but-clean resume is fine
+  — draft it (gap-mark heavily); brevity is not a failure.
 
 ## Step 1b — No resume? A short Q&A instead
 

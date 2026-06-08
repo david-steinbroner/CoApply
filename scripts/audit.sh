@@ -194,10 +194,14 @@ grep -q '\[GAP:' "$_imp" && note "clean — [GAP:] marker convention present." |
 grep -qi 'Step 1b\|no resume' "$_imp" && note "clean — no-resume Q&A path present." || { note "FAIL: import prompt lost the no-resume Q&A path."; fail=1; }
 # Helper: fail-closed sanity gate, bloat tiers, neutralizing atomic write.
 _ri=$(mktemp)
-printf 'tiny\n' > "$_ri"
-case "$(bash scripts/resume-import.sh sanity "$_ri")" in TOO_SHORT*) note "clean — sanity gate flags too-short." ;; *) note "FAIL: sanity should flag too-short."; fail=1 ;; esac
-{ printf 'Work Experience Education Skills '; printf 'w %.0s' $(seq 1 150); } > "$_ri"
-case "$(bash scripts/resume-import.sh sanity "$_ri")" in OK*) note "clean — sanity passes a real resume." ;; *) note "FAIL: sanity should pass a real resume."; fail=1 ;; esac
+printf 'hi there\n' > "$_ri"
+case "$(bash scripts/resume-import.sh sanity "$_ri")" in EMPTY*) note "clean — sanity flags near-empty input." ;; *) note "FAIL: sanity should flag near-empty as EMPTY."; fail=1 ;; esac
+# A SHORT but real resume (≈30 words, has keywords) must pass — new-grad/career-changer case.
+printf 'Jane Doe. Experience: Teacher at Lincoln High 2019-2023, taught biology. Education: BS Biology 2019. Skills: classroom management, lab safety, curriculum.\n' > "$_ri"
+case "$(bash scripts/resume-import.sh sanity "$_ri")" in OK*) note "clean — a short real resume passes (not bounced as too-short)." ;; *) note "FAIL: short real resume should pass."; fail=1 ;; esac
+# Real length, NO resume keywords (wrong paste / scrambled into non-resume text) -> NO_KEYWORDS.
+printf 'the quick brown fox jumped over %.0s' $(seq 1 10) > "$_ri"
+case "$(bash scripts/resume-import.sh sanity "$_ri")" in NO_KEYWORDS*) note "clean — non-resume text flagged NO_KEYWORDS." ;; *) note "FAIL: non-resume text should be NO_KEYWORDS."; fail=1 ;; esac
 printf 'w %.0s' $(seq 1 1100) > "$_ri"
 case "$(bash scripts/resume-import.sh wordcheck "$_ri")" in *OVER) note "clean — wordcheck flags bloat (>1000)." ;; *) note "FAIL: wordcheck should flag >1000 as OVER."; fail=1 ;; esac
 _rio="$(mktemp -d)/out.md"
