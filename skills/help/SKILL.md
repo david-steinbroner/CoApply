@@ -7,8 +7,14 @@ description: How CoApply works — commands, setup, and the gate.
 
 **First, show the version** so the user can confirm what they're running. Read
 `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json` and print its `version` as the
-first line, e.g. `CoApply v0.2.0`. (Claude Code auto-applies plugin updates and
+first line, e.g. `CoApply v0.3.0`. (Claude Code auto-applies plugin updates and
 doesn't show the version; this is how you check it.)
+
+If the user says they just updated but this version looks old, the fix is to
+**restart Claude Code** — plugins load at startup, so a running session keeps the
+old copy until reopened. Don't tell them to reinstall or re-add the plugin; a
+restart is enough. (Do not try to compare against the marketplace version yourself —
+just give this restart guidance if they mention a stale version.)
 
 Then give the user a short, friendly orientation. Keep it concise and plain; adapt to what they ask.
 

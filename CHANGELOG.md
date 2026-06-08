@@ -2,6 +2,20 @@
 
 All notable changes to CoApply. Versioned on the `plugin.json` version line.
 
+## [0.3.1] — 2026-06-08 — Clearer update path
+
+After updating, plugins only load on a fresh session — so a running session keeps
+showing the old version until you restart Claude Code. The docs didn't say that, which
+made an update look like it had failed. Fixed the guidance so users (and the tool) point
+at the right fix.
+
+### Changed
+- **README "Keeping CoApply up to date"** now says to **restart Claude Code** after
+  `/plugin marketplace update`, then check the version with `/coapply:help`. Dropped the
+  "that's it" line that implied the update was instant.
+- **`/coapply:help`** now tells a user whose version looks stale after an update to
+  restart Claude Code — and explicitly not to reinstall or re-add the plugin.
+
 ## [0.3.0] — 2026-06-08 — `/coapply:feedback`
 
 A frictionless way to report a bug or send an idea — so the soft launch has a real

@@ -117,13 +117,13 @@ Everything it writes is drawn from **your** profile and matched to **your** voic
 
 ## Keeping CoApply up to date
 
-CoApply improves over time — new capabilities, sharper prompts. Getting the latest is **one command** inside Claude Code:
+CoApply improves over time — new capabilities, sharper prompts. Updating takes two steps inside Claude Code:
 
 ```
 /plugin marketplace update coapply-marketplace
 ```
 
-Then, if there's a new version, Claude Code will offer to update it. That's it.
+If there's a new version, Claude Code downloads it. Then **restart Claude Code** — plugins load at startup, so a running session keeps using the old version until you reopen it. After restarting, run `/coapply:help`; the first line shows the version, so you can confirm you're on the new one.
 
 **You will never lose your work when you update.** CoApply is built in two separate halves:
 - **The engine** (the part you just updated) — owned by us, replaced on update.
