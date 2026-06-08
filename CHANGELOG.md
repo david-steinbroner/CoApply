@@ -2,6 +2,25 @@
 
 All notable changes to CoApply. Versioned on the `plugin.json` version line.
 
+## [0.3.4] — 2026-06-08 — Feedback offers two paths
+
+Filing feedback shouldn't always cost a full draft. `/coapply:feedback` now asks how you
+want to get it to the maintainer, and matches the work (and tokens) to your answer.
+
+### Added
+- **A fork up front:** *"draft an issue for you, or just point you to the issue page?"*
+  - **Light path** — hands you the GitHub template-chooser link (`/issues/new/choose`),
+    your own words to paste, and your version/OS to fill the Environment section. Almost
+    no tokens; you write it.
+  - **Draft path** — the existing flow: clarify-if-vague, then a faithful ready-to-paste
+    issue + one-click prefilled link + opt-in `gh` filing.
+- **Ambiguity handling:** a non-answer ("idk", "easiest") re-asks once, then falls back to
+  the light path — when consent is unclear, do less on the user's behalf, not more.
+
+### Changed
+- The clarify-when-vague step now lives inside the draft path (the light path doesn't need
+  it — you write your own issue), so the quick path stays quick.
+
 ## [0.3.3] — 2026-06-08 — Feedback asks before it files
 
 0.3.2 stopped the skill inventing *content*, but it still invented *intent*: a vague

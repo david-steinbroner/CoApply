@@ -76,7 +76,7 @@ Other commands:
 - `/coapply:tier` — change your budget tier (lite / standard / full) anytime.
 - `/coapply:list` — see your recent applications.
 - `/coapply:resume <run>` — pick a run back up if it got interrupted.
-- `/coapply:feedback` — hit a bug or have an idea? Describe it in plain words; CoApply turns it into a ready-to-file GitHub issue (with a one-click link) for you to review and post. It never submits for you.
+- `/coapply:feedback` — hit a bug or have an idea? Describe it in plain words; CoApply either points you to the issue page to write it yourself, or drafts a ready-to-paste issue from your words — your choice. You review and post it; it never submits for you.
 - `/coapply:help` — a quick orientation.
 
 ---
