@@ -53,6 +53,24 @@ Then point them to the fast path — building the profile from their resume — 
 
 > The quickest way to fill these in is from your **resume**: paste it here or give me the file path, and I'll draft your profile from it — you'll see everything before I save a thing. No resume handy? Tell me where you've worked and what you did, even roughly, and I'll build from that. Prefer to type it in yourself? Open **`identity.md`**, **`skills-experience.md`**, and one file in **`resumes/`** — that's the minimum for a first run; deepen the rest over time.
 
+## Step 1.5 — Set up from their resume (the fast path)
+
+Based on how they answer:
+
+- **They give a resume (pasted text or a file path), or ask you to build the profile from
+  it** → read `${CLAUDE_PLUGIN_ROOT}/profile/prompts/onboarding/import-resume.md` and follow
+  it exactly. It reads the resume (with a fail-closed sanity gate and a reflect-back for
+  garbled PDFs), drafts `identity.md` + `skills-experience.md` + one resume **verbatim, never
+  embellished**, shows the user everything with the original lines beside the drafted ones,
+  and writes only after they type `SAVE`. When it hands back, continue to Step 2.
+- **No resume** → a guided "tell me where you've worked" Q&A is the intended path *(coming in
+  this release)*; until it lands, help them fill `identity.md`, `skills-experience.md`, and one
+  `resumes/*.md` by hand, then continue.
+- **They'd rather fill it in themselves** → point them at those three files and continue.
+
+Don't block setup on this — billing and tier below can be set regardless of whether the
+profile is filled in yet.
+
 ## Step 2 — Billing check (live)
 
 Check whether an `ANTHROPIC_API_KEY` is present, both in the current environment and in the user's shell profiles. **Mask any value** — never print the key.

@@ -180,6 +180,29 @@ if grep -qi "fill this in" "$_fbk"; then note "FAIL: feedback skill reintroduced
 # Vague input must trigger a clarifying question, not an auto-generated issue.
 if grep -qi "clarifying question" "$_fbk"; then note "clean — clarify-when-vague step present."; else note "FAIL: feedback skill lost its clarify-when-vague step (would auto-file vague input)."; fail=1; fi
 
+section "12. resume-import (onboarding) — field-agnostic prompt + helper discipline"
+_imp=profile/prompts/onboarding/import-resume.md
+if [ -f "$_imp" ]; then note "clean — import prompt present."; else note "FAIL: import prompt missing."; fail=1; fi
+# §16.J: the import prompt is the highest field-leak risk in the engine — must pass the field grep.
+if grep -inE 'product manager|product-manager|pm-builder|pm-growth|fintech|growth pm|compliance pm' "$_imp" >/dev/null 2>&1; then
+  note "FAIL: import prompt contains field/PM assumptions — genericize."; fail=1
+else note "clean — import prompt is field-agnostic."; fi
+# §16.A/B: verbatim-extraction rule + [GAP:] markers must survive.
+grep -qi 'verbatim' "$_imp" && note "clean — verbatim-extraction rule present." || { note "FAIL: import prompt lost its verbatim rule."; fail=1; }
+grep -q '\[GAP:' "$_imp" && note "clean — [GAP:] marker convention present." || { note "FAIL: import prompt lost the [GAP:] markers."; fail=1; }
+# Helper: fail-closed sanity gate, bloat tiers, neutralizing atomic write.
+_ri=$(mktemp)
+printf 'tiny\n' > "$_ri"
+case "$(bash scripts/resume-import.sh sanity "$_ri")" in TOO_SHORT*) note "clean — sanity gate flags too-short." ;; *) note "FAIL: sanity should flag too-short."; fail=1 ;; esac
+{ printf 'Work Experience Education Skills '; printf 'w %.0s' $(seq 1 150); } > "$_ri"
+case "$(bash scripts/resume-import.sh sanity "$_ri")" in OK*) note "clean — sanity passes a real resume." ;; *) note "FAIL: sanity should pass a real resume."; fail=1 ;; esac
+printf 'w %.0s' $(seq 1 1100) > "$_ri"
+case "$(bash scripts/resume-import.sh wordcheck "$_ri")" in *OVER) note "clean — wordcheck flags bloat (>1000)." ;; *) note "FAIL: wordcheck should flag >1000 as OVER."; fail=1 ;; esac
+_rio="$(mktemp -d)/out.md"
+printf 'Built List<String>; <EMAIL> redacted\n' | bash scripts/resume-import.sh write "$_rio" >/dev/null 2>&1
+if grep -qE '<[A-Z][^>]*>' "$_rio"; then note "FAIL: write left <Xxx> tokens (would trip start preflight)."; fail=1; else note "clean — write neutralizes placeholder-shaped tokens."; fi
+rm -f "$_ri"; rm -rf "$(dirname "$_rio")"
+
 # A human-judgment gate the script CAN'T verify. Printed every run so it can't be skipped.
 section "Manual gate — confirm before you ship (not automatable)"
 note "[ ] Dogfooded every new/changed skill on a REALISTIC input — including a vague one — and read the output."
