@@ -2,6 +2,22 @@
 
 All notable changes to CoApply. Versioned on the `plugin.json` version line.
 
+## [0.3.3] — 2026-06-08 — Feedback asks before it files
+
+0.3.2 stopped the skill inventing *content*, but it still invented *intent*: a vague
+remark like "I don't understand" got turned straight into a ready-to-file issue. A
+confused user needs a question, not paperwork. Now it pauses.
+
+### Fixed
+- **`/coapply:feedback` asks one clarifying question when the input is too vague to be a
+  useful report**, then builds the issue from the answer. Specific input ("the gate
+  didn't show a fit score") still goes straight through; only thin input ("it's
+  confusing", "it didn't work") triggers the single question. It asks once and never
+  interrogates — if you say "just file it," it files what you gave it, captured faithfully.
+
+### Changed
+- **`scripts/audit.sh`** guards the new clarify-when-vague step against regression.
+
 ## [0.3.2] — 2026-06-08 — Feedback skill stops fabricating
 
 The 0.3.0 feedback skill turned a one-line gripe into an invented feature proposal —

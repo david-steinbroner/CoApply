@@ -177,6 +177,8 @@ section "11. feedback skill — no-fabrication discipline intact"
 _fbk=skills/feedback/SKILL.md
 if grep -qi "capture, don't compose" "$_fbk"; then note "clean — capture-don't-compose rule present."; else note "FAIL: feedback skill lost its no-fabrication rule."; fail=1; fi
 if grep -qi "fill this in" "$_fbk"; then note "FAIL: feedback skill reintroduced 'fill this in' empty-section scaffolding (invites fabrication)."; fail=1; else note "clean — no empty-section fill-in scaffolding."; fi
+# Vague input must trigger a clarifying question, not an auto-generated issue.
+if grep -qi "clarifying question" "$_fbk"; then note "clean — clarify-when-vague step present."; else note "FAIL: feedback skill lost its clarify-when-vague step (would auto-file vague input)."; fail=1; fi
 
 # A human-judgment gate the script CAN'T verify. Printed every run so it can't be skipped.
 section "Manual gate — confirm before you ship (not automatable)"

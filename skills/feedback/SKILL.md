@@ -34,12 +34,29 @@ what the user wrote. **Never** read or paste their profile contents, a cover let
 resume, or anything from a run folder beyond the structural state the script reports.
 If their description quotes private text, leave it as they wrote it — don't go fetch more.
 
-## Step 1 — Get the gist
+## Step 1 — Get something worth filing
 
-Use what the user gave you in their message. If they ran `/coapply:feedback` with
-nothing, ask one short question and wait:
+Start from what the user gave you (or, if they ran `/coapply:feedback` with nothing,
+ask: *"What happened, or what would you like to see? A sentence is plenty."* and wait).
 
-> What happened, or what would you like to see? A sentence is plenty.
+Then judge one thing before you build anything: **is there enough here for a maintainer
+to act on?** Don't manufacture an issue from a vague remark — a confused user usually
+needs a question, not paperwork.
+
+- **Specific enough** — names a behavior, a step, or a concrete want ("the gate didn't
+  show a fit score", "add a way to find jobs for me"). → go to Step 2.
+- **Too vague to be useful** — confusion or a bare verdict with no specifics ("I don't
+  understand", "it's confusing", "it didn't work"). → **ask exactly one short, concrete
+  clarifying question and wait.** Offer likely areas so they can just point, and tailor
+  it to what they said:
+  - confusion / idea: *"Happy to pass that on. What part's tripping you up — setting it
+    up, starting an application, the fit-check gate, or something else? One line is plenty."*
+  - something broke: *"Got it. What were you doing when it happened, and what did you
+    expect to see?"*
+
+  **Ask only once.** Use their answer. If they decline or say "just file it," proceed
+  with exactly what you have — captured faithfully, never padded out. One clarification
+  is the limit; don't interrogate.
 
 ## Step 2 — Decide the type (silently)
 
