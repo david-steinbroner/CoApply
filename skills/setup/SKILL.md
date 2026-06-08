@@ -1,6 +1,6 @@
 ---
 name: setup
-description: Set up CoApply — copy profile templates, check billing, pick a budget tier.
+description: Set up CoApply — build your profile from your resume (or fill it in by hand), check billing, pick a budget tier. Also redoes an existing profile from a new resume. Triggers on "set me up", "set up from my resume", "redo my profile from my resume", "import my resume".
 ---
 
 # CoApply — first-time setup
@@ -49,9 +49,42 @@ echo "ALREADY PRESENT:"; echo "$before"
 
 Report to the user which files were **added** and which were **already present** (left as-is). If everything was already present, say so — nothing was overwritten.
 
-Then tell them what to fill in next:
+**Re-run check — don't push import at someone who's already set up.** See whether the profile is already filled in:
 
-> Open and fill in **`identity.md`**, **`skills-experience.md`**, and at least one file in **`resumes/`** — that's the minimum for a first run. Deepen `voice-profile.md`, `positioning-modes.md`, and the rest over time; every run gets better as the profile grows.
+```bash
+FILLED=yes
+{ [ -f "$PROFILE_DIR/identity.md" ] && [ -f "$PROFILE_DIR/skills-experience.md" ]; } || FILLED=no
+find "$PROFILE_DIR/resumes" -maxdepth 1 -name '*.md' 2>/dev/null | grep -q . || FILLED=no
+grep -qnE '<[A-Z][^>]*>' "$PROFILE_DIR/identity.md" "$PROFILE_DIR/skills-experience.md" 2>/dev/null && FILLED=no
+echo "FILLED=$FILLED"
+```
+
+- **`FILLED=yes`** (a re-run on an already-built profile): skip the import offer. Ask instead: *"Your profile's already filled in — want to rebuild it from a new resume, or are you good?"* Run the import flow (Step 1.5) only if they choose rebuild; otherwise continue to Step 2.
+- **`FILLED=no`** (first setup, or profile still has placeholders): make the offer below.
+
+Then point them to the fast path — building the profile from their resume — with hand-filling as the fallback:
+
+> The quickest way to fill these in is from your **resume**: paste it here or give me the file path, and I'll draft your profile from it — you'll see everything before I save a thing. I only use what's actually in your resume; where it's thin, I'll flag it instead of guessing. No resume handy? Tell me where you've worked and what you did, even roughly, and I'll build from that. Prefer to type it in yourself? Open **`identity.md`**, **`skills-experience.md`**, and one file in **`resumes/`** — that's the minimum for a first run; deepen the rest over time.
+
+## Step 1.5 — Set up from their resume (the fast path)
+
+Based on how they answer:
+
+In all of the resume/Q&A cases, read `${CLAUDE_PLUGIN_ROOT}/profile/prompts/onboarding/import-resume.md`
+and follow it exactly — it reads the resume (fail-closed sanity gate + reflect-back for garbled
+PDFs) **or** runs a short no-resume Q&A, drafts `identity.md` + `skills-experience.md` + one
+resume **verbatim, never embellished**, shows everything with the original lines beside the
+drafted ones, and writes only after the user types `SAVE`.
+
+- **They give a resume, or ask you to build from it** → run the import prompt's resume path.
+- **No resume handy** → run the import prompt's **Step 1b** (the short Q&A). Don't make a
+  resume mandatory — this is the path for career-changers and new grads.
+- **They want to skip for now** → soft fallback, never leave them staring at raw `<placeholder>`
+  files: *"No rush — come back and run `/coapply:setup` again whenever, or just paste your resume
+  here anytime and I'll build it then."* Then continue.
+
+When the import hands back (or they skip), continue to Step 2. Don't block setup on this —
+billing and tier below can be set either way.
 
 ## Step 2 — Billing check (live)
 
@@ -106,15 +139,26 @@ Offer this as clearly optional and **off by default** — most people skip it:
 
   Confirm it's saved and remind them application data will now be sent to Notion. They can remove `notion_db_id` from the config anytime to turn logging back off.
 
-## Step 6 — Done
+## Step 6 — Done (and, if the profile's ready, invite the first job)
 
-Tell them they're set:
+This is the activation moment — keep it last, with nothing after it.
 
-> All set. Once your profile is filled in, run `/coapply:start <job posting>` (a URL or pasted text) to begin.
+- **If the profile is filled in** (the resume import ran, or they hand-filled the minimum) —
+  invite the first application now, low-pressure, with a visible out, and mention the optional
+  voice step:
+  > You're all set. Paste a job link or description and I'll build your first application now —
+  > or say "done" and come back whenever. *(Optional, anytime: add a couple of things you've
+  > written, with `/coapply:add`, so letters sound like you.)*
+
+  If they paste a job, proceed as if they ran `/coapply:start` with it. If they say done, fine.
+- **If the profile isn't filled in yet** (they skipped):
+  > You're set up. When you're ready, build your profile from your resume by running
+  > `/coapply:setup` again, or fill in `identity.md`, `skills-experience.md`, and one resume by
+  > hand — then run `/coapply:start <job posting>`.
 
 Then add this short "good to know" so they're never surprised:
 
 > A couple of things worth knowing:
-> - Your work **saves automatically** — there's no save button. Every draft and profile edit is written to disk as it's made, so closing a window never loses it.
+> - Your profile edits **save automatically** — there's no save button; every change is written as it's made, so closing a window never loses it. (One exception: when you first set up from a resume, nothing's written until you review the draft and type **SAVE** — after that, edits auto-save like everything else.)
 > - You can run **as many applications in parallel as you want** — each gets its own folder.
 > - Just don't edit the **same** profile file in two windows at once (there's no merge — the last save wins).

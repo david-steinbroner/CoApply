@@ -5,10 +5,10 @@ CoApply generates applications from **your** material. These files are that mate
 ## Setup
 
 1. **Copy this folder** to your profile location (default: a `profile/` folder CoApply reads from — see the main README for where to point it).
-2. **Fill in each file** below. Replace every `<placeholder>` and the italic _instructions_. Delete guidance you don't need.
+2. **Set it up from your resume.** Run `/coapply:setup` and paste your resume (or give the file path) — CoApply drafts these files from it and shows you everything before saving. No resume? It'll ask about your experience instead. Prefer to do it by hand? Fill in each file below — replace every `<placeholder>` and the italic _instructions_, and delete guidance you don't need.
 3. **Run `/coapply:start <a job posting>`.** The more complete your profile, the better the output.
 
-> Tip: you don't have to fill everything in at once. Start with `skills-experience.md` and one resume variant — that's enough for a first run. Come back and deepen it; **the more you put in, the better CoApply gets.** (`/coapply:setup` copies these templates into your profile folder for you; a fuller guided interview is on the roadmap.)
+> Tip: you don't have to fill everything in at once. Setting up from your resume gets the essentials in fast; come back and deepen it anytime — **the more you put in, the better CoApply gets.**
 
 ## The files
 

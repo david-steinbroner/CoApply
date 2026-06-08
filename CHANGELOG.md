@@ -2,6 +2,40 @@
 
 All notable changes to CoApply. Versioned on the `plugin.json` version line.
 
+## [0.4.0] — 2026-06-08 — Guided onboarding: set up from your resume
+
+Setup used to be the wall: hand-author `identity.md`, `skills-experience.md`, and a resume
+from blank templates before your first run. Now you drop in your resume (or answer a few
+questions) and CoApply drafts your profile, shows you everything, and saves only when you
+type `SAVE`. Built per the review-hardened spec (private apply repo, onboarding-spec §16/§17).
+
+### Added
+- **Resume import (a sub-flow of `/coapply:setup`):** paste, or give a path to `.md` / `.txt`
+  / `.pdf` (Word → paste or export to PDF). It reads behind a fail-closed sanity gate and a
+  reflect-back that catches garbled multi-column PDFs, then drafts `identity.md` +
+  `skills-experience.md` + one resume **verbatim** — dates, titles, and employers copied
+  exactly, no embellishment, no title inflation. Missing numbers are marked `[GAP:]`, never
+  invented. `skills-experience.md` is bloat-capped (~800 words, recency-truncated) because the
+  profile is sent on every run.
+- **No-resume path:** a short Q&A builds the profile from a quick conversation — for
+  career-changers and new grads, so "anyone can use it" holds.
+- **One batch review, committed by typing `SAVE`:** each original resume line is shown beside
+  the drafted line so you can catch drift; nothing is written until `SAVE`; gaps surface
+  low-pressure ("only you know this") and never block "you're ready."
+- **First-run routing:** `/coapply:start` and `/coapply:add` run before setup now walk you
+  into setup instead of aborting; `start` distinguishes "not set up" / "saved folder broken" /
+  "profile not filled in."
+
+### Changed
+- `help`, `setup`, and the profile README lead with resume import; `setup` gains resume-import
+  triggers and an already-set-up re-run check.
+- New `scripts/resume-import.sh` (sanity gate, bloat check, atomic placeholder-neutralized
+  writes) + `audit.sh` §12 (field-agnostic prompt grep + helper tests).
+
+### Notes
+- Voice and positioning are deliberately **not** drafted from a resume — resume prose is
+  voiceless, and positioning is better suggested later from the resume↔job delta.
+
 ## [0.3.4] — 2026-06-08 — Feedback offers two paths
 
 Filing feedback shouldn't always cost a full draft. `/coapply:feedback` now asks how you

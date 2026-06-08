@@ -180,6 +180,35 @@ if grep -qi "fill this in" "$_fbk"; then note "FAIL: feedback skill reintroduced
 # Vague input must trigger a clarifying question, not an auto-generated issue.
 if grep -qi "clarifying question" "$_fbk"; then note "clean — clarify-when-vague step present."; else note "FAIL: feedback skill lost its clarify-when-vague step (would auto-file vague input)."; fail=1; fi
 
+section "12. resume-import (onboarding) — field-agnostic prompt + helper discipline"
+_imp=profile/prompts/onboarding/import-resume.md
+if [ -f "$_imp" ]; then note "clean — import prompt present."; else note "FAIL: import prompt missing."; fail=1; fi
+# §16.J: the import prompt is the highest field-leak risk in the engine — must pass the field grep.
+if grep -inE 'product manager|product-manager|pm-builder|pm-growth|fintech|growth pm|compliance pm' "$_imp" >/dev/null 2>&1; then
+  note "FAIL: import prompt contains field/PM assumptions — genericize."; fail=1
+else note "clean — import prompt is field-agnostic."; fi
+# §16.A/B: verbatim-extraction rule + [GAP:] markers must survive.
+grep -qi 'verbatim' "$_imp" && note "clean — verbatim-extraction rule present." || { note "FAIL: import prompt lost its verbatim rule."; fail=1; }
+grep -q '\[GAP:' "$_imp" && note "clean — [GAP:] marker convention present." || { note "FAIL: import prompt lost the [GAP:] markers."; fail=1; }
+# §16.M: the no-resume Q&A path keeps "anyone can use it" true for career-changers/new grads.
+grep -qi 'Step 1b\|no resume' "$_imp" && note "clean — no-resume Q&A path present." || { note "FAIL: import prompt lost the no-resume Q&A path."; fail=1; }
+# Helper: fail-closed sanity gate, bloat tiers, neutralizing atomic write.
+_ri=$(mktemp)
+printf 'hi there\n' > "$_ri"
+case "$(bash scripts/resume-import.sh sanity "$_ri")" in EMPTY*) note "clean — sanity flags near-empty input." ;; *) note "FAIL: sanity should flag near-empty as EMPTY."; fail=1 ;; esac
+# A SHORT but real resume (≈30 words, has keywords) must pass — new-grad/career-changer case.
+printf 'Jane Doe. Experience: Teacher at Lincoln High 2019-2023, taught biology. Education: BS Biology 2019. Skills: classroom management, lab safety, curriculum.\n' > "$_ri"
+case "$(bash scripts/resume-import.sh sanity "$_ri")" in OK*) note "clean — a short real resume passes (not bounced as too-short)." ;; *) note "FAIL: short real resume should pass."; fail=1 ;; esac
+# Real length, NO resume keywords (wrong paste / scrambled into non-resume text) -> NO_KEYWORDS.
+printf 'the quick brown fox jumped over %.0s' $(seq 1 10) > "$_ri"
+case "$(bash scripts/resume-import.sh sanity "$_ri")" in NO_KEYWORDS*) note "clean — non-resume text flagged NO_KEYWORDS." ;; *) note "FAIL: non-resume text should be NO_KEYWORDS."; fail=1 ;; esac
+printf 'w %.0s' $(seq 1 1100) > "$_ri"
+case "$(bash scripts/resume-import.sh wordcheck "$_ri")" in *OVER) note "clean — wordcheck flags bloat (>1000)." ;; *) note "FAIL: wordcheck should flag >1000 as OVER."; fail=1 ;; esac
+_rio="$(mktemp -d)/out.md"
+printf 'Built List<String>; <EMAIL> redacted\n' | bash scripts/resume-import.sh write "$_rio" >/dev/null 2>&1
+if grep -qE '<[A-Z][^>]*>' "$_rio"; then note "FAIL: write left <Xxx> tokens (would trip start preflight)."; fail=1; else note "clean — write neutralizes placeholder-shaped tokens."; fi
+rm -f "$_ri"; rm -rf "$(dirname "$_rio")"
+
 # A human-judgment gate the script CAN'T verify. Printed every run so it can't be skipped.
 section "Manual gate — confirm before you ship (not automatable)"
 note "[ ] Dogfooded every new/changed skill on a REALISTIC input — including a vague one — and read the output."

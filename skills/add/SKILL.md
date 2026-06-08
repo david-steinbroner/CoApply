@@ -15,9 +15,21 @@ say "playbook", "role binding", "few-shot", or other internals to the user.
 ```bash
 PROFILE_DIR="$("${CLAUDE_PLUGIN_ROOT}/scripts/resolve-profile-dir.sh")"
 echo "PROFILE_DIR=$PROFILE_DIR"
+if [ -z "$PROFILE_DIR" ]; then echo "STATE=not-set"
+elif [ ! -d "$PROFILE_DIR" ] || ! { touch "$PROFILE_DIR/.coapply_wtest" 2>/dev/null && rm -f "$PROFILE_DIR/.coapply_wtest"; }; then echo "STATE=bad-path"
+else echo "STATE=ok"; fi
 ```
 
-If empty, tell the user to run `/coapply:setup` first and stop.
+**Warm-route if it's not usable — don't dead-end:**
+- **`STATE=not-set`** (no Profile folder yet):
+  > Let's get you set up first — quick. **1.** Make a new empty folder, e.g. `~/coapply-profile`.
+  > **2.** Run `/plugin`, open **CoApply**, set **Profile folder** to it. **3.** Run **`/coapply:setup`**
+  > (you can build your profile from your resume). Then come back and tell me what to add.
+
+  Then stop.
+- **`STATE=bad-path`** (saved folder missing or not writable): tell them the saved Profile folder
+  isn't usable and to re-point it via `/plugin` → CoApply → **Profile folder**, then stop.
+- **`STATE=ok`** — continue.
 
 ## Step 1 — Get the content
 
