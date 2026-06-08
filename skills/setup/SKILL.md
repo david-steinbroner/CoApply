@@ -49,6 +49,19 @@ echo "ALREADY PRESENT:"; echo "$before"
 
 Report to the user which files were **added** and which were **already present** (left as-is). If everything was already present, say so — nothing was overwritten.
 
+**Re-run check — don't push import at someone who's already set up.** See whether the profile is already filled in:
+
+```bash
+FILLED=yes
+{ [ -f "$PROFILE_DIR/identity.md" ] && [ -f "$PROFILE_DIR/skills-experience.md" ]; } || FILLED=no
+find "$PROFILE_DIR/resumes" -maxdepth 1 -name '*.md' 2>/dev/null | grep -q . || FILLED=no
+grep -qnE '<[A-Z][^>]*>' "$PROFILE_DIR/identity.md" "$PROFILE_DIR/skills-experience.md" 2>/dev/null && FILLED=no
+echo "FILLED=$FILLED"
+```
+
+- **`FILLED=yes`** (a re-run on an already-built profile): skip the import offer. Ask instead: *"Your profile's already filled in — want to rebuild it from a new resume, or are you good?"* Run the import flow (Step 1.5) only if they choose rebuild; otherwise continue to Step 2.
+- **`FILLED=no`** (first setup, or profile still has placeholders): make the offer below.
+
 Then point them to the fast path — building the profile from their resume — with hand-filling as the fallback:
 
 > The quickest way to fill these in is from your **resume**: paste it here or give me the file path, and I'll draft your profile from it — you'll see everything before I save a thing. I only use what's actually in your resume; where it's thin, I'll flag it instead of guessing. No resume handy? Tell me where you've worked and what you did, even roughly, and I'll build from that. Prefer to type it in yourself? Open **`identity.md`**, **`skills-experience.md`**, and one file in **`resumes/`** — that's the minimum for a first run; deepen the rest over time.
@@ -57,19 +70,21 @@ Then point them to the fast path — building the profile from their resume — 
 
 Based on how they answer:
 
-- **They give a resume (pasted text or a file path), or ask you to build the profile from
-  it** → read `${CLAUDE_PLUGIN_ROOT}/profile/prompts/onboarding/import-resume.md` and follow
-  it exactly. It reads the resume (with a fail-closed sanity gate and a reflect-back for
-  garbled PDFs), drafts `identity.md` + `skills-experience.md` + one resume **verbatim, never
-  embellished**, shows the user everything with the original lines beside the drafted ones,
-  and writes only after they type `SAVE`. When it hands back, continue to Step 2.
-- **No resume** → a guided "tell me where you've worked" Q&A is the intended path *(coming in
-  this release)*; until it lands, help them fill `identity.md`, `skills-experience.md`, and one
-  `resumes/*.md` by hand, then continue.
-- **They'd rather fill it in themselves** → point them at those three files and continue.
+In all of the resume/Q&A cases, read `${CLAUDE_PLUGIN_ROOT}/profile/prompts/onboarding/import-resume.md`
+and follow it exactly — it reads the resume (fail-closed sanity gate + reflect-back for garbled
+PDFs) **or** runs a short no-resume Q&A, drafts `identity.md` + `skills-experience.md` + one
+resume **verbatim, never embellished**, shows everything with the original lines beside the
+drafted ones, and writes only after the user types `SAVE`.
 
-Don't block setup on this — billing and tier below can be set regardless of whether the
-profile is filled in yet.
+- **They give a resume, or ask you to build from it** → run the import prompt's resume path.
+- **No resume handy** → run the import prompt's **Step 1b** (the short Q&A). Don't make a
+  resume mandatory — this is the path for career-changers and new grads.
+- **They want to skip for now** → soft fallback, never leave them staring at raw `<placeholder>`
+  files: *"No rush — come back and run `/coapply:setup` again whenever, or just paste your resume
+  here anytime and I'll build it then."* Then continue.
+
+When the import hands back (or they skip), continue to Step 2. Don't block setup on this —
+billing and tier below can be set either way.
 
 ## Step 2 — Billing check (live)
 

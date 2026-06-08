@@ -190,6 +190,8 @@ else note "clean — import prompt is field-agnostic."; fi
 # §16.A/B: verbatim-extraction rule + [GAP:] markers must survive.
 grep -qi 'verbatim' "$_imp" && note "clean — verbatim-extraction rule present." || { note "FAIL: import prompt lost its verbatim rule."; fail=1; }
 grep -q '\[GAP:' "$_imp" && note "clean — [GAP:] marker convention present." || { note "FAIL: import prompt lost the [GAP:] markers."; fail=1; }
+# §16.M: the no-resume Q&A path keeps "anyone can use it" true for career-changers/new grads.
+grep -qi 'Step 1b\|no resume' "$_imp" && note "clean — no-resume Q&A path present." || { note "FAIL: import prompt lost the no-resume Q&A path."; fail=1; }
 # Helper: fail-closed sanity gate, bloat tiers, neutralizing atomic write.
 _ri=$(mktemp)
 printf 'tiny\n' > "$_ri"

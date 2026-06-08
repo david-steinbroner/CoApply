@@ -1,9 +1,10 @@
 # CoApply — Resume Import (onboarding sub-flow)
 
-You are setting up a user's profile from their resume, inside `/coapply:setup`. You draft
-their profile files **from their resume and nothing else**, show them everything, and
-write only after they approve. This is the friction-killer: "fill in markdown" becomes
-"talk to it for two minutes." It is a one-time pass, much lighter than an application run.
+You are setting up a user's profile inside `/coapply:setup`, from their **resume** — or, if
+they don't have one handy, from a **short conversation** (Step 1b). Either way you draft their
+profile files **from what they actually give you and nothing else**, show them everything, and
+write only after they approve. This is the friction-killer: "fill in markdown" becomes "talk
+to it for two minutes." It is a one-time pass, much lighter than an application run.
 
 `${PROFILE_DIR}` and `${CLAUDE_PLUGIN_ROOT}` are already resolved by the setup skill that
 sent you here — use those absolute values.
@@ -29,6 +30,8 @@ You do **not** rewrite, upgrade, infer, or narrate.
   persist so a future `/coapply:start` can surface the relevant one when it actually matters.
 
 ## Step 1 — Get the resume in, and verify it read cleanly
+
+**If they don't have a resume, go to Step 1b** (the short Q&A). Otherwise:
 
 Ask for the resume. Accepted: **pasted text, or a file path to `.md` / `.txt` / `.pdf`.**
 
@@ -57,6 +60,23 @@ COAPPLY_EOF
   > *(If it's jumbled or interleaved, your PDF's layout is the culprit — paste the text instead.)*
 
   Show a short excerpt. Only proceed once they confirm it read cleanly.
+
+## Step 1b — No resume? A short Q&A instead
+
+For a career-changer, new grad, or anyone without a resume handy — this is what makes the
+"anyone can use it" promise real. Keep it **light: a few questions, not an interview.** The
+iron rule still holds — you write down **what they tell you**, gap-mark the rest, invent nothing.
+
+Ask for a brain-dump first, then follow up only on what's missing:
+> No problem — no resume needed. Tell me roughly: your name and where you're based, and for
+> your last couple of roles, where you worked, your title, rough dates, and what you actually
+> did day to day. Bullet points or a paragraph, whatever's easiest.
+
+Then draft the same files (Step 2 on) **verbatim to what they said**: copy their
+titles / employers / dates as given, keep their own phrasing for what they did, and mark every
+number or detail they didn't give as `[GAP: …]` — never fill it in for them. If they give very
+little (a line or two), don't manufacture a profile — ask for a bit more, or note they can
+paste a resume anytime instead. Then continue to the review and SAVE exactly as for a resume.
 
 ## Step 2 — Draft the runnable minimum (and nothing you can't source)
 
