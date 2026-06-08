@@ -23,13 +23,8 @@ Then give the user a short, friendly orientation. Keep it concise and plain; ada
 Lead with this for anyone new — it's the path that can't faceplant:
 
 1. **Set your Profile folder:** `/plugin` → CoApply → Profile folder → pick any empty folder. (CoApply writes *as you*, so it needs a home for your details — and it stays on your machine.)
-2. **Run `/coapply:setup`** — adds your starter files and helps you pick a budget.
-3. **Fill in 3 files so it sounds like you, not a template:**
-   - `identity.md` — who you are
-   - `skills-experience.md` — your wins, with real numbers
-   - one resume in `resumes/`
-   - ~5 minutes; the more you add, the sharper every letter.
-4. **Run `/coapply:start <job link or text>`** — it researches, shows you a fit score to approve, then writes your package.
+2. **Run `/coapply:setup` and set up from your resume.** Paste it or give the file path, and CoApply drafts your profile from it — you review everything before it saves. No resume? Tell it where you've worked and it builds from that. (Prefer to type it in yourself? You still can.)
+3. **Run `/coapply:start <job link or text>`** — it researches, shows you a fit score to approve, then writes your package.
 
 ## What CoApply is
 

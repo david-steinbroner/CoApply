@@ -1,6 +1,6 @@
 ---
 name: setup
-description: Set up CoApply — copy profile templates, check billing, pick a budget tier.
+description: Set up CoApply — build your profile from your resume (or fill it in by hand), check billing, pick a budget tier. Also redoes an existing profile from a new resume. Triggers on "set me up", "set up from my resume", "redo my profile from my resume", "import my resume".
 ---
 
 # CoApply — first-time setup
@@ -49,9 +49,9 @@ echo "ALREADY PRESENT:"; echo "$before"
 
 Report to the user which files were **added** and which were **already present** (left as-is). If everything was already present, say so — nothing was overwritten.
 
-Then tell them what to fill in next:
+Then point them to the fast path — building the profile from their resume — with hand-filling as the fallback:
 
-> Open and fill in **`identity.md`**, **`skills-experience.md`**, and at least one file in **`resumes/`** — that's the minimum for a first run. Deepen `voice-profile.md`, `positioning-modes.md`, and the rest over time; every run gets better as the profile grows.
+> The quickest way to fill these in is from your **resume**: paste it here or give me the file path, and I'll draft your profile from it — you'll see everything before I save a thing. No resume handy? Tell me where you've worked and what you did, even roughly, and I'll build from that. Prefer to type it in yourself? Open **`identity.md`**, **`skills-experience.md`**, and one file in **`resumes/`** — that's the minimum for a first run; deepen the rest over time.
 
 ## Step 2 — Billing check (live)
 
@@ -115,6 +115,6 @@ Tell them they're set:
 Then add this short "good to know" so they're never surprised:
 
 > A couple of things worth knowing:
-> - Your work **saves automatically** — there's no save button. Every draft and profile edit is written to disk as it's made, so closing a window never loses it.
+> - Your profile edits **save automatically** — there's no save button; every change is written as it's made, so closing a window never loses it. (One exception: when you first set up from a resume, nothing's written until you review the draft and type **SAVE** — after that, edits auto-save like everything else.)
 > - You can run **as many applications in parallel as you want** — each gets its own folder.
 > - Just don't edit the **same** profile file in two windows at once (there's no merge — the last save wins).
