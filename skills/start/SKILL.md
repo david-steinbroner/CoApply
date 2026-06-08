@@ -24,7 +24,45 @@ echo "PROFILE_DIR=$PROFILE_DIR"
 echo "RUNS_DIR=${APPLY_RUNS_DIR:-$PROFILE_DIR/runs}"
 ```
 
-- **`${PROFILE_DIR}`** — the user's profile folder. **If it is empty, abort:** "CoApply isn't configured yet. Run `/plugin`, open CoApply, and set your **Profile folder** — point it at the folder containing your identity.md, skills-experience.md, resumes/, etc."
+**First-run routing — warm route, never a raw abort.** Before anything else, resolve the
+folder state and the runnable state, and respond accordingly. A user who runs
+`/coapply:start` before they've set up should be walked into setup, not hit a dead end.
+
+```bash
+if [ -z "$PROFILE_DIR" ]; then echo "STATE=not-set"
+elif [ ! -d "$PROFILE_DIR" ] || ! { touch "$PROFILE_DIR/.coapply_wtest" 2>/dev/null && rm -f "$PROFILE_DIR/.coapply_wtest"; }; then echo "STATE=bad-path"
+else
+  MISSING=""
+  [ -f "$PROFILE_DIR/identity.md" ] || MISSING="$MISSING identity.md"
+  [ -f "$PROFILE_DIR/skills-experience.md" ] || MISSING="$MISSING skills-experience.md"
+  find "$PROFILE_DIR/resumes" -maxdepth 1 -name '*.md' 2>/dev/null | grep -q . || MISSING="$MISSING a-resume"
+  grep -qnE '<[A-Z][^>]*>' "$PROFILE_DIR/identity.md" "$PROFILE_DIR/skills-experience.md" 2>/dev/null && MISSING="$MISSING unfilled-placeholders"
+  [ -n "$MISSING" ] && echo "STATE=not-ready MISSING=$MISSING" || echo "STATE=ok"
+fi
+```
+
+- **`STATE=not-set`** (no Profile folder yet) — the one step CoApply can't do for them (it's
+  the `/plugin` GUI). Give a numbered path with a return cue, not a bare error:
+  > Let's get you set up first — quick. **1.** Make a new empty folder, e.g. `~/coapply-profile`.
+  > **2.** Run `/plugin`, open **CoApply**, set **Profile folder** to that path. **3.** Run
+  > **`/coapply:setup`** — you can build your whole profile from your resume in about two minutes.
+  > Then re-run `/coapply:start` with this job and I'll pick up right here.
+
+  Then stop.
+- **`STATE=bad-path`** (a saved path that's missing or not writable — *different* from not-set):
+  > Your saved Profile folder (`${PROFILE_DIR}`) isn't there or isn't writable anymore. Re-point
+  > it via `/plugin` → CoApply → **Profile folder** (or recreate that folder), then re-run `/coapply:start`.
+
+  Then stop.
+- **`STATE=not-ready`** (folder is fine, profile isn't filled in — `$MISSING` says what's
+  absent) — warm-route into setup; don't cold-abort over a missing file:
+  > Your profile isn't finished yet (missing: `<the MISSING list, in plain words>`). Run
+  > **`/coapply:setup`** and I'll build it from your resume in a couple of minutes — then re-run
+  > `/coapply:start` with this job.
+
+  Then stop.
+- **`STATE=ok`** — continue.
+
 - **`${RUNS_DIR}`** — where output is written; defaults to `${PROFILE_DIR}/runs`. Create it if it doesn't exist (`mkdir -p`).
 
 From here on use these absolute values, and substitute them into every subagent prompt and Task dispatch.
@@ -51,19 +89,16 @@ $ARGUMENTS contains one of:
 
 If URL: canonicalize it (lowercase hostname, strip `www.`, strip query string and fragment) BEFORE any downstream use (hashing, dedup, routing).
 
-## Step 2 — Pre-flight checks (abort fast if any fail)
+## Step 2 — Pre-flight checks
 
-Run these, fail fast with clear error messages:
+Step 0's first-run routing already gated profile *readiness* (identity, skills-experience,
+a resume, no placeholders) — so by here the profile is filled in. These remaining checks
+cover infrastructure and a soft quality nudge.
 
-1. `${PROFILE_DIR}/identity.md` exists (the token source from Step 0). If missing, abort with the "not configured" message above.
-2. Write access to `${RUNS_DIR}` (Bash: `mkdir -p "${RUNS_DIR}" && touch "${RUNS_DIR}/.preflight" && rm "${RUNS_DIR}/.preflight"`).
-3. Master prompt exists: `${CLAUDE_PLUGIN_ROOT}/profile/prompts/master-apply.md`.
-4. Required profile files exist: `${PROFILE_DIR}/{skills-experience.md,positioning-modes.md,voice-profile.md}`. (`portfolio-links.md` and `principles.md` are optional — do not abort if absent.)
-5. At least one resume variant exists in `${PROFILE_DIR}/resumes/` (Bash: confirm it contains at least one `*.md`).
-6. **No leftover template placeholders:** grep `identity.md` and `skills-experience.md` for unfilled template tokens — angle-bracket tokens that start with a capital letter (`grep -nE '<[A-Z][^>]*>'`), which catches `<Your Name>`, `<Company>`, `<City, ST...>` without false-tripping on lowercase HTML like `<br>` or comparisons like `< 5`. If found, abort: "Your profile still has template placeholders (e.g. `<Your Name>`). Fill them in first — run `/coapply:setup` if you haven't set up yet."
-7. **Profile depth (soft — warn, don't abort):** if `skills-experience.md` is very thin (under ~250 words) or has no quantified detail (no digits / `%` / `$`), warn before proceeding: "Heads up — your skills-experience.md looks brief. CoApply writes best from specific, quantified stories; a thin profile tends to produce a generic letter. Add more detail for a stronger result, or continue as-is?" Continue if the user wants; this is guidance, not a blocker.
-
-If any check fails, abort and tell the user exactly which file/path is missing.
+1. **Write access to `${RUNS_DIR}`** (Bash: `mkdir -p "${RUNS_DIR}" && touch "${RUNS_DIR}/.preflight" && rm "${RUNS_DIR}/.preflight"`). If this fails, report the exact path and stop.
+2. **Master prompt exists:** `${CLAUDE_PLUGIN_ROOT}/profile/prompts/master-apply.md`. If missing, report it (an engine problem, not a user one) and stop.
+3. **Required profile files exist:** `${PROFILE_DIR}/{positioning-modes.md,voice-profile.md}` (templates from setup count). (`portfolio-links.md` and `principles.md` are optional — don't abort if absent.) If either is somehow missing, **warm-route, don't cold-abort:** "Your profile's missing `<file>` — run `/coapply:setup` to restore it (it can rebuild from your resume), then re-run." Then stop.
+4. **Profile depth (soft — warn, don't abort):** if `skills-experience.md` is very thin (under ~250 words) or has no quantified detail (no digits / `%` / `$`), warn before proceeding: "Heads up — your skills-experience.md looks brief. CoApply writes best from specific, quantified stories; a thin profile tends to produce a generic letter. Add more detail for a stronger result, or continue as-is?" Continue if the user wants; this is guidance, not a blocker.
 
 ## Step 3 — Source routing
 
