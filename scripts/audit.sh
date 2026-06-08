@@ -169,5 +169,23 @@ _fb_none=$(bash scripts/feedback-context.sh context "$_fb_p" "nonexistent")
 if ! printf '%s' "$_fb_none" | grep -q 'Run:'; then note "clean — unknown run slug omits the run block."; else note "FAIL: phantom run block: [$_fb_none]"; fail=1; fi
 rm -rf "$_fb_p" "$_fb_bf"
 
+section "11. feedback skill — no-fabrication discipline intact"
+# The feedback skill turns a user's words into a GitHub issue. It must capture what the
+# user said, never compose content they didn't (a 2026-06-08 regression filled empty
+# 'Why it matters'/'How I imagine it working' sections with invented rationale). Guard
+# both the rule's presence and the absence of the empty-section scaffolding that invited it.
+_fbk=skills/feedback/SKILL.md
+if grep -qi "capture, don't compose" "$_fbk"; then note "clean — capture-don't-compose rule present."; else note "FAIL: feedback skill lost its no-fabrication rule."; fail=1; fi
+if grep -qi "fill this in" "$_fbk"; then note "FAIL: feedback skill reintroduced 'fill this in' empty-section scaffolding (invites fabrication)."; fail=1; else note "clean — no empty-section fill-in scaffolding."; fi
+
+# A human-judgment gate the script CAN'T verify. Printed every run so it can't be skipped.
+section "Manual gate — confirm before you ship (not automatable)"
+note "[ ] Dogfooded every new/changed skill on a REALISTIC input — including a vague one — and read the output."
+note "[ ] Premise check on anything user-facing (CoApply never fabricates, never acts for the user):"
+note "      - Does it put words in the user's mouth / add content they didn't give?"
+note "      - Does it act for the user (submit / send / decide) instead of letting them decide?"
+note "      - Does it use or expose their private material beyond what's shown to them?"
+note "    Any 'yes' = not ready. Fix it before shipping."
+
 section "Result"
-if [ "$fail" = 0 ]; then echo "PASS — safe to release."; exit 0; else echo "FAIL — fix the items above before releasing."; exit 1; fi
+if [ "$fail" = 0 ]; then echo "PASS (automated) — now clear the manual gate above before releasing."; exit 0; else echo "FAIL — fix the items above before releasing."; exit 1; fi

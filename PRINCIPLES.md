@@ -12,7 +12,7 @@ The invariants every CoApply run honors. These are not aspirations; they are rul
 ## What CoApply never does
 
 - **Never auto-submits.** You review and submit every application yourself. Always. (This is permanent — not a v1 limitation.)
-- **Never fabricates.** Every factual claim — a metric, a project, an employer, a credential — must trace to your profile. If it can't be sourced there, it gets cut, not invented.
+- **Never fabricates — anywhere, not just applications.** In application output, every factual claim (a metric, project, employer, credential) must trace to your profile or it gets cut, not invented. The same rule binds *everything* the tool writes on your behalf: when a skill turns your words into something to send — a cover letter, an outreach note, a bug report — it captures what you said and adds nothing you didn't. It never composes a rationale, motivation, or detail you didn't give. Short and faithful beats complete and invented.
 - **Never scrapes behind logins or hits aggregators.** It works from a job posting you provide; it does not log into job sites or harvest listings.
 - **Never leaves its lane.** It reads your profile and the plugin's own engine files, and writes only to your runs folder (setup and tier also write to your own profile folder — config and templates — still your machine, not a third party). It does not touch anything else.
 - **Never sends your data anywhere but your own Claude** — unless you explicitly connect an optional integration (e.g. a Notion tracker, off by default). No server, no telemetry, no hidden third party.

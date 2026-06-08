@@ -2,6 +2,29 @@
 
 All notable changes to CoApply. Versioned on the `plugin.json` version line.
 
+## [0.3.2] — 2026-06-08 — Feedback skill stops fabricating
+
+The 0.3.0 feedback skill turned a one-line gripe into an invented feature proposal —
+filling empty "Why it matters" / "How I imagine it working" sections with rationale and
+solutions the user never said. That breaks CoApply's core premise (never fabricate) and
+poisons the signal the feature exists to collect. Fixed by removing the structure that
+invited it, not just by asking the model to behave.
+
+### Fixed
+- **`/coapply:feedback` now captures, doesn't compose.** The issue is the user's own
+  words (typo-cleaned) plus the script-collected context — nothing else. Optional
+  sections appear only if the user actually gave that information; empty sections and
+  `(fill this in)` placeholders are gone, so there's nothing to invent. Added an explicit
+  no-fabrication rule, a faithful title rule (restate, don't reframe), and a self-check.
+
+### Changed
+- **`scripts/audit.sh`** gains a regression guard (the feedback skill must keep the
+  capture-don't-compose rule and must not reintroduce fill-in scaffolding) and an
+  always-printed **manual gate**: dogfood every new/changed skill on a realistic input,
+  and run three premise questions (fabricates? acts for the user? exposes private data?).
+- **`PRINCIPLES.md`** — "Never fabricates" now covers everything the tool writes on your
+  behalf, not just application output.
+
 ## [0.3.1] — 2026-06-08 — Clearer update path
 
 After updating, plugins only load on a fresh session — so a running session keeps

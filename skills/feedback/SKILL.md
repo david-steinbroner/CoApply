@@ -13,6 +13,20 @@ prefilled link, so they don't have to write boilerplate or remember what to incl
 Same drafts-you-decide ethos as the application gate. Keep this fast and cheap — don't
 interrogate them; one short question at most, then produce the issue.
 
+## The core rule: capture, don't compose
+
+CoApply never fabricates — that is the whole product. This skill must hold to it. **The
+issue may contain only what the user actually told you, plus the context the script
+collects.** Do not invent a motivation, an impact, a rationale, or a proposed solution
+they did not say. Do not add sections to "round it out" or make the report look more
+complete. If they gave you one vague sentence, the issue is that one sentence plus the
+context block — short and honest is correct, and *required*.
+
+Why this is non-negotiable here: this feature exists to collect honest signal for the
+maintainer. If you embellish, you hand them a confident proposal no user actually made,
+and they make decisions on a lie. A faithful one-line gripe is worth more than a
+polished paragraph you wrote.
+
 ## What you must never include
 
 Only ever include the context the script collects (version, OS, tier, run phase) and
@@ -59,54 +73,57 @@ when one is relevant: `ls -1t "$PROFILE_DIR/runs" 2>/dev/null | grep -v '^\.' | 
 
 Show the user this context block as-is — no hidden diagnostics.
 
-## Step 4 — Assemble the issue and show it
+## Step 4 — Assemble the issue (capture, don't compose)
 
-Write a short, specific **title** (≤ 70 chars, no "Bug:"/"Idea:" prefix — the label
-carries that). Then build the **body** from the template for the type, slotting the
-user's words into the right sections. **Where they didn't cover a section, keep the
-heading and leave a `_(fill this in — e.g. …)_` prompt** so they know exactly what to
-add. Append the context block from Step 3 verbatim.
+Build the issue from the user's words and nothing else. There are no empty sections to
+fill — a section appears **only if the user actually gave you that information.**
 
-**Bug body:**
+- **Title:** a short, plain restatement of what they said (≤ 70 chars, no "Bug:"/"Idea:"
+  prefix). Not a reframe, not a proposed fix. If they said "I don't understand how to use
+  it," the title is "Hard to understand how to use it" — never "Add a guided onboarding
+  flow."
+- **Body:** their words, lightly cleaned for typos/grammar only — keep their meaning and
+  voice. Then the context block from Step 3.
+
+A **bug** with just "What happened" + Environment is a complete, valid issue:
 
 ```markdown
 **What happened**
-<their description, or _(fill this in — one or two sentences)_>
-
-**What I was doing**
-<the command / step, e.g. `/coapply:start <url>`, at the gate, during setup — or _(fill this in)_>
-
-**What I expected vs. what happened**
-<expected → actual, or _(fill this in)_>
-
-**Steps to reproduce** _(optional)_
-<numbered steps, or delete this section>
+<their words, cleaned for typos only>
 
 **Environment**
 <the context block from Step 3>
-
----
-- [ ] I've kept my profile, letter text, and any secrets out of this report.
 ```
 
-**Idea body:**
+Add **What I was doing**, **What I expected vs. happened**, or **Steps to reproduce**
+beneath "What happened" *only if the user actually told you those things.* If they
+didn't, leave them out — no heading, no placeholder, no inference.
+
+An **idea** with just "What I'd like" + Environment is likewise complete:
 
 ```markdown
 **What I'd like**
-<their idea, or _(fill this in — the capability or change)_>
-
-**Why it matters**
-<the problem it solves, or _(fill this in)_>
-
-**How I imagine it working** _(optional)_
-<rough sketch, or delete this section>
+<their words, cleaned for typos only>
 
 **Environment**
 <CoApply version + OS from the context block>
 ```
 
+Add **Why it matters** *only if they said why*, and **How I imagine it working** *only if
+they proposed how*. Never write a rationale or a solution they didn't give.
+
+After "Environment", append one plain invite (this is a prompt to the user, not a
+fabricated section):
+
+> _Want to add anything before filing — what you were doing, what you expected, or any
+> detail? Or send it as-is._
+
 Show the user the **complete title + body** in a single copy-paste block. This is the
 primary artifact — it works even if the link below is too long for the browser.
+
+**Self-check before you show it:** reread your draft against what the user actually
+wrote. If any sentence isn't grounded in their words or the script's context block,
+delete it. When in doubt, leave it out.
 
 ## Step 5 — The links (one Bash call)
 
