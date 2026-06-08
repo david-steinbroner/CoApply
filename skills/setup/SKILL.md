@@ -51,7 +51,7 @@ Report to the user which files were **added** and which were **already present**
 
 Then point them to the fast path — building the profile from their resume — with hand-filling as the fallback:
 
-> The quickest way to fill these in is from your **resume**: paste it here or give me the file path, and I'll draft your profile from it — you'll see everything before I save a thing. No resume handy? Tell me where you've worked and what you did, even roughly, and I'll build from that. Prefer to type it in yourself? Open **`identity.md`**, **`skills-experience.md`**, and one file in **`resumes/`** — that's the minimum for a first run; deepen the rest over time.
+> The quickest way to fill these in is from your **resume**: paste it here or give me the file path, and I'll draft your profile from it — you'll see everything before I save a thing. I only use what's actually in your resume; where it's thin, I'll flag it instead of guessing. No resume handy? Tell me where you've worked and what you did, even roughly, and I'll build from that. Prefer to type it in yourself? Open **`identity.md`**, **`skills-experience.md`**, and one file in **`resumes/`** — that's the minimum for a first run; deepen the rest over time.
 
 ## Step 1.5 — Set up from their resume (the fast path)
 
@@ -124,11 +124,22 @@ Offer this as clearly optional and **off by default** — most people skip it:
 
   Confirm it's saved and remind them application data will now be sent to Notion. They can remove `notion_db_id` from the config anytime to turn logging back off.
 
-## Step 6 — Done
+## Step 6 — Done (and, if the profile's ready, invite the first job)
 
-Tell them they're set:
+This is the activation moment — keep it last, with nothing after it.
 
-> All set. Once your profile is filled in, run `/coapply:start <job posting>` (a URL or pasted text) to begin.
+- **If the profile is filled in** (the resume import ran, or they hand-filled the minimum) —
+  invite the first application now, low-pressure, with a visible out, and mention the optional
+  voice step:
+  > You're all set. Paste a job link or description and I'll build your first application now —
+  > or say "done" and come back whenever. *(Optional, anytime: add a couple of things you've
+  > written, with `/coapply:add`, so letters sound like you.)*
+
+  If they paste a job, proceed as if they ran `/coapply:start` with it. If they say done, fine.
+- **If the profile isn't filled in yet** (they skipped):
+  > You're set up. When you're ready, build your profile from your resume by running
+  > `/coapply:setup` again, or fill in `identity.md`, `skills-experience.md`, and one resume by
+  > hand — then run `/coapply:start <job posting>`.
 
 Then add this short "good to know" so they're never surprised:
 

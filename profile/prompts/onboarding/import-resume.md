@@ -100,19 +100,40 @@ printf '%s' "<the drafted skills-experience.md>" > "$TMP"
   re-check before presenting. `HIGH` (800–1000) → trim if you easily can.
 - `OK` → present.
 
-## Step 4 — Show everything, then write only on `SAVE`
+## Step 4 — Show everything in one review, then write only on `SAVE`
 
-Present one scannable review (the setup flow handles the polished wording). It must:
-- Show `identity.md` fields, flagging anything **inferred**.
-- Show `skills-experience.md` with **each original resume line above the drafted line**, so
-  the user can catch any drift — a subtle hallucination is invisible without the source beside it.
-- Name the gap count plainly, low-pressure ("fill anytime or leave them"), and say once why
-  the blanks are deliberate: *"I left those blank on purpose — a made-up number is worse than
-  an honest gap."*
-- State the persistence rule: *"Until you type SAVE, this is just a draft here in our chat —
-  nothing's written yet. Type **SAVE** to write it to your profile; after that, changes save themselves."*
+Present **one** scannable review — not a per-file gate (that kills momentum and breeds
+rubber-stamping). Use this shape (fill the brackets from the actual draft):
 
-The commit action is **typing `SAVE`** (not Enter / "y") — a deliberate act, not a reflex.
+> Here's your profile, drafted from your resume. Anything I inferred is marked. Your
+> experience shows your original lines next to what I saved, so you can check nothing drifted.
+>
+> **Who you are**
+> - Name: `<name>`
+> - Location: `<location, or "none on your resume">`
+> - Targeting: `<roles>` *(inferred from your recent titles — change it if you're aiming elsewhere)*
+> - Portfolio: `<link, or "none on your resume — add one if you have it">`
+>
+> **Your experience** — `<N>` roles, `<M>` projects. Your resume's own words, with a blank
+> where it didn't give a number (only you know those):
+> - *`<project>`* — "`<original resume line>`" → outcome: **[you]**
+> - …
+> _I left those blanks on purpose — I could guess a number, but a made-up metric is worse than an honest gap._
+>
+> **Your resume** — saved as `<name>.md`, your wording kept as-is.
+>
+> Until you type SAVE, this is just a draft here in our chat — nothing's written yet. Reply
+> with any fixes, or type **SAVE** to write these to your profile (after that, anything you change saves itself).
+
+Rules for this review (do not skip):
+- Show **each original resume line beside the drafted line** for experience — a subtle drift
+  is invisible without the source next to it. "Scannable" must never mean the saved content was hidden.
+- Flag every **inferred** field; never present an inference as asserted fact.
+- Frame gaps as *"only you know this"* (insider knowledge) — never *"your resume doesn't have
+  this"* (reads as the tool failing). Name the deliberate-blank restraint **once**, not per line.
+- The commit action is **typing `SAVE`** (not Enter / "y") — a deliberate act, not a reflex.
+- If they're cut off before SAVE, nothing's lost on their end — the resume is the durable
+  source, so recovery is just re-importing. Say so if it comes up; don't build a resume-state file.
 
 **On `SAVE`**, write each file atomically through the helper (it neutralizes any `<[A-Z]…>`
 token and writes via tmp+`mv`, so a run is never half-written and the next `/coapply:start`
@@ -134,10 +155,21 @@ rm -f "$TMP"
   overwrite on an explicit yes. For a resume filename collision, offer a suffixed name instead.
 - A bare template (only placeholders) is safe to overwrite.
 
-## Step 5 — Hand back
+## Step 5 — After SAVE: confirm ready, surface gaps, hand back
 
-Tell the user it's saved and they're ready. The setup flow continues from here (the "you're
-ready" + first-job invitation is handled there). Do not draft positioning or voice now.
+Once the files are written, give the profile-ready message — celebrate the runnable minimum,
+surface gaps without pressure, and hand back to setup (which finishes billing/tier and then
+invites the first job):
+
+> Saved — your profile's ready. `<N>` spots would make your letters stronger when you get to
+> them (`<short, specific list, e.g. "a result for the billing migration, a number for the
+> volunteer-program growth">`). They're noted in your profile — fill them anytime by telling
+> me, or leave them.
+
+Then return control to the setup flow. **Do not** draft `positioning-modes.md` or
+`voice-profile.md` (positioning is suggested later from the resume↔job delta; voice is asked
+for, never extracted from a resume), and **do not** invite the first job here — setup's final
+step does that once the tier is set, so the "paste a job" moment lands last with nothing after it.
 
 ## Security & honesty
 
