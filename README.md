@@ -133,6 +133,27 @@ So you always get the newest version *and* keep everything you've written.
 
 ---
 
+## Optional: fewer permission prompts
+
+A run does real work on your machine (creating your run folder, writing your application files, fetching the public job posting), so Claude Code asks permission before each such step. That's the right default — but if the "allow?" prompts get repetitive, you can pre-approve the safe commands CoApply uses. For security, a plugin can't grant these itself; you opt in by adding them to your own `~/.claude/settings.json`:
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir:*)",
+      "Bash(cp:*)",
+      "Bash(mv:*)",
+      "Bash(touch:*)",
+      "Bash(python3:*)",
+      "Bash(curl:*)"
+    ]
+  }
+}
+```
+
+Read-only commands (`cat`, `ls`, `grep`, `find`) already run without prompting, so they're not listed. This is entirely optional — leaving it off just means more confirmations, never less safety. Tighten or trim the list to your comfort.
+
 ## Making it your own (optional)
 
 CoApply works great out of the box. When you want to tweak it:

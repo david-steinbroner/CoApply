@@ -2,6 +2,22 @@
 
 All notable changes to CoApply. Versioned on the `plugin.json` version line.
 
+## [0.4.3] — 2026-06-08 — Docs: cut the permission-prompt friction
+
+Dogfooding surfaced how often a run asks "allow?" for its own write/fetch steps. A plugin
+can't grant permissions itself (a deliberate Claude Code security boundary), so the README
+now documents an optional allowlist users can add to their own settings.
+
+### Added
+- **README "Optional: fewer permission prompts"** — an opt-in `permissions.allow` block for
+  the safe commands CoApply uses (`mkdir`/`cp`/`mv`/`touch`/`python3`/`curl`), noting that
+  read-only commands already run without prompting. Entirely optional; never reduces safety.
+
+### Known follow-up
+- Some calls are compound (e.g. `X="$(…script.sh)"`) and a few are Write-tool file creations,
+  which allowlist rules match poorly. Fully minimizing prompts needs a later pass to simplify
+  those calls — tracked, not in this release.
+
 ## [0.4.2] — 2026-06-08 — Import leaves unfilled identity fields blank, not masked
 
 Dogfooding a real resume + SAVE surfaced a bug: identity fields the resume didn't provide
