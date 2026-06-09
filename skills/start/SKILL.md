@@ -16,30 +16,23 @@ You are orchestrating a job application package for the user. The input is in `$
 
 `${CLAUDE_PLUGIN_ROOT}` is substituted to the real install path in this skill — so the line above already shows the real absolute base. Use that resolved value, and substitute it wherever any engine file you later read shows `${CLAUDE_PLUGIN_ROOT}`. Subagents cannot resolve the variable, so always hand them the real absolute path.
 
-**User paths.** Resolve these with one Bash call. The resolver reads your saved profile folder from the plugin config — it checks `$CLAUDE_PLUGIN_OPTION_PROFILE_DIR` first, then falls back to `settings.json`, because that env var is NOT exported into skill Bash calls (only into plugin subprocesses):
+**User paths + first-run routing — one Bash call.** Resolve the profile folder *and* its readiness with a single call. Run it **bare** — capturing it in `VAR="$(…)"` can't be allowlisted, so it would prompt on every run. The script resolves your saved profile folder (it checks `$CLAUDE_PLUGIN_OPTION_PROFILE_DIR` first, then falls back to `settings.json`, because that env var is NOT exported into skill Bash calls — only into plugin subprocesses), then probes the folder:
 
 ```bash
-PROFILE_DIR="$("${CLAUDE_PLUGIN_ROOT}/scripts/resolve-profile-dir.sh")"
-echo "PROFILE_DIR=$PROFILE_DIR"
-echo "RUNS_DIR=${APPLY_RUNS_DIR:-$PROFILE_DIR/runs}"
+"${CLAUDE_PLUGIN_ROOT}/scripts/profile-status.sh"
 ```
 
-**First-run routing — warm route, never a raw abort.** Before anything else, resolve the
-folder state and the runnable state, and respond accordingly. A user who runs
-`/coapply:start` before they've set up should be walked into setup, not hit a dead end.
+It prints these fields; use the printed `PROFILE_DIR` and `RUNS_DIR` as your absolute paths from here on, and substitute them into every subagent prompt and Task dispatch:
 
-```bash
-if [ -z "$PROFILE_DIR" ]; then echo "STATE=not-set"
-elif [ ! -d "$PROFILE_DIR" ] || ! { touch "$PROFILE_DIR/.coapply_wtest" 2>/dev/null && rm -f "$PROFILE_DIR/.coapply_wtest"; }; then echo "STATE=bad-path"
-else
-  MISSING=""
-  [ -f "$PROFILE_DIR/identity.md" ] || MISSING="$MISSING identity.md"
-  [ -f "$PROFILE_DIR/skills-experience.md" ] || MISSING="$MISSING skills-experience.md"
-  find "$PROFILE_DIR/resumes" -maxdepth 1 -name '*.md' 2>/dev/null | grep -q . || MISSING="$MISSING a-resume"
-  grep -qnE '<[A-Z][^>]*>' "$PROFILE_DIR/identity.md" "$PROFILE_DIR/skills-experience.md" 2>/dev/null && MISSING="$MISSING unfilled-placeholders"
-  [ -n "$MISSING" ] && echo "STATE=not-ready MISSING=$MISSING" || echo "STATE=ok"
-fi
 ```
+PROFILE_DIR=…   RUNS_DIR=…   WRITABLE=yes|no
+IDENTITY=yes|no   SKILLS=yes|no   RESUME=yes|no   PLACEHOLDERS=yes|no
+```
+
+**First-run routing — warm route, never a raw abort.** A user who runs `/coapply:start` before they've set up should be walked into setup, not hit a dead end. Map the fields to one `STATE`:
+- `PROFILE_DIR` empty → `not-set`
+- `WRITABLE=no` → `bad-path`
+- otherwise, build a `MISSING` list from the flags — `IDENTITY=no` → `identity.md`, `SKILLS=no` → `skills-experience.md`, `RESUME=no` → `a-resume`, `PLACEHOLDERS=yes` → `unfilled-placeholders`. If `MISSING` is non-empty → `not-ready` (with that list); otherwise → `ok`.
 
 - **`STATE=not-set`** (no Profile folder yet) — the one step CoApply can't do for them (it's
   the `/plugin` GUI). Give a numbered path with a return cue, not a bare error:

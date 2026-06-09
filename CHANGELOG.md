@@ -2,6 +2,37 @@
 
 All notable changes to CoApply. Versioned on the `plugin.json` version line.
 
+## [0.5.0] — 2026-06-08 — Allowlist-friendly Step 0: fewer "allow?" prompts
+
+The 0.4.3 follow-up, done. Every skill resolved the profile folder by wrapping the resolver
+in `PROFILE_DIR="$(…resolve-profile-dir.sh)"` — an assignment-wrapped command substitution
+that Claude Code can't pre-approve, so it prompted on *every* command, every time, and no
+allowlist or "don't ask again" could stop it. Skills now call their helper scripts **plainly**
+(bare), so the prompt's **"Yes, and don't ask again"** saves a clean, reusable rule.
+
+### Added
+- **`scripts/profile-status.sh`** — one bare call that resolves the profile dir *and* reports
+  readiness (`PROFILE_DIR`/`RUNS_DIR` + `WRITABLE`/`IDENTITY`/`IDENTITY_FILLED`/`SKILLS`/
+  `RESUME`/`PLACEHOLDERS`). It replaces the inline compound Bash blocks (`touch`/`grep`/`find`)
+  that `help`/`add`/`start` ran in Step 0 — one allowlistable call instead of a substitution
+  plus a compound conditional, with no extra prompt for users who don't allowlist.
+- **`audit.sh` section 13** — verifies the new script across states and **fails the build** if
+  any skill reintroduces the un-allowlistable `VAR="$(…resolve-profile-dir.sh)"` wrapper.
+
+### Changed
+- **All eight skills** call their helper scripts bare and read the printed values, instead of
+  capturing via `$(…)`: `help`/`add`/`start`/`list`/`resume` use `profile-status.sh`;
+  `tier`/`setup`/`feedback` use a bare `resolve-profile-dir.sh`. Behavior is identical — the
+  difference is that the calls can now be remembered.
+- **README "fewer permission prompts"** now leads with "Yes, and don't ask again" (which works
+  for CoApply's scripts because the calls are bare), and adds `printf` to the optional
+  file-command allowlist (setup writes `coapply.config.json` with it).
+
+### Not changed
+- The one remaining `$(…)` is `gh issue create --repo "$(…)"` in `feedback`, which only runs on
+  an explicit "yes" to file an issue — an outward action confirmed each time regardless, so its
+  substitution adds no friction.
+
 ## [0.4.3] — 2026-06-08 — Docs: cut the permission-prompt friction
 
 Dogfooding surfaced how often a run asks "allow?" for its own write/fetch steps. A plugin

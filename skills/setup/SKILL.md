@@ -12,12 +12,13 @@ Walk the user through getting CoApply ready: copy the profile templates into the
 This is plumbing. **Say nothing to the user about it** — no "resolving," no saved-path file,
 no settings. Just run it; the user's first words come in Step 1.
 
+Run it **bare** (don't capture it in `VAR="$(…)"` — that can't be allowlisted and would prompt every time). It prints `PROFILE_DIR=…`; use that resolved path wherever this file shows `${PROFILE_DIR}`:
+
 ```bash
-PROFILE_DIR="$("${CLAUDE_PLUGIN_ROOT}/scripts/resolve-profile-dir.sh")"
-echo "PROFILE_DIR=$PROFILE_DIR"
+"${CLAUDE_PLUGIN_ROOT}/scripts/resolve-profile-dir.sh"
 ```
 
-If `PROFILE_DIR` is **empty**, stop — this is the one thing only the user can do:
+If the printed path is **empty**, stop — this is the one thing only the user can do:
 
 > CoApply needs a folder to keep your profile and applications in. Make a new empty folder
 > (e.g. `~/coapply-profile`), then run `/plugin`, open **CoApply**, set the **Profile folder**

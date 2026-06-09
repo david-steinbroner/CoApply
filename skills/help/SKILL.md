@@ -59,15 +59,17 @@ Your profile and your run output stay on your machine. Nothing is uploaded excep
 
 ## What to do right now (always end with this — check, don't ask)
 
-Don't ask the user whether they're set up — **check, then give exactly one next action.** Resolve the profile folder and inspect it:
+Don't ask the user whether they're set up — **check, then give exactly one next action.** Resolve the profile folder and inspect it in one Bash call. Run it **bare** — capturing it in `VAR="$(…)"` can't be allowlisted, so it would prompt every time:
 
 ```bash
-PROFILE_DIR="$("${CLAUDE_PLUGIN_ROOT}/scripts/resolve-profile-dir.sh")"
-if [ -z "$PROFILE_DIR" ]; then echo "STATE=no-folder"
-elif [ ! -f "$PROFILE_DIR/identity.md" ]; then echo "STATE=no-files"
-elif ! grep -q '[A-Za-z]' "$PROFILE_DIR/identity.md" 2>/dev/null; then echo "STATE=empty"
-else echo "STATE=ready"; fi
+"${CLAUDE_PLUGIN_ROOT}/scripts/profile-status.sh"
 ```
+
+It prints `PROFILE_DIR=…` plus `IDENTITY=` and `IDENTITY_FILLED=` (yes/no) lines. Read those and map to one `STATE`:
+- `PROFILE_DIR` empty → `no-folder`
+- `IDENTITY=no` → `no-files`
+- `IDENTITY_FILLED=no` → `empty`
+- otherwise → `ready`
 
 Then print exactly one closing line based on `STATE` (print the bold text only — do NOT wrap it in quotation marks):
 - `no-folder` → **Next: run `/coapply:setup` to get started.**

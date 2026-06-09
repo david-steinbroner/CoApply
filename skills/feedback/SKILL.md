@@ -65,18 +65,22 @@ Read their answer:
 Cheap and self-served. Give them three things:
 
 1. **The link** — GitHub's template chooser (so they land on a Bug/Idea template that
-   structures it for them). Get the repo URL and append `/issues/new/choose`:
+   structures it for them). Run this **bare** (don't wrap it in `$(…)` — that can't be
+   allowlisted), read the printed repo URL, and append `/issues/new/choose` yourself:
    ```bash
-   echo "$("${CLAUDE_PLUGIN_ROOT}/scripts/feedback-context.sh" repo)/issues/new/choose"
+   "${CLAUDE_PLUGIN_ROOT}/scripts/feedback-context.sh" repo
    ```
 2. **Their own words**, in a code block, so they can paste them in if they like — *their
    words only, nothing added.*
 3. **Their environment**, so they can fill the template's Environment section (users
    don't know their CoApply version offhand). This is just facts to copy, not a drafted
-   issue:
+   issue. Resolve the profile folder with a **bare** call, then pass the printed path to
+   the context script:
    ```bash
-   PROFILE_DIR="$("${CLAUDE_PLUGIN_ROOT}/scripts/resolve-profile-dir.sh")"
-   "${CLAUDE_PLUGIN_ROOT}/scripts/feedback-context.sh" context "$PROFILE_DIR"
+   "${CLAUDE_PLUGIN_ROOT}/scripts/resolve-profile-dir.sh"
+   ```
+   ```bash
+   "${CLAUDE_PLUGIN_ROOT}/scripts/feedback-context.sh" context "<the resolved profile dir>"
    ```
 
 Then you're done — skip to the end. No drafting, no prefilled URL.
@@ -109,16 +113,17 @@ manufacture a report from a vague remark — a confused user needs a question, n
 
 ### 4c — Collect the context (one Bash call)
 
+Resolve the profile folder with a **bare** call (don't wrap it in `VAR="$(…)"` — that can't be allowlisted), then use the printed path below:
 ```bash
-PROFILE_DIR="$("${CLAUDE_PLUGIN_ROOT}/scripts/resolve-profile-dir.sh")"
+"${CLAUDE_PLUGIN_ROOT}/scripts/resolve-profile-dir.sh"
 ```
 Pass a **run slug only if the feedback is clearly about a specific run** (a failure or odd
 output *during* `/coapply:start` or `/coapply:resume`); otherwise omit it. Most recent run
-when relevant: `ls -1t "$PROFILE_DIR/runs" 2>/dev/null | grep -v '^\.' | head -1`.
+when relevant: `ls -1t "<profile dir>/runs" 2>/dev/null | grep -v '^\.' | head -1`.
 ```bash
-"${CLAUDE_PLUGIN_ROOT}/scripts/feedback-context.sh" context "$PROFILE_DIR"
+"${CLAUDE_PLUGIN_ROOT}/scripts/feedback-context.sh" context "<the resolved profile dir>"
 # or, about a specific run:
-"${CLAUDE_PLUGIN_ROOT}/scripts/feedback-context.sh" context "$PROFILE_DIR" "<run-slug>"
+"${CLAUDE_PLUGIN_ROOT}/scripts/feedback-context.sh" context "<the resolved profile dir>" "<run-slug>"
 ```
 Show this context block as-is — no hidden diagnostics.
 

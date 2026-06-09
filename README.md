@@ -135,7 +135,11 @@ So you always get the newest version *and* keep everything you've written.
 
 ## Optional: fewer permission prompts
 
-A run does real work on your machine (creating your run folder, writing your application files, fetching the public job posting), so Claude Code asks permission before each such step. That's the right default — but if the "allow?" prompts get repetitive, you can pre-approve the safe commands CoApply uses. For security, a plugin can't grant these itself; you opt in by adding them to your own `~/.claude/settings.json`:
+A run does real work on your machine (creating your run folder, writing your application files, fetching the public job posting), so Claude Code asks permission before each such step. That's the right default — but if the "allow?" prompts get repetitive, you have two easy ways to cut them down.
+
+**1. Use "don't ask again."** When CoApply runs one of its own helper scripts (it resolves where your profile lives, gathers feedback context, and the like), the prompt offers **"Yes, and don't ask again."** Pick it once and Claude Code remembers that script for good. CoApply's commands now call these scripts plainly (rather than wrapped in shell substitution), which is what lets Claude Code save a clean, reusable rule — so a single "don't ask again" sticks instead of re-prompting.
+
+**2. Pre-approve the safe file commands.** A plugin can't grant permissions itself, so you opt in by adding the commands CoApply uses to write your files to your own `~/.claude/settings.json`:
 
 ```json
 {
@@ -145,6 +149,7 @@ A run does real work on your machine (creating your run folder, writing your app
       "Bash(cp:*)",
       "Bash(mv:*)",
       "Bash(touch:*)",
+      "Bash(printf:*)",
       "Bash(python3:*)",
       "Bash(curl:*)"
     ]
@@ -152,7 +157,7 @@ A run does real work on your machine (creating your run folder, writing your app
 }
 ```
 
-Read-only commands (`cat`, `ls`, `grep`, `find`) already run without prompting, so they're not listed. This is entirely optional — leaving it off just means more confirmations, never less safety. Tighten or trim the list to your comfort.
+Read-only commands (`cat`, `ls`, `grep`, `find`) already run without prompting, so they're not listed. (`printf` is here because setup writes your tiny `coapply.config.json` with it — leave it out if you'd rather confirm those writes.) This is entirely optional — leaving it off just means more confirmations, never less safety. Tighten or trim the list to your comfort.
 
 ## Making it your own (optional)
 

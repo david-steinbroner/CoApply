@@ -12,13 +12,16 @@ say "playbook", "role binding", "few-shot", or other internals to the user.
 
 ## Step 0 — Resolve the profile folder
 
+Run this **bare** (don't wrap it in `VAR="$(…)"` — that can't be allowlisted and would prompt every time):
+
 ```bash
-PROFILE_DIR="$("${CLAUDE_PLUGIN_ROOT}/scripts/resolve-profile-dir.sh")"
-echo "PROFILE_DIR=$PROFILE_DIR"
-if [ -z "$PROFILE_DIR" ]; then echo "STATE=not-set"
-elif [ ! -d "$PROFILE_DIR" ] || ! { touch "$PROFILE_DIR/.coapply_wtest" 2>/dev/null && rm -f "$PROFILE_DIR/.coapply_wtest"; }; then echo "STATE=bad-path"
-else echo "STATE=ok"; fi
+"${CLAUDE_PLUGIN_ROOT}/scripts/profile-status.sh"
 ```
+
+It prints `PROFILE_DIR=…` and `WRITABLE=` (yes/no). Read them and the resolved absolute path becomes your `$PROFILE_DIR` for the rest of this file. Map to one `STATE`:
+- `PROFILE_DIR` empty → `not-set`
+- `WRITABLE=no` → `bad-path`
+- otherwise → `ok`
 
 **Warm-route if it's not usable — don't dead-end:**
 - **`STATE=not-set`** (no Profile folder yet):

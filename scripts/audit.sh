@@ -214,6 +214,36 @@ printf '**Location:** <City, ST>\n' | bash scripts/resume-import.sh write-raw "$
 if grep -qE '<[A-Z][^>]*>' "$_rir"; then note "clean — write-raw preserves <placeholder> (preflight can catch it)."; else note "FAIL: write-raw neutralized a placeholder (would mask an unfilled identity field)."; fail=1; fi
 rm -f "$_ri"; rm -rf "$(dirname "$_rio")" "$(dirname "$_rir")"
 
+section "13. profile-status.sh — bare resolver + readiness flags (allowlist-friendly Step 0)"
+# Skills call this ONE script bare in Step 0 instead of wrapping the resolver in
+# PROFILE_DIR="$(...)" — a substitution-in-assignment that can't be allowlisted and
+# prompted every command. It must resolve the dir AND report readiness in one call.
+# Skills must NOT reintroduce the un-allowlistable wrapper around the resolver.
+_ps_w=$(grep -rn '"\$("\${CLAUDE_PLUGIN_ROOT}/scripts/resolve-profile-dir.sh")"' skills/ 2>/dev/null)
+if [ -n "$_ps_w" ]; then echo "$_ps_w"; note "FAIL: a skill wraps the resolver in VAR=\"\$(...)\" — run it bare so it can be allowlisted."; fail=1; else note "clean — no un-allowlistable resolver wrapper in skills."; fi
+_ps_t=$(mktemp -d); _ps_p="$_ps_t/prof"; mkdir -p "$_ps_p/resumes"
+printf 'Name: Jane Doe\n' > "$_ps_p/identity.md"; printf 'Experience with 40%% lift.\n' > "$_ps_p/skills-experience.md"
+printf '# r\nx\n' > "$_ps_p/resumes/main.md"; printf '%s\n' "$_ps_p" > "$_ps_t/.coapply_profile_path"
+_ps_ok=$(HOME="$_ps_t" bash scripts/profile-status.sh 2>/dev/null)
+if printf '%s' "$_ps_ok" | grep -q "PROFILE_DIR=$_ps_p" \
+   && printf '%s' "$_ps_ok" | grep -qx 'WRITABLE=yes' \
+   && printf '%s' "$_ps_ok" | grep -qx 'IDENTITY=yes' \
+   && printf '%s' "$_ps_ok" | grep -qx 'RESUME=yes' \
+   && printf '%s' "$_ps_ok" | grep -qx 'PLACEHOLDERS=no'; then
+  note "clean — reports PROFILE_DIR + ready flags for a filled-in profile."
+else echo "$_ps_ok"; note "FAIL: ready-profile flags wrong."; fail=1; fi
+# Placeholders + missing resume must show.
+printf 'Name: <Your Name>\n' > "$_ps_p/identity.md"; rm -f "$_ps_p/resumes/main.md"
+_ps_np=$(HOME="$_ps_t" bash scripts/profile-status.sh 2>/dev/null)
+if printf '%s' "$_ps_np" | grep -qx 'PLACEHOLDERS=yes' && printf '%s' "$_ps_np" | grep -qx 'RESUME=no'; then
+  note "clean — flags placeholders + missing resume."
+else echo "$_ps_np"; note "FAIL: placeholder/resume flags wrong."; fail=1; fi
+# Not configured (no flat file, no settings): empty PROFILE_DIR, never errors.
+_ps_t2=$(mktemp -d)
+_ps_none=$(HOME="$_ps_t2" bash scripts/profile-status.sh 2>/dev/null); _ps_rc=$?
+if [ "$_ps_rc" = 0 ] && printf '%s' "$_ps_none" | grep -qx 'PROFILE_DIR='; then note "clean — empty PROFILE_DIR when unconfigured, exits 0."; else note "FAIL: unconfigured case rc=$_ps_rc out=[$_ps_none]"; fail=1; fi
+rm -rf "$_ps_t" "$_ps_t2"
+
 # A human-judgment gate the script CAN'T verify. Printed every run so it can't be skipped.
 section "Manual gate — confirm before you ship (not automatable)"
 note "[ ] Dogfooded every new/changed skill on a REALISTIC input — including a vague one — and read the output."

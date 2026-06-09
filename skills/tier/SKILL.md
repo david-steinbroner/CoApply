@@ -9,14 +9,13 @@ View or set the budget tier that controls how much each run spends. Keep it shor
 
 ## Step 0 — Resolve the profile folder
 
-Run one Bash call:
+Run one Bash call, **bare** (don't capture it in `VAR="$(…)"` — that can't be allowlisted and would prompt every time). It prints `PROFILE_DIR=…`:
 
 ```bash
-PROFILE_DIR="$("${CLAUDE_PLUGIN_ROOT}/scripts/resolve-profile-dir.sh")"
-echo "PROFILE_DIR=$PROFILE_DIR"
+"${CLAUDE_PLUGIN_ROOT}/scripts/resolve-profile-dir.sh"
 ```
 
-If `PROFILE_DIR` (printed above) is **empty**, stop and tell the user:
+If the printed path is **empty**, stop and tell the user:
 
 > CoApply doesn't have a Profile folder set yet — that's the folder where your profile and applications live. First make a new empty folder (e.g. `~/coapply-profile`), then run `/plugin`, open **CoApply**, set the **Profile folder** to that path, and re-run `/coapply:tier`.
 

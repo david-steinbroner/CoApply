@@ -12,15 +12,13 @@ Input in `$ARGUMENTS` is a run folder slug, e.g. `2026-04-21-acme-senior-role-7f
 
 The engine prompts live under `${CLAUDE_PLUGIN_ROOT}/profile/prompts/` (substituted to the real install dir in this skill — use the resolved value, and substitute it wherever an engine file shows `${CLAUDE_PLUGIN_ROOT}`; subagents get the real absolute path).
 
-A resumed run needs the SAME inputs a fresh run does. Resolve them with Bash, exactly like `start` (the resolver reads the saved profile folder from the plugin config, falling back to `settings.json` since the env var isn't exported into skill Bash calls):
+A resumed run needs the SAME inputs a fresh run does. Resolve them with one **bare** Bash call, exactly like `start` (don't capture it in `VAR="$(…)"` — that can't be allowlisted and would prompt every time; the script reads the saved profile folder from the plugin config, falling back to `settings.json` since the env var isn't exported into skill Bash calls):
 
 ```bash
-PROFILE_DIR="$("${CLAUDE_PLUGIN_ROOT}/scripts/resolve-profile-dir.sh")"
-echo "PROFILE_DIR=$PROFILE_DIR"
-echo "RUNS_DIR=${APPLY_RUNS_DIR:-$PROFILE_DIR/runs}"
+"${CLAUDE_PLUGIN_ROOT}/scripts/profile-status.sh"
 ```
 
-Then read `${PROFILE_DIR}/identity.md` → `$USER_NAME`, `$USER_FIRST_NAME`, `$USER_LOCATION`, `$USER_PORTFOLIO`, `$USER_TARGETS`. These get injected into every agent you re-dispatch.
+It prints `PROFILE_DIR=…` and `RUNS_DIR=…`; use those as your absolute paths. Then read `${PROFILE_DIR}/identity.md` → `$USER_NAME`, `$USER_FIRST_NAME`, `$USER_LOCATION`, `$USER_PORTFOLIO`, `$USER_TARGETS`. These get injected into every agent you re-dispatch.
 
 ## Step 1 — Pick the run (always confirm)
 
