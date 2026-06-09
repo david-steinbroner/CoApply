@@ -6,11 +6,13 @@ Dispatched from `master-apply.md` after the user confirms at the Phase A checkpo
 
 ## Wave B1 — Primary content
 
-On **lite**: run ONLY cover-letter, then skip the rest of B1 and all of B2. On **standard** and **full**: spawn these 3 in parallel (batch size 3):
+On **lite**: run ONLY cover-letter, then skip the rest of B1 and all of B2. On **standard** and **full**: spawn these 3 in parallel (batch size 3).
 
-- Task: agent_type `general-purpose`, instructed by `${CLAUDE_PLUGIN_ROOT}/profile/prompts/agents/cover-letter.md` — writes `06-cover-letter.md`
-- Task: agent_type `general-purpose`, instructed by `${CLAUDE_PLUGIN_ROOT}/profile/prompts/agents/outreach.md` — writes `07-outreach.md`
-- Task: agent_type `general-purpose`, instructed by `${CLAUDE_PLUGIN_ROOT}/profile/prompts/agents/resume-update.md` — writes `08-resume-update.md`
+**Model:** set each Task's `model` parameter per the **Model map** in `master-apply.md` Step 3 — active tier × the agent's class (tagged in brackets below). The model is a Task-call parameter, not prompt text.
+
+- Task: agent_type `general-purpose`, `[voice]`, instructed by `${CLAUDE_PLUGIN_ROOT}/profile/prompts/agents/cover-letter.md` — writes `06-cover-letter.md`
+- Task: agent_type `general-purpose`, `[voice]`, instructed by `${CLAUDE_PLUGIN_ROOT}/profile/prompts/agents/outreach.md` — writes `07-outreach.md`
+- Task: agent_type `general-purpose`, `[voice]`, instructed by `${CLAUDE_PLUGIN_ROOT}/profile/prompts/agents/resume-update.md` — writes `08-resume-update.md`
 
 **Inline rule:** inline only run-specific artifacts (parsed JD, prior-wave outputs, conversation-derived context the user added, e.g. their location). Pass static profile files as file **paths** — the agent reads them itself. Inlining + agent-read is double work and burns orchestrator context.
 
@@ -38,9 +40,11 @@ Determine which agents to run:
 
 Spawn the applicable agents in parallel (1-3 depending on whether application-questions applies):
 
-- (conditional) Task: instructed by `${CLAUDE_PLUGIN_ROOT}/profile/prompts/agents/application-questions.md` — writes `09-application-questions.md`
-- Task: instructed by `${CLAUDE_PLUGIN_ROOT}/profile/prompts/agents/interview-prep.md` — writes `10-interview-prep.md`
-- Task: instructed by `${CLAUDE_PLUGIN_ROOT}/profile/prompts/agents/followup-plan.md` — writes `11-followup-plan.json`
+- (conditional) Task: `[voice]`, instructed by `${CLAUDE_PLUGIN_ROOT}/profile/prompts/agents/application-questions.md` — writes `09-application-questions.md`
+- Task: `[voice]`, instructed by `${CLAUDE_PLUGIN_ROOT}/profile/prompts/agents/interview-prep.md` — writes `10-interview-prep.md`
+- Task: `[reasoning]`, instructed by `${CLAUDE_PLUGIN_ROOT}/profile/prompts/agents/followup-plan.md` — writes `11-followup-plan.json`
+
+(Set each Task's `model` per the Model map — active tier × the class tagged above.)
 
 **Inline rule (same as Wave B1):** inline only run-specific artifacts. Pass static profile files as paths.
 

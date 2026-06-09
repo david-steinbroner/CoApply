@@ -12,13 +12,15 @@ The checkpoint itself lives in `master-apply.md` Step 3. Wave A1 hands back to i
 
 Spawn these agents in parallel (one message, multiple Task calls, `run_in_background: true`). Since there are 4 agents and batch size is 3, split into two batches.
 
+**Model:** set each Task's `model` parameter per the **Model map** in `master-apply.md` Step 3 — active tier × the agent's class (tagged in brackets below). The model is a Task-call parameter, not prompt text.
+
 **Batch 1 of A1 (3 agents in parallel):**
-- Task: agent_type `general-purpose`, instructed by `${CLAUDE_PLUGIN_ROOT}/profile/prompts/agents/jd-parser.md` — writes `00-jd-parsed.json`
-- Task: agent_type `general-purpose`, instructed by `${CLAUDE_PLUGIN_ROOT}/profile/prompts/agents/dedup-check.md` — writes `00-dedup-check.md`
-- Task: agent_type `general-purpose`, instructed by `${CLAUDE_PLUGIN_ROOT}/profile/prompts/agents/role-analysis.md` — writes `01-role-analysis.md`
+- Task: agent_type `general-purpose`, `[mechanical]`, instructed by `${CLAUDE_PLUGIN_ROOT}/profile/prompts/agents/jd-parser.md` — writes `00-jd-parsed.json`
+- Task: agent_type `general-purpose`, `[mechanical]`, instructed by `${CLAUDE_PLUGIN_ROOT}/profile/prompts/agents/dedup-check.md` — writes `00-dedup-check.md`
+- Task: agent_type `general-purpose`, `[reasoning]`, instructed by `${CLAUDE_PLUGIN_ROOT}/profile/prompts/agents/role-analysis.md` — writes `01-role-analysis.md`
 
 **Batch 2 of A1 (1 agent):**
-- Task: agent_type `general-purpose`, instructed by `${CLAUDE_PLUGIN_ROOT}/profile/prompts/agents/fit-score.md` — writes `02-fit-score.json`
+- Task: agent_type `general-purpose`, `[reasoning]`, instructed by `${CLAUDE_PLUGIN_ROOT}/profile/prompts/agents/fit-score.md` — writes `02-fit-score.json`
 
 Wave A1 agents each get the raw `$JD_TEXT` inlined (jd-parser runs in this same wave, so `00-jd-parsed.json` isn't available yet to its siblings).
 
@@ -37,11 +39,11 @@ Wave A1 agents each get the raw `$JD_TEXT` inlined (jd-parser runs in this same 
 
 Run only the agents the **active tier** calls for (tier table in `master-apply.md` Step 3): **lite** → positioning only · **standard** → positioning + company-research · **full** → company-research + positioning + work-sample-suggester. Mark tier-skipped A2 agents `skipped`.
 
-The available A2 agents:
+The available A2 agents (set each Task's `model` per the Model map — active tier × the class tagged below):
 
-- Task: agent_type `general-purpose`, instructed by `${CLAUDE_PLUGIN_ROOT}/profile/prompts/agents/company-research.md` — writes `03-company-research.md` (uses WebSearch + WebFetch)
-- Task: agent_type `general-purpose`, instructed by `${CLAUDE_PLUGIN_ROOT}/profile/prompts/agents/positioning.md` — writes `04-positioning.md`
-- Task: agent_type `general-purpose`, instructed by `${CLAUDE_PLUGIN_ROOT}/profile/prompts/agents/prototype-suggester.md` — writes `05-work-sample-ideas.md`
+- Task: agent_type `general-purpose`, `[reasoning]`, instructed by `${CLAUDE_PLUGIN_ROOT}/profile/prompts/agents/company-research.md` — writes `03-company-research.md` (uses WebSearch + WebFetch)
+- Task: agent_type `general-purpose`, `[reasoning]`, instructed by `${CLAUDE_PLUGIN_ROOT}/profile/prompts/agents/positioning.md` — writes `04-positioning.md`
+- Task: agent_type `general-purpose`, `[reasoning]`, instructed by `${CLAUDE_PLUGIN_ROOT}/profile/prompts/agents/prototype-suggester.md` — writes `05-work-sample-ideas.md`
 
 Each gets inlined into its prompt:
 - The parsed JD (contents of `00-jd-parsed.json`)
@@ -77,7 +79,7 @@ Wave A1 returns control to `master-apply.md` Step 3 (Checkpoint). Wave A2 return
 
 ## Inline payload templates for each agent Task prompt
 
-When dispatching a Task agent, structure the prompt like this:
+When dispatching a Task agent, set its **`model`** parameter (per the Model map — active tier × the agent's class) on the Task call itself, and structure the prompt like this:
 
 ```
 You are the <agent-name> agent in $USER_NAME's CoApply pipeline. Follow your instruction file exactly.

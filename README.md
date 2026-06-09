@@ -162,7 +162,7 @@ Read-only commands (`cat`, `ls`, `grep`, `find`) already run without prompting, 
 ## Making it your own (optional)
 
 CoApply works great out of the box. When you want to tweak it:
-- **Budget tiers are live** — `/coapply:tier` (or `/coapply:setup`) sets `lite` / `standard` / `full` in a `coapply.config.json` you own; it survives updates. (Per-agent *model* selection — running cheaper models on lite — is on the roadmap.)
+- **Budget tiers are live** — `/coapply:tier` (or `/coapply:setup`) sets `lite` / `standard` / `full` in a `coapply.config.json` you own; it survives updates. Tiers now control both *how many* specialists run **and which model each runs on**: routine work (parsing a posting, deduping) always runs on the cheapest model, analysis scales with tier, and your cover letter never drops below a mid model — so `lite` is genuinely cheaper without writing you a worse letter.
 - **A persistent next-step hint (optional).** CoApply already nudges you at session start and ends every command with a "Next:" line. If you want a reminder always pinned at the bottom of Claude Code, add a status line to your **own** `~/.claude/settings.json` (this is a Claude Code setting, not part of CoApply — and it replaces any status line you already use):
   ```json
   {

@@ -106,7 +106,7 @@ Runs on **Wave A1 (triage) outputs only**. You (the orchestrator) draft a *provi
 
 Before showing the summary, compute two things:
 - **Billing label (live):** Bash-check `[ -n "$ANTHROPIC_API_KEY" ]` — if set, label `per-token (API key detected)`; else `subscription allowance`. (Heuristic: we detect the key, not Claude Code's exact billing.)
-- **Cost-to-finish estimate:** count the agents the active `$TIER` will run (tier table below) and estimate ≈ agents × ~25k tokens, expressed roughly (e.g. "~150k tokens"). **NEVER print a dollar amount — tokens only.** (Subscription users don't pay per token; a dollar figure would mislead.)
+- **Cost-to-finish estimate:** count the agents the active `$TIER` will run (tier table below) and estimate ≈ agents × ~25k tokens, expressed roughly (e.g. "~150k tokens"). **NEVER print a dollar amount — tokens only.** (Subscription users don't pay per token; a dollar figure would mislead.) Note that `lite`/`standard` also run cheaper models per the Model map below, so their real spend is lower than a flat token count implies — the token estimate is an upper bound, not a price.
 
 Show the user this compact summary, then wait for instruction:
 
@@ -133,6 +133,16 @@ Worth applying?  (yes / abort / redirect: ... — or run a different tier: full 
 | **lite** | positioning | cover-letter |
 | **standard** | positioning + company-research | cover-letter, outreach, resume-update, interview-prep, followup-plan |
 | **full** | company-research + positioning + work-sample-suggester | cover-letter, outreach, resume-update, interview-prep, followup-plan, application-questions (if present), + docx |
+
+**Model map (tier × agent class → model).** Tier controls not just *which* agents run but *which model* each runs on. Every agent belongs to one class; when you dispatch it, set the Task tool's **`model` parameter** to the value below for the active tier. The model is a **parameter of the Task call itself**, not text in the agent's prompt. The phase-dispatch files tag each agent with its class in brackets (e.g. `[voice]`).
+
+| Agent class | Agents | lite | standard | full |
+|---|---|---|---|---|
+| **mechanical** — structured extraction/lookup; voice irrelevant | jd-parser, dedup-check | `haiku` | `haiku` | `haiku` |
+| **reasoning** — analysis, research, strategy | role-analysis, fit-score, positioning, company-research, prototype-suggester, followup-plan | `haiku` | `sonnet` | `sonnet` |
+| **voice** — writes text published as the user | cover-letter, outreach, resume-update, interview-prep, application-questions | `sonnet` | `sonnet` | `opus` |
+
+Rationale baked in: mechanical agents stay on `haiku` even on `full` (paying a premium model to parse a JD into JSON is waste), and the cover letter never drops below `sonnet`, even on `lite` (it's the core deliverable — `lite`'s savings come from running *fewer* agents, not a cheaper letter). If an agent is ever unlisted, omit the `model` param so it inherits the session model.
 
 If the user says **abort** → set `_run.json.phase = "aborted"`, record a one-line `abortReason` AND a structured `abortCategory`, stop. Wave A2 never runs — this is where the gate saves the expensive agents. (Root run-state is `phase`; `status` is only for `artifacts[]`.)
 

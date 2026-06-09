@@ -244,6 +244,29 @@ _ps_none=$(HOME="$_ps_t2" bash scripts/profile-status.sh 2>/dev/null); _ps_rc=$?
 if [ "$_ps_rc" = 0 ] && printf '%s' "$_ps_none" | grep -qx 'PROFILE_DIR='; then note "clean — empty PROFILE_DIR when unconfigured, exits 0."; else note "FAIL: unconfigured case rc=$_ps_rc out=[$_ps_none]"; fail=1; fi
 rm -rf "$_ps_t" "$_ps_t2"
 
+section "14. Per-agent model tiering — Model map present + every dispatch tagged"
+# Tier picks the model per agent via a Model map in master-apply.md; phase-dispatch
+# files must tag EVERY agent dispatch with a class so the orchestrator knows which
+# model to pass. A new agent added without a class tag = silent inherit (a bug).
+_mm=profile/prompts/master-apply.md
+if grep -qi 'Model map' "$_mm" && grep -q '\*\*mechanical\*\*' "$_mm" && grep -q '\*\*reasoning\*\*' "$_mm" && grep -q '\*\*voice\*\*' "$_mm"; then
+  note "clean — Model map with all three classes present in master-apply.md."
+else note "FAIL: master-apply.md is missing the Model map or a class row."; fail=1; fi
+# The matrix must name the three model aliases.
+if grep -q 'haiku' "$_mm" && grep -q 'sonnet' "$_mm" && grep -q 'opus' "$_mm"; then
+  note "clean — Model map names haiku/sonnet/opus."
+else note "FAIL: Model map missing a model alias (haiku/sonnet/opus)."; fail=1; fi
+# Every agent dispatch line in the phase files must carry a [class] tag.
+_untagged=$(grep -nE 'instructed by `\$\{CLAUDE_PLUGIN_ROOT\}/profile/prompts/agents/[a-z-]+\.md' \
+  profile/prompts/phases/phase-research.md profile/prompts/phases/phase-content.md 2>/dev/null \
+  | grep -vE '\[(mechanical|reasoning|voice)\]')
+if [ -z "$_untagged" ]; then note "clean — every agent dispatch line carries a [class] tag."; else echo "$_untagged"; note "FAIL: an agent dispatch line has no [mechanical|reasoning|voice] class tag — it would silently inherit the session model."; fail=1; fi
+# Sanity: count tagged dispatches (expect 13 across the two phase files).
+_tagged=$(grep -hE 'instructed by `\$\{CLAUDE_PLUGIN_ROOT\}/profile/prompts/agents/[a-z-]+\.md' \
+  profile/prompts/phases/phase-research.md profile/prompts/phases/phase-content.md 2>/dev/null \
+  | grep -cE '\[(mechanical|reasoning|voice)\]')
+[ "${_tagged:-0}" = "13" ] && note "clean — 13 agent dispatches tagged." || note "WARN: expected 13 tagged dispatches, found ${_tagged:-0}."
+
 # A human-judgment gate the script CAN'T verify. Printed every run so it can't be skipped.
 section "Manual gate — confirm before you ship (not automatable)"
 note "[ ] Dogfooded every new/changed skill on a REALISTIC input — including a vague one — and read the output."

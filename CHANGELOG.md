@@ -2,6 +2,44 @@
 
 All notable changes to CoApply. Versioned on the `plugin.json` version line.
 
+## [0.6.0] — 2026-06-08 — Per-agent model tiering: the tier picks the model too
+
+Roadmap item #3. Until now `$TIER` only changed *how many* specialists ran; every agent
+inherited the session model. Now the tier also picks *which model* each agent runs on, so
+`lite` is genuinely cheaper — not just shorter. Verified that the Task tool's per-dispatch
+`model` override routes correctly (`model: haiku` → `claude-haiku-4-5`, `model: opus` →
+`claude-opus-4-8`), so this needed **no migration** to native plugin `agents/` and no config
+schema change — the orchestrator just passes `model` on each Task call.
+
+### Added
+- **Model map in `master-apply.md` Step 3** — a tier × agent-class matrix. Three classes:
+  **mechanical** (jd-parser, dedup-check), **reasoning** (role-analysis, fit-score, positioning,
+  company-research, prototype-suggester, followup-plan), **voice** (cover-letter, outreach,
+  resume-update, interview-prep, application-questions).
+
+  | class | lite | standard | full |
+  |---|---|---|---|
+  | mechanical | haiku | haiku | haiku |
+  | reasoning | haiku | sonnet | sonnet |
+  | voice | sonnet | sonnet | opus |
+
+  Baked-in judgments: mechanical work stays on haiku even on `full` (no premium model to parse a
+  JD into JSON), and the cover letter never drops below `sonnet` even on `lite` (the deliverable
+  stays good; lite saves by running *fewer* agents). "Right-size by role," not "cheap tier = worse letter."
+- **Class tags on every dispatch** in `phase-research.md` / `phase-content.md` (e.g. `[voice]`),
+  so the orchestrator knows which model to pass.
+- **`audit.sh` section 14** — fails the build if the Model map or a class row goes missing, or if
+  any agent dispatch line lacks a `[class]` tag (a new untagged agent would silently inherit).
+
+### Changed
+- **Cost-to-finish line** at the gate notes the token estimate is an upper bound — `lite`/`standard`
+  run cheaper models, so real spend is lower.
+- **README** tier section now states tiers control both agent count and per-agent model.
+
+### Not changed
+- No `coapply.config.json` change — the matrix is engine-defined off the existing `$TIER`. No new
+  user knobs.
+
 ## [0.5.0] — 2026-06-08 — Allowlist-friendly Step 0: fewer "allow?" prompts
 
 The 0.4.3 follow-up, done. Every skill resolved the profile folder by wrapping the resolver
