@@ -2,6 +2,19 @@
 
 All notable changes to CoApply. Versioned on the `plugin.json` version line.
 
+## [0.4.1] — 2026-06-08 — Setup leads with the resume, plain words
+
+Dogfooding 0.4.0 showed setup narrating internal plumbing ("resolving your profile folder,"
+"recording it to a flat file") and dumping a file-by-file template report — which buried the
+resume request, the whole point of onboarding, behind setup mechanics.
+
+### Changed
+- **`/coapply:setup` opens with the resume**, not plumbing. Folder resolution and the
+  saved-path write now happen **silently**; the template copy is silent and no-clobber.
+- The user's first line is a plain preamble — where their profile lives, in plain words — then
+  straight to "paste your resume." No "resolve," "flat file," "settings," "templates," or
+  file-by-file dumps surfaced.
+
 ## [0.4.0] — 2026-06-08 — Guided onboarding: set up from your resume
 
 Setup used to be the wall: hand-author `identity.md`, `skills-experience.md`, and a resume

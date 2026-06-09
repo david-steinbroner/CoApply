@@ -7,22 +7,24 @@ description: Set up CoApply — build your profile from your resume (or fill it 
 
 Walk the user through getting CoApply ready: copy the profile templates into their folder, check how runs will be billed, and pick a default budget tier. Be concise and friendly; do one step at a time and confirm as you go.
 
-## Step 0 — Resolve the profile folder (do this first)
+## Step 0 — Find the profile folder (internal — do NOT narrate this)
 
-Run one Bash call:
+This is plumbing. **Say nothing to the user about it** — no "resolving," no saved-path file,
+no settings. Just run it; the user's first words come in Step 1.
 
 ```bash
 PROFILE_DIR="$("${CLAUDE_PLUGIN_ROOT}/scripts/resolve-profile-dir.sh")"
 echo "PROFILE_DIR=$PROFILE_DIR"
 ```
 
-If `PROFILE_DIR` (printed above) is **empty**, stop and tell the user:
+If `PROFILE_DIR` is **empty**, stop — this is the one thing only the user can do:
 
-> CoApply doesn't have a Profile folder set yet — that's the folder where your profile and applications will live. First make a new empty folder (e.g. `~/coapply-profile`), then run `/plugin`, open **CoApply**, set the **Profile folder** to that path, and re-run `/coapply:setup`.
+> CoApply needs a folder to keep your profile and applications in. Make a new empty folder
+> (e.g. `~/coapply-profile`), then run `/plugin`, open **CoApply**, set the **Profile folder**
+> to that path, and re-run `/coapply:setup`.
 
-Do not continue past this step until it resolves. From here on, use the resolved absolute path wherever this file shows `${PROFILE_DIR}`. The engine's templates live under `${CLAUDE_PLUGIN_ROOT}/profile.example/` — `${CLAUDE_PLUGIN_ROOT}` is already substituted to the real install path in this skill, so use that resolved value.
-
-Once `PROFILE_DIR` resolves to a non-empty path, **record it to a flat file** so every later command resolves it reliably without depending on parsing `settings.json` — but ONLY when there's no explicit `CLAUDE_PLUGIN_OPTION_PROFILE_DIR` override in play. If that env var is set, it's already the authoritative source (e.g. a deliberate per-session override or a dogfooding test), and writing the flat file would clobber the user's normal resolution with a temporary path:
+Otherwise, silently record the path so later commands find it — only when there's no explicit
+override (an override is its own source; writing the file would clobber the user's normal setup):
 
 ```bash
 if [ -z "${CLAUDE_PLUGIN_OPTION_PROFILE_DIR:-}" ]; then
@@ -30,26 +32,30 @@ if [ -z "${CLAUDE_PLUGIN_OPTION_PROFILE_DIR:-}" ]; then
 fi
 ```
 
-The flat file is the robust primary path the resolver checks first (after the env var). It's just the absolute path, one line — safe to overwrite anytime the folder changes.
+From here use the resolved `${PROFILE_DIR}` and the templates at `${CLAUDE_PLUGIN_ROOT}/profile.example/`
+(both already real paths in this skill). The only thing the user hears from this is one plain
+line in Step 1.
 
-## Step 1 — Copy the profile templates (only the missing ones)
+## Step 1 — Add the starter files, then lead with the resume
 
-Copy in any template files the profile doesn't already have, and **never overwrite** files the user has filled in. Don't skip the whole copy just because one file (e.g. `identity.md`) exists — fill in only what's missing.
-
-Use `cp -Rn` (no-clobber) so existing files are left untouched, then report what was added vs. already present:
+Copy the starter files in **silently** (no-clobber, so a filled-in profile is never overwritten),
+and note whether this is a fresh folder:
 
 ```bash
 mkdir -p "${PROFILE_DIR}"
-before=$(cd "${PROFILE_DIR}" && find . -type f | sort)
+had=$(find "${PROFILE_DIR}" -maxdepth 1 -name '*.md' 2>/dev/null | head -1)
 cp -Rn "${CLAUDE_PLUGIN_ROOT}/profile.example/." "${PROFILE_DIR}/"
-after=$(cd "${PROFILE_DIR}" && find . -type f | sort)
-echo "ADDED:"; comm -13 <(echo "$before") <(echo "$after")
-echo "ALREADY PRESENT:"; echo "$before"
+[ -z "$had" ] && echo "FRESH" || echo "EXISTING"
 ```
 
-Report to the user which files were **added** and which were **already present** (left as-is). If everything was already present, say so — nothing was overwritten.
+Now — and this is the **first thing the user hears** — give a short, plain preamble: name where
+their stuff lives and that the starter files are in. **No file lists, and never the words
+"templates," "resolve," "directory," or a saved-path file.**
 
-**Re-run check — don't push import at someone who's already set up.** See whether the profile is already filled in:
+> Setting up CoApply. Your profile and applications will live in `<the folder>` — on your
+> machine, nowhere else. `<FRESH: "Adding your starter files… done." | EXISTING: "Your starter files are already in place.">`
+
+**Re-run check (silent)** — don't push import at someone already set up:
 
 ```bash
 FILLED=yes
@@ -59,12 +65,19 @@ grep -qnE '<[A-Z][^>]*>' "$PROFILE_DIR/identity.md" "$PROFILE_DIR/skills-experie
 echo "FILLED=$FILLED"
 ```
 
-- **`FILLED=yes`** (a re-run on an already-built profile): skip the import offer. Ask instead: *"Your profile's already filled in — want to rebuild it from a new resume, or are you good?"* Run the import flow (Step 1.5) only if they choose rebuild; otherwise continue to Step 2.
-- **`FILLED=no`** (first setup, or profile still has placeholders): make the offer below.
+- **`FILLED=yes`** (already-built profile): skip the resume offer; ask instead *"Your profile's
+  already filled in — want to rebuild it from a new resume, or are you good?"* Run the import
+  (Step 1.5) only if they choose rebuild; otherwise continue to Step 2.
+- **`FILLED=no`** → lead straight into the resume offer below.
 
-Then point them to the fast path — building the profile from their resume — with hand-filling as the fallback:
+**Lead with the resume** (this is the point of setup — don't bury it):
 
-> The quickest way to fill these in is from your **resume**: paste it here or give me the file path, and I'll draft your profile from it — you'll see everything before I save a thing. I only use what's actually in your resume; where it's thin, I'll flag it instead of guessing. No resume handy? Tell me where you've worked and what you did, even roughly, and I'll build from that. Prefer to type it in yourself? Open **`identity.md`**, **`skills-experience.md`**, and one file in **`resumes/`** — that's the minimum for a first run; deepen the rest over time.
+> The fastest way to fill these in is your **resume**: paste it here or give me the file path,
+> and I'll draft your profile from it — you'll see everything before I save anything. I only use
+> what's actually in your resume; where it's thin, I'll flag it instead of guessing. No resume
+> handy? I can ask you a few questions instead. Prefer to type it in yourself? Open
+> **`identity.md`**, **`skills-experience.md`**, and one file in **`resumes/`** — that's the
+> minimum for a first run.
 
 ## Step 1.5 — Set up from their resume (the fast path)
 
