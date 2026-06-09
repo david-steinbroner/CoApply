@@ -2,6 +2,22 @@
 
 All notable changes to CoApply. Versioned on the `plugin.json` version line.
 
+## [0.4.2] — 2026-06-08 — Import leaves unfilled identity fields blank, not masked
+
+Dogfooding a real resume + SAVE surfaced a bug: identity fields the resume didn't provide
+(Location, Contact, Portfolio) were written as the template's `<placeholder>` and then
+neutralized to `(City, ST)` by the atomic writer. That masked genuinely-empty fields — the
+first-run preflight no longer saw them as unfilled, and the parenthetical filler could leak
+into a letter.
+
+### Fixed
+- **Resume import now leaves unfilled identity fields blank** (keeping the guidance comment),
+  never a placeholder or parenthetical filler — so `start` skips them cleanly.
+- **`identity.md` is written with a new `write-raw`** (atomic, no neutralization). If a stray
+  `<placeholder>` slips through, it stays visible so the preflight catches it instead of
+  silently masking an empty field. `skills-experience.md` and the resume keep the neutralizing
+  `write` (they may contain `<Xxx>` from resume content). `audit.sh` covers both.
+
 ## [0.4.1] — 2026-06-08 — Setup leads with the resume, plain words
 
 Dogfooding 0.4.0 showed setup narrating internal plumbing ("resolving your profile folder,"

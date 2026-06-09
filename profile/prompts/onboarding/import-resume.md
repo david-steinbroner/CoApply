@@ -102,7 +102,18 @@ Keep all drafts **in this chat for now — write nothing to disk until the user 
 High-confidence, low-risk. Pull `Name`, `Location`, `Portfolio` if present. For
 `Target roles`, you may note what the recent titles suggest, but **mark it as inferred**
 ("inferred from your last two titles — change it if you're aiming elsewhere"), never asserted.
-Anything absent → leave the field's placeholder and say you couldn't find it.
+
+**Fields the resume doesn't give → leave the value BLANK** (empty after the `**Field:**`
+label), and keep the italic guidance comment so the user knows to add it. **Never** write a
+`<placeholder>` token as the value, and **never** write parenthetical filler like
+`(City, ST)`. A blank value is correct: `start` skips empty optional fields cleanly, whereas a
+placeholder or filler would either be flagged as "not set up" or leak into a letter. Example
+for a field the resume lacks:
+
+```
+**Location:**
+_(Not on your resume — add it for location-aware lines.)_
+```
 
 ### skills-experience.md (the highest fabrication temptation — hold the line)
 - **Transcribe the resume's bullets essentially verbatim** into the template's structure,
@@ -165,12 +176,15 @@ Rules for this review (do not skip):
 - If they're cut off before SAVE, nothing's lost on their end — the resume is the durable
   source, so recovery is just re-importing. Say so if it comes up; don't build a resume-state file.
 
-**On `SAVE`**, write each file atomically through the helper (it neutralizes any `<[A-Z]…>`
-token and writes via tmp+`mv`, so a run is never half-written and the next `/coapply:start`
-preflight won't false-trip):
+**On `SAVE`**, write each file atomically through the helper (tmp+`mv`, never half-written).
+`write` neutralizes any `<Xxx>` from resume content so it can't trip the preflight; `write-raw`
+(identity.md) leaves content untouched so a stray placeholder stays visible:
 
 ```bash
-printf '%s' "<final identity.md content>"          | "${CLAUDE_PLUGIN_ROOT}/scripts/resume-import.sh" write "${PROFILE_DIR}/identity.md"
+# identity.md uses write-raw (no neutralization) — it has no free resume text, and any stray
+# <placeholder> must stay visible so start's preflight catches it rather than masking it.
+printf '%s' "<final identity.md content>"          | "${CLAUDE_PLUGIN_ROOT}/scripts/resume-import.sh" write-raw "${PROFILE_DIR}/identity.md"
+# skills-experience and the resume use write (neutralizes any <Xxx> from resume content).
 printf '%s' "<final skills-experience.md content>" | "${CLAUDE_PLUGIN_ROOT}/scripts/resume-import.sh" write "${PROFILE_DIR}/skills-experience.md"
 printf '%s' "<final resume content>"               | "${CLAUDE_PLUGIN_ROOT}/scripts/resume-import.sh" write "${PROFILE_DIR}/resumes/<name>.md"
 rm -f "$TMP"
@@ -179,7 +193,8 @@ rm -f "$TMP"
 **Safe-write rules (do not clobber the user's work):**
 - **`identity.md` already has real (non-placeholder) content** → per-field merge: fill only
   the fields still holding a `<placeholder>`; never overwrite a field the user already filled.
-  Read it, merge, then `write` the merged result.
+  For fields the resume can't fill, blank the value (don't keep the placeholder). Read it,
+  merge, then write the merged result with **`write-raw`** (not `write`).
 - **`skills-experience.md` / a resume file already has real content** → do **not** silently
   overwrite. Tell the user it's already filled and ask: replace it, or keep theirs? Only
   overwrite on an explicit yes. For a resume filename collision, offer a suffixed name instead.

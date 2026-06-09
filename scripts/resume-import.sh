@@ -12,6 +12,9 @@
 #   resume-import.sh sanity <file>     -> "OK (<n> words)" | "TOO_SHORT (<n>)" | "NO_KEYWORDS (<n>)" | "NO_FILE"
 #   resume-import.sh wordcheck <file>  -> "<n> OK" | "<n> HIGH" | "<n> OVER"   (skills-experience bloat cap)
 #   resume-import.sh write <dest>      -> read stdin, neutralize <Xxx> tokens, write atomically (tmp + mv)
+#   resume-import.sh write-raw <dest>  -> like write but NO neutralization (for identity.md, where a
+#                                         stray <placeholder> should be CAUGHT by start's preflight,
+#                                         not masked into (placeholder))
 #
 # Best-effort; exits 0 except on usage error (2). LC_ALL=C for deterministic text ops.
 set -uo pipefail
@@ -60,8 +63,19 @@ case "$cmd" in
     echo "WROTE $file"
     ;;
 
+  write-raw)
+    [ -n "$file" ] || { echo "usage: resume-import.sh write-raw <dest>" >&2; exit 2; }
+    dir="$(dirname "$file")"; mkdir -p "$dir" 2>/dev/null || true
+    tmp="$file.coapply.tmp.$$"
+    # No neutralization: identity.md is structured fields, not free resume text. If a
+    # <placeholder> slips through, it MUST stay <…> so start's preflight flags it.
+    cat > "$tmp"
+    mv -f "$tmp" "$file"
+    echo "WROTE $file"
+    ;;
+
   *)
-    echo "usage: resume-import.sh {sanity|wordcheck|write} <file>" >&2
+    echo "usage: resume-import.sh {sanity|wordcheck|write|write-raw} <file>" >&2
     exit 2
     ;;
 esac

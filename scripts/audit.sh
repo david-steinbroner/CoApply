@@ -207,7 +207,12 @@ case "$(bash scripts/resume-import.sh wordcheck "$_ri")" in *OVER) note "clean �
 _rio="$(mktemp -d)/out.md"
 printf 'Built List<String>; <EMAIL> redacted\n' | bash scripts/resume-import.sh write "$_rio" >/dev/null 2>&1
 if grep -qE '<[A-Z][^>]*>' "$_rio"; then note "FAIL: write left <Xxx> tokens (would trip start preflight)."; fail=1; else note "clean — write neutralizes placeholder-shaped tokens."; fi
-rm -f "$_ri"; rm -rf "$(dirname "$_rio")"
+# write-raw (identity.md) must NOT neutralize — a stray <placeholder> stays visible so the
+# preflight catches it instead of masking an unfilled field into (placeholder).
+_rir="$(mktemp -d)/identity.md"
+printf '**Location:** <City, ST>\n' | bash scripts/resume-import.sh write-raw "$_rir" >/dev/null 2>&1
+if grep -qE '<[A-Z][^>]*>' "$_rir"; then note "clean — write-raw preserves <placeholder> (preflight can catch it)."; else note "FAIL: write-raw neutralized a placeholder (would mask an unfilled identity field)."; fail=1; fi
+rm -f "$_ri"; rm -rf "$(dirname "$_rio")" "$(dirname "$_rir")"
 
 # A human-judgment gate the script CAN'T verify. Printed every run so it can't be skipped.
 section "Manual gate — confirm before you ship (not automatable)"
