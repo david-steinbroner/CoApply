@@ -1,6 +1,9 @@
 # os / misc
 .DS_Store
 
+# machine-local, never-shipped agent context (cross-repo pointers, sandbox paths)
+CLAUDE.local.md
+
 # dependencies / build
 node_modules/
 *.log
@@ -15,3 +18,7 @@ node_modules/
 /profile/principles.md
 /profile/resumes/*.pdf
 /runs/
+
+# private planning docs (roadmap, specs, decisions, brains-trust runs).
+# deliberately NOT public — this repo is, the backlog isn't. see docs/README.md.
+/docs/
