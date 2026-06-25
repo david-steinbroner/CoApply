@@ -1,6 +1,6 @@
 ---
 name: discover
-description: Surface roles worth applying to, as a pick-list — you decide what flows into an application. Two modes. Watchlist mode checks each company on your list's public job board for openings that match your target roles. Auto mode (`--auto`) needs no list: it turns your target roles into web searches scoped to public ATS boards, finds companies hiring, and runs them through the same pick-list. Also adds companies to the watchlist. Triggers on "find me jobs", "find me jobs anywhere", "search for <role> roles", "check my watchlist", "what's open at the companies I'm watching", "discover roles", "add <company> to my watchlist".
+description: Surface roles worth applying to, as a pick-list — you decide what flows into an application. Watchlist mode checks the companies on a list you keep; auto mode (`--auto`) needs no list and searches public ATS boards straight from your target roles, then runs the finds through the same pick-list. Also adds companies to your watchlist. Triggers on "find me jobs", "find me jobs anywhere", "search for <role> roles", "check my watchlist", "what's open at the companies I'm watching", "discover roles", "add <company> to my watchlist".
 argument-hint: "[--auto | add <company careers URL or ATS board URL>]"
 ---
 

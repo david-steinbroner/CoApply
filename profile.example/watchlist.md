@@ -6,6 +6,10 @@
 > at companies **you already chose to watch**, not the whole market. Add companies with
 > `/coapply:discover add <company careers URL or ATS board URL>`, or edit this table by
 > hand._
+>
+> _No list yet, or want to cast wider? **`/coapply:discover --auto`** needs no watchlist —
+> it searches public ATS boards straight from your target roles and runs the finds through
+> the same pick-list, and can save any company it surfaces back here._
 
 | Company | ATS | Board id | Filters (optional) |
 |---|---|---|---|

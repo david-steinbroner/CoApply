@@ -6,7 +6,8 @@ CoApply is a Claude Code plugin that runs in your environment and reads your per
 
 - **Reads:** your profile folder (the one you configure) and the plugin's own engine files.
 - **Writes:** your runs folder (application output); setup and tier also write to your own profile folder (config and templates). Both are on your machine, not a third party.
-- **Never:** sends your data anywhere except your own Claude — unless you explicitly connect an optional integration (e.g. a Notion tracker, off by default) — submits applications on your behalf, or logs into job sites. No server, no telemetry, no hidden sends.
+- **Network:** `/coapply:discover` fetches **public ATS boards** (Greenhouse / Lever / Ashby) over plain HTTP through a hardcoded host allowlist — no auth, no scraping. `/coapply:discover --auto` additionally sends your **target-role and location keywords** (not personal data) to a web **search provider** to find companies that are hiring — an opt-in, named-in-the-open external touch. Optional connected integrations (e.g. a Notion tracker, off by default) are the only other external sends.
+- **Never:** sends your *personal data* anywhere except your own Claude, submits applications on your behalf, or logs into job sites. No server, no telemetry, no hidden sends.
 
 These are enforced invariants, not just intentions — see `PRINCIPLES.md`.
 
