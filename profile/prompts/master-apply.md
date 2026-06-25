@@ -34,6 +34,7 @@ You are orchestrating a job application package for $USER_NAME. Your job is to c
   "role": "<slug-role>",
   "phase": "triage",
   "tier": "$TIER",
+  "discoveryFp": "$DISCOVERY_FP",
   "artifacts": [
     { "name": "jd-parsed", "status": "pending", "path": "00-jd-parsed.json" },
     { "name": "dedup-check", "status": "pending", "path": "00-dedup-check.md" },

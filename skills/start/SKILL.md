@@ -82,6 +82,14 @@ $ARGUMENTS contains one of:
 
 If URL: canonicalize it (lowercase hostname, strip `www.`, strip query string and fragment) BEFORE any downstream use (hashing, dedup, routing).
 
+**Discovery fingerprint (single-ledger dedup, spec §3.3).** If the canonicalized URL is a public ATS *posting* URL (Greenhouse/Lever/Ashby), stamp this run so `/coapply:discover` won't resurface a job you've already acted on. Run **bare**:
+
+```bash
+"${CLAUDE_PLUGIN_ROOT}/scripts/discover-fetch.py" --fp-from-url "<canonicalized-url>"
+```
+
+If it exits 0, it prints `fp=<sha1>`; set `$DISCOVERY_FP` to that value. If it exits non-zero (a branded/non-ATS URL, or pasted text), leave `$DISCOVERY_FP` empty — that's correct: the run simply carries no fingerprint and isn't deduped against the watchlist. This is the discover↔start shared ledger: discover derives the same `sha1(ats|token|id)` from the same URL, so the two never drift.
+
 ## Step 2 — Pre-flight checks
 
 Step 0's first-run routing already gated profile *readiness* (identity, skills-experience,
@@ -117,6 +125,7 @@ The master prompt needs these inputs — inject them at the top of your next act
 - `$JD_TEXT`: the full JD text (from WebFetch, or pasted)
 - `$TIMESTAMP`: current ISO-8601 timestamp
 - `$RUN_ID`: a 4-character hex id — generate cross-platform via Bash `python3 -c "import secrets;print(secrets.token_hex(2))"` (fallback: `printf '%04x' $((RANDOM % 65536))`). Avoid `openssl` (not on native Windows) and avoid `tail -c` tricks (trailing-newline bugs).
+- `$DISCOVERY_FP`: the discovery fingerprint from Step 1 (empty string if none) — master records it in `_run.json` for single-ledger dedup.
 
 ## Constraints for this skill
 

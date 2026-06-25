@@ -85,6 +85,42 @@ def _fp(ats, token, ident):
     return hashlib.sha1(f"{ats}|{token}|{ident}".encode("utf-8")).hexdigest()
 
 
+def fp_from_url(url):
+    """Recover (ats, token, id, fp) from a public ATS *posting* URL — the inverse of
+    the normalize_*() url fields. This is the ONE place `start` reuses to stamp a run's
+    `discoveryFp` (spec §3.3 single-ledger dedup): start sees only the posting URL the
+    discover gate emitted, so it recomputes the SAME `sha1(ats|token|id)` here rather
+    than maintaining a parallel fp scheme that could drift from fetch's.
+
+    Posting-URL shapes (the `absolute_url`/`hostedUrl`/`jobUrl` fetch emits):
+      greenhouse  boards.greenhouse.io/<token>/jobs/<id>      (also job-boards.…)
+      lever       jobs.lever.co/<token>/<id>
+      ashby       jobs.ashbyhq.com/<token>/<id>
+    Returns a dict on a confident match, or None (a non-ATS / branded / malformed URL —
+    such a run simply carries no discoveryFp, which is correct: it didn't come from the
+    watchlist gate, so it shouldn't be deduped against it)."""
+    parts = urllib.parse.urlsplit(url)
+    host = (parts.hostname or "").lower()
+    segs = [s for s in parts.path.split("/") if s]
+    ats = ident = None
+    if host in ("boards.greenhouse.io", "job-boards.greenhouse.io"):
+        ats = "greenhouse"
+        if len(segs) >= 3 and segs[1] == "jobs":   # <token>/jobs/<id>
+            token, ident = segs[0], segs[2]
+    elif host == "jobs.lever.co":
+        ats = "lever"
+        if len(segs) >= 2:                          # <token>/<id>
+            token, ident = segs[0], segs[1]
+    elif host == "jobs.ashbyhq.com":
+        ats = "ashby"
+        if len(segs) >= 2:                          # <token>/<id>
+            token, ident = segs[0], segs[1]
+    if ats is None or ident is None:
+        return None
+    ident = ident.split("?")[0]  # defensive: drop a stray query the splitter kept off path
+    return {"ats": ats, "token": token, "id": ident, "fp": _fp(ats, token, ident)}
+
+
 def _iso_date(value):
     """Best-effort 'YYYY-MM-DD' from the heterogeneous date fields ATSes return:
     an ISO-8601 string (Greenhouse updated_at) or epoch-millis (Lever createdAt)."""
@@ -240,11 +276,29 @@ def load_seen(path):
 # ----------------------------------------------------------------------- main
 def main():
     ap = argparse.ArgumentParser(add_help=True, description="CoApply discovery fetch (step 1)")
-    ap.add_argument("--watchlist", required=True, help="path to profile/watchlist.md")
+    ap.add_argument("--watchlist", help="path to profile/watchlist.md")
     ap.add_argument("--seen", default="", help="path to _discovery_seen.txt (optional)")
     ap.add_argument("--timeout", type=float, default=20.0, help="per-request timeout (s)")
     ap.add_argument("--max-pages", type=int, default=50, help="Lever pagination safety cap")
+    ap.add_argument("--fp-from-url", metavar="URL",
+                    help="utility mode: print ats/token/id/fp for an ATS posting URL "
+                         "and exit (no network). Used by /coapply:start to stamp a "
+                         "run's discoveryFp for single-ledger dedup (spec §3.3).")
     args = ap.parse_args()
+
+    # --- utility mode: URL → fingerprint (no network, no watchlist) -------------------
+    if args.fp_from_url is not None:
+        info = fp_from_url(args.fp_from_url)
+        if info is None:
+            sys.stderr.write("discover-fetch: not a recognized ATS posting URL "
+                             "(no fingerprint)\n")
+            sys.exit(1)
+        for k in ("ats", "token", "id", "fp"):
+            sys.stdout.write(f"{k}={info[k]}\n")
+        sys.exit(0)
+
+    if not args.watchlist:
+        die("--watchlist is required (or use --fp-from-url URL for fingerprint mode)")
 
     rows = parse_watchlist(args.watchlist)
     seen = load_seen(args.seen)
