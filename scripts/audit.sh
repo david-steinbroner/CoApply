@@ -306,19 +306,30 @@ bash "$_DR" 'https://acme.wd1.myworkdayjobs.com/careers' >/dev/null 2>&1
 [ "$?" = 3 ] && note "clean — resolve flags Workday as deferred (exit 3), not emitted." || { note "FAIL: resolve should exit 3 on a Workday URL."; fail=1; }
 
 # --- Boundary point 3: the triage step has NO network capability ---
-# The single biggest stay-in-bounds risk in v1 was an LLM triage that could WebFetch a
-# posting URL and bypass the fetch allowlist. The v2 default is a pure Python ranker, so
-# this is free — assert it: (a) the ranker imports no network module, and (b) no web/fetch
-# TOOL is actually granted/used in the discovery path. The words WebFetch/WebSearch may
-# appear, but ONLY inside an explicit prohibition (spec §4 pt 3 mandates that prohibition).
+# The single biggest stay-in-bounds risk was an LLM triage that could WebFetch a posting URL
+# and bypass the fetch allowlist. The default is a pure Python ranker, so this is free —
+# assert it: (a) the ranker imports no network module, (b) the ranker references no web tool
+# at all, and (c) in the orchestrator skill, WebFetch of a posting stays prohibited.
+# NOTE (discovery-auto, spec §4): `WebSearch` is now the SANCTIONED auto-mode Path A — it is
+# scoped by allowed_domains to public ATS board hosts and used only to find first-party
+# (ats,token) tokens (never as job data). So WebSearch is allowed *in the skill*, but the
+# offline ranker still names neither tool, and WebFetch of a posting URL stays forbidden.
 if grep -nE '^[[:space:]]*(import|from)[[:space:]]+(urllib|http|requests|socket|aiohttp|httplib)' "$_DT" >/dev/null 2>&1; then
   grep -nE '^[[:space:]]*(import|from)[[:space:]]+(urllib|http|requests|socket|aiohttp|httplib)' "$_DT"
   note "FAIL: discover-triage.py imports a network module — the ranker must be offline (boundary point 3)."; fail=1
 else note "clean — discover-triage.py imports no network module (boundary point 3)."; fi
-_webrefs=$(grep -inE 'WebFetch|WebSearch' "$_DT" "$_DS" 2>/dev/null \
+# (b) the offline ranker names a web tool ONLY inside an explicit prohibition (never as a
+# capability) — neither WebFetch nor WebSearch is available to it.
+_tri_web=$(grep -inE 'WebFetch|WebSearch' "$_DT" 2>/dev/null \
   | grep -ivE "never|no network|cannot|can'?t|not |without|prohibit|no web|no fetch|no .*tool")
-if [ -n "$_webrefs" ]; then echo "$_webrefs"; note "FAIL: a web/fetch tool appears in the discovery path outside a prohibition (boundary point 3)."; fail=1
-else note "clean — web/fetch only ever appears as an explicit prohibition in the discovery path (boundary point 3)."; fi
+if [ -n "$_tri_web" ]; then echo "$_tri_web"; note "FAIL: discover-triage.py references a web tool outside a prohibition — the ranker must be offline (boundary point 3)."; fail=1
+else note "clean — discover-triage.py names a web tool only as a prohibition; the ranker stays offline (boundary point 3)."; fi
+# (c) in the orchestrator skill, every WebFetch mention must sit inside an explicit
+# prohibition (a posting URL is never WebFetched). WebSearch is the allowed auto-mode Path A.
+_skill_webfetch=$(grep -inE 'WebFetch' "$_DS" 2>/dev/null \
+  | grep -ivE "never|no network|cannot|can'?t|not |without|prohibit|no web|no fetch|no .*tool")
+if [ -n "$_skill_webfetch" ]; then echo "$_skill_webfetch"; note "FAIL: WebFetch appears in the discovery skill outside a prohibition (boundary point 3)."; fail=1
+else note "clean — WebFetch only ever appears as an explicit prohibition in the discovery skill; WebSearch is the sanctioned auto-mode Path A (boundary point 3)."; fi
 
 # --- Vendor infra vs. target-company guard (spec §7) ---
 # ATS *infrastructure* names (greenhouse/lever/ashby) are legitimately in the engine — they
@@ -349,6 +360,45 @@ if grep -qF '{company}|' "$_DF"; then
   grep -nF '{company}|' "$_DF"
   note "FAIL: discover-fetch.py builds a company|id fingerprint — relabeling a row would resurface every posting (spec §3.3)."; fail=1
 else note "clean — no company|id fingerprint regression."; fi
+
+# --- Discovery-AUTO front-end guards (spec docs/features/discovery-auto/spec.md §6) ---
+# The two new front-end scripts (querygen, extract) must hold the same offline + boundary +
+# field-agnostic properties as the rest of discovery. These are the step-4 assertions.
+_DQ=scripts/discover-querygen.py
+_DE=scripts/discover-extract.py
+for f in "$_DQ" "$_DE"; do
+  [ -f "$f" ] || { note "FAIL: missing discovery-auto file $f"; fail=1; }
+done
+# (a) querygen + extract are OFFLINE — neither imports a network module (same test as triage).
+_auto_net=$(grep -nE '^[[:space:]]*(import|from)[[:space:]]+(urllib|http|requests|socket|aiohttp|httplib)' "$_DQ" "$_DE" 2>/dev/null)
+if [ -n "$_auto_net" ]; then echo "$_auto_net"; note "FAIL: querygen/extract imports a network module — the front-end must be offline (spec §6)."; fail=1
+else note "clean — discover-querygen.py + discover-extract.py import no network module (offline front-end, spec §6)."; fi
+# (b) extract emits ONLY known-ATS tokens — behavioral negative tests (the boundary guard,
+# spec §4): a non-ATS URL yields zero tokens; a denylisted token is dropped; a known ATS
+# board URL IS emitted (positive control, so the test can actually fail).
+_ex_nonats=$(printf '%s\n' 'https://www.linkedin.com/jobs/view/123' | python3 "$_DE" 2>/dev/null)
+_ex_deny=$(printf '%s\n' 'https://jobs.lever.co/jobgether/x' | python3 "$_DE" 2>/dev/null)
+_ex_ok=$(printf '%s\n' 'https://boards.greenhouse.io/acme' | python3 "$_DE" 2>/dev/null)
+if printf '%s' "$_ex_nonats" | grep -q '"unique_tokens": 0' \
+   && printf '%s' "$_ex_deny"   | grep -q '"unique_tokens": 0' \
+   && printf '%s' "$_ex_ok"     | grep -q '"token": "acme"'; then
+  note "clean — extract refuses a non-ATS URL + drops a denylisted token, but emits a known-ATS board (boundary, spec §4/§6)."
+else note "FAIL: extract boundary regressed — non-ATS not refused, denylist not applied, or a real board not emitted (spec §4/§6)."; fail=1; fi
+# (c) FIELD-AGNOSTIC guard on querygen: no hardcoded role/field literals in the CODE (comments
+# may carry illustrative examples; terms must come from the profile at runtime — spec §4/§6).
+_qg_field=$(grep -vE '^[[:space:]]*#' "$_DQ" | sed 's/#.*//' \
+  | grep -inwE 'product|engineer|engineering|nurse|nursing|developer|designer|accountant|teacher|analyst|marketing|sales|finance|lawyer|recruiter|manager')
+if [ -n "$_qg_field" ]; then echo "$_qg_field"; note "FAIL: discover-querygen.py hardcodes a role/field literal — queries must derive from the profile (spec §4/§6)."; fail=1
+else note "clean — discover-querygen.py hardcodes no role/field literal; queries derive from the profile (field-agnostic, spec §4/§6)."; fi
+
+# --- Honest-framing guard: the public docs must not oversell auto mode (spec §6) ---
+# /coapply:help + README must carry the broad-not-exhaustive + search-provider-privacy framing
+# so the boundary is stated, not hidden.
+_HELP=skills/help/SKILL.md
+if grep -qiE 'broad|not whole-market|not exhaustive|public ATS' "$_HELP" \
+   && grep -qiE 'broad|not whole-market|not exhaustive|search provider|public ATS' README.md; then
+  note "clean — help + README carry the honest auto-mode framing (broad-not-exhaustive, spec §6)."
+else note "FAIL: help/README missing the honest auto-mode framing (broad-not-exhaustive / privacy note, spec §6)."; fail=1; fi
 
 # A human-judgment gate the script CAN'T verify. Printed every run so it can't be skipped.
 section "Manual gate — confirm before you ship (not automatable)"

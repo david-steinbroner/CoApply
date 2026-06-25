@@ -1,7 +1,7 @@
 ---
 name: discover
-description: Surface roles worth applying to from your company watchlist. Checks each watched company's public job board and shows the openings that match your target roles, as a pick-list — you decide what flows into an application. Also adds companies to the watchlist. Triggers on "find me jobs", "check my watchlist", "what's open at the companies I'm watching", "discover roles", "add <company> to my watchlist".
-argument-hint: "[add <company careers URL or ATS board URL>]"
+description: Surface roles worth applying to, as a pick-list — you decide what flows into an application. Two modes. Watchlist mode checks each company on your list's public job board for openings that match your target roles. Auto mode (`--auto`) needs no list: it turns your target roles into web searches scoped to public ATS boards, finds companies hiring, and runs them through the same pick-list. Also adds companies to the watchlist. Triggers on "find me jobs", "find me jobs anywhere", "search for <role> roles", "check my watchlist", "what's open at the companies I'm watching", "discover roles", "add <company> to my watchlist".
+argument-hint: "[--auto | add <company careers URL or ATS board URL>]"
 ---
 
 # CoApply — Discover (company watchlist monitor)
@@ -13,10 +13,19 @@ a ready-to-run `/coapply:start` command they run at their own pace. No expensive
 here, nothing auto-submits, and the only network calls go to public ATS JSON boards over
 plain HTTP (the deterministic scripts enforce that — see `docs/features/discovery/spec.md`).
 
-**Be honest about what this is.** It's a *watchlist monitor*, not whole-market search: it
-finds openings at companies the user already chose to watch. If the user expects "search all
-PM jobs everywhere," say plainly that this version watches a list they curate, and offer to
-add companies.
+**Be honest about what this is.** Two modes, neither is whole-market search:
+- **Watchlist mode** (default) finds openings at companies the user already chose to watch.
+- **Auto mode** (`--auto`) needs no list: it turns the user's target roles into web searches
+  **scoped to the public ATS board domains** (Greenhouse / Lever / Ashby), finds companies
+  hiring there, and runs them through the same pick-list. It is **broad, not exhaustive** —
+  it surfaces what a general web index already has indexed on those public boards — and is
+  **strongest for tech/startup roles**, because that ATS corpus skews that way (a corpus
+  limitation, not an engine bias). It is **not** LinkedIn/Indeed and never will be; that
+  aggregator category is the boundary it deliberately rejects.
+
+If the user expects "search every job everywhere," say plainly that auto mode is broad-not-
+exhaustive (public ATS boards a web index has indexed) and watchlist mode watches a list they
+curate — and offer the one that fits.
 
 ## Step 0 — Resolve paths and identity (do this first)
 
@@ -48,7 +57,18 @@ that and suggest setting target roles in `identity.md` for a useful ranking.
 Paths used below:
 - Watchlist (user-authored): `${PROFILE_DIR}/watchlist.md`
 - Optional synonyms (user-authored, engine ships none): `${PROFILE_DIR}/discover-synonyms.txt`
+- Optional auto-mode reposter denylist (user-authored, engine ships a tiny default in-script):
+  `${PROFILE_DIR}/discover-denylist.txt`
 - Derived dismiss cache: `${RUNS_DIR}/_discovery_seen.txt`
+
+## Step 0.5 — Route by mode
+
+After Step 0, pick the branch from `$ARGUMENTS` (and the user's phrasing):
+- `$ARGUMENTS` begins with `add` → **Step 1** (`add` sub-flow — register a company).
+- `$ARGUMENTS` contains `--auto`, **or** the user asked to search without a list ("find me jobs
+  anywhere", "search for `<role>` roles", "what's hiring", "look across the web") → **Step A**
+  (auto mode), then converge at Step 3.
+- otherwise → **Step 2** (watchlist mode).
 
 ## Step 1 — `add` sub-flow (if `$ARGUMENTS` begins with `add`)
 
@@ -76,6 +96,75 @@ Take the rest of the argument as a company careers URL or ATS board URL and reso
 
 If `$ARGUMENTS` is empty or anything other than an `add …`, fall through to Step 2 (run a check).
 
+## Step A — Auto mode (`--auto`): search the web for matching boards
+
+This replaces the watchlist requirement with a search: profile target roles → ATS-scoped web
+searches → first-party `(ats, token)` tokens → an **ephemeral watchlist** that feeds the
+*exact same* fetch → triage → gate spine. Nothing downstream changes.
+
+**A0 — Say what's about to happen (privacy, named not hidden).** Before searching, tell the
+user once, plainly: this sends your **target-role and location keywords** (not personal data)
+to a web search provider — a third party watchlist mode never touches — and then fetches each
+company's **own** public board. Results are a source of *companies to check*, never job data
+themselves. It's broad, not exhaustive, and strongest for tech/startup roles.
+
+**A1 — Generate the queries (deterministic, no network).**
+
+```bash
+"${CLAUDE_PLUGIN_ROOT}/scripts/discover-querygen.py" --targets "<$USER_TARGETS text>" > "${RUNS_DIR}/.discovery_auto_queries.json"
+```
+
+Substitute the real `$USER_TARGETS` string (quoted). If the user named a **location** ("remote",
+"NYC") or extra **keywords** in their request, add `--location "<loc>"` and/or `--keywords "<a, b>"`
+— terms must come from the user/profile, never invented. The script prints a "what I'll search"
+receipt to **stderr**; surface it. Then **Read** `${RUNS_DIR}/.discovery_auto_queries.json` and
+take its `queries` array and its `allowed_domains` array.
+
+**A2 — Run each query through WebSearch (Path A).** For **each** string in `queries`, call the
+**WebSearch** tool with that string as `query` and `allowed_domains` set to the `allowed_domains`
+array from the querygen JSON (this is what scopes results to the public ATS board hosts). Collect
+**every result URL** across all queries.
+
+- **If the WebSearch tool is not available** in this environment: stop the auto flow and say so
+  plainly — auto mode (Path A) needs Claude Code's built-in web search. Offer the fallbacks:
+  watchlist mode (`/coapply:discover add <careers URL>` to build a list) or the documented Path B
+  external SERP API (off by default, not built in v1). Do not fabricate results.
+
+**A3 — Extract first-party tokens (deterministic, no network).** Write the collected URLs, one
+per line, to `${RUNS_DIR}/.discovery_auto_urls.txt` with the **Write** tool, then:
+
+```bash
+"${CLAUDE_PLUGIN_ROOT}/scripts/discover-extract.py" --urls "${RUNS_DIR}/.discovery_auto_urls.txt" > "${RUNS_DIR}/.discovery_auto_tokens.json"
+```
+
+If `${PROFILE_DIR}/discover-denylist.txt` exists, add `--denylist "${PROFILE_DIR}/discover-denylist.txt"`.
+The script keeps **only** tokens on a known ATS board (greenhouse/lever/ashby) and drops reposter
+noise; it prints a "what came in / what I kept" receipt to **stderr** — surface it. Then **Read**
+`${RUNS_DIR}/.discovery_auto_tokens.json` and take its `tokens` array (`{ats, token, url}` each).
+
+If `tokens` is **empty**: tell the user the search surfaced no first-party ATS boards this time
+(results were non-ATS, or all reposter noise), and suggest broadening `Target roles` in
+`identity.md`, trying different keywords, or running again later. Stop.
+
+**A4 — Build the ephemeral watchlist (union with the manual list).** Read
+`${PROFILE_DIR}/watchlist.md` and collect any **real** data rows (per Step 2's test). With the
+**Write** tool, create `${RUNS_DIR}/.discovery_auto_watchlist.md` as a markdown table:
+
+```
+| Company | ATS | Board id | Filters |
+|---|---|---|---|
+```
+
+Then one row per **auto** token — `| <Company> | <ats> | <token> |  |`, where `<Company>` is a
+readable title-cased version of the token (e.g. `acme-corp` → `Acme Corp`) — followed by the
+manual real rows verbatim. **Dedup on `<ats>|<token>` (lowercased)** so a company already on the
+watchlist isn't fetched twice; the manual row wins (keep its display name/filters).
+
+Then **continue at Step 3**, but pass this file as the watchlist:
+`--watchlist "${RUNS_DIR}/.discovery_auto_watchlist.md"`. Fetch, triage, the gate, dedup against
+the single ledger — all **unchanged**. (At Step 6, auto mode also offers "save to watchlist" — see
+there.)
+
 ## Step 2 — Ensure a usable watchlist
 
 Read `${PROFILE_DIR}/watchlist.md`. It's usable only if it has at least one **real** data row —
@@ -96,9 +185,13 @@ fingerprint is stored in some run's `_run.json.discoveryFp` — written by `/coa
 explicitly dismissed (in the derived cache `_discovery_seen.txt`). Build the union into a
 transient file, then fetch:
 
+In **watchlist mode** the watchlist is `${PROFILE_DIR}/watchlist.md`. In **auto mode** (arrived
+from Step A) it is the ephemeral `${RUNS_DIR}/.discovery_auto_watchlist.md` you just built — use
+that path for `--watchlist` everywhere below (Step 4's triage too). Everything else is identical.
+
 ```bash
 { grep -rhoE '"discoveryFp"[[:space:]]*:[[:space:]]*"[0-9a-f]{40}"' --include='_run.json' "${RUNS_DIR}" 2>/dev/null | grep -oE '[0-9a-f]{40}' ; cat "${RUNS_DIR}/_discovery_seen.txt" 2>/dev/null ; } | sort -u > "${RUNS_DIR}/.discovery_seen_union.txt"
-"${CLAUDE_PLUGIN_ROOT}/scripts/discover-fetch.py" --watchlist "${PROFILE_DIR}/watchlist.md" --seen "${RUNS_DIR}/.discovery_seen_union.txt" > "${RUNS_DIR}/.discovery_fetch.json"
+"${CLAUDE_PLUGIN_ROOT}/scripts/discover-fetch.py" --watchlist "<watchlist path for the mode>" --seen "${RUNS_DIR}/.discovery_seen_union.txt" > "${RUNS_DIR}/.discovery_fetch.json"
 ```
 
 The fetch script prints a human receipt to **stderr** (hosts hit, per-company counts, any board
@@ -114,7 +207,7 @@ boards right now (everything either didn't match or was already seen/acted-on), 
 ## Step 4 — Rank (deterministic triage, no LLM, no network)
 
 ```bash
-"${CLAUDE_PLUGIN_ROOT}/scripts/discover-triage.py" --targets "<$USER_TARGETS text>" --postings "${RUNS_DIR}/.discovery_fetch.json" --watchlist "${PROFILE_DIR}/watchlist.md" > "${RUNS_DIR}/.discovery_triage.json"
+"${CLAUDE_PLUGIN_ROOT}/scripts/discover-triage.py" --targets "<$USER_TARGETS text>" --postings "${RUNS_DIR}/.discovery_fetch.json" --watchlist "<watchlist path for the mode>" > "${RUNS_DIR}/.discovery_triage.json"
 ```
 
 Substitute the real `$USER_TARGETS` string (quoted). If `${PROFILE_DIR}/discover-synonyms.txt`
@@ -166,14 +259,29 @@ Confirm what you dismissed by company/title. Dismissed jobs won't reappear on th
 repost under a *new* id is a new fingerprint and may resurface — accepted: over-showing an active
 listing beats hiding it).
 
+**Auto mode only — offer "save to watchlist" (compounding list seam).** A company surfaced by a
+search is ephemeral; if the user applied to (or liked) one, offer to add it to their **real**
+watchlist so it's watched on every future run: "Want me to save **<Company>** to your watchlist so
+I check it every time?" For each one they say yes to, append a row to `${PROFILE_DIR}/watchlist.md`
+the same way Step 1's `add` does — `| <Company> | <ats> | <token> |  |`, using the `ats`/`token`
+from the triage JSON, **skipping any `<ats>|<token>` already present** (read the file first; replace
+example placeholder rows rather than appending below them). This is the only profile write auto mode
+makes, and only on explicit yes. Don't auto-save every result — that would recreate the curation the
+list is meant to be.
+
 Close with one forward line: **Next:** run an emitted `/coapply:start` line when ready, or
-`/coapply:discover` again later / `/coapply:discover add <url>` to widen the list.
+`/coapply:discover --auto` / `/coapply:discover` again later, or `/coapply:discover add <url>` to
+widen the list by hand.
 
 ## Notes / failure handling
 
 - **Stay in bounds.** Every network call here is a deterministic script with its own guard: fetch
   has a hardcoded host allowlist, resolve validates the final redirect host, triage has no network
-  capability at all. Never WebFetch a posting URL from this skill.
+  capability at all. Never WebFetch a posting URL from this skill. In **auto mode** the only added
+  network is the `WebSearch` calls — scoped by `allowed_domains` to the public ATS board hosts, used
+  only to find first-party `(ats, token)` tokens. `discover-extract.py` then keeps **only** known-ATS
+  tokens, so a stray non-ATS result is dropped, never fetched. A search snippet is never treated as
+  job data — it's a source of a token, and we fetch the company's own board.
 - **Don't hand a subagent a `${…}` literal** — there are no subagents in this flow, but if you ever
   add one, pass resolved absolute paths.
 - **Watchlist parse error** (a malformed row) — `discover-fetch.py` exits non-zero pointing at the

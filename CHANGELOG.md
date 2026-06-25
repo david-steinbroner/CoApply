@@ -2,6 +2,52 @@
 
 All notable changes to CoApply. Versioned on the `plugin.json` version line.
 
+## [0.8.0] — 2026-06-25 — Discovery-Auto: zero-curation, profile-driven discovery
+
+Roadmap follow-up to Discovery 0.7.1. `/coapply:discover` gains an **`--auto` mode** that needs
+**no watchlist**: it turns your profile's target roles (+ optional location/keywords) into web
+searches **scoped to the public ATS board domains** (Greenhouse / Lever / Ashby), extracts the
+`(ats, token)` of each company that surfaces, and feeds those tokens into the **existing** fetch →
+triage → gate pipeline. One command, no list. The expensive spine is reused intact; the only new
+surface area is the search front-end. Spec: `docs/features/discovery-auto/spec.md` (feasibility
+spike PASS, 2026-06-25).
+
+**Named honestly:** still **not** whole-market search. It surfaces what a general web index already
+has indexed on public ATS boards — **broad, not exhaustive** — and is **strongest for tech/startup
+roles** because that ATS *corpus* skews that way (a corpus limitation, not an engine bias). It is
+not, and will not be, LinkedIn/Indeed. **Privacy, named not hidden:** auto mode sends your
+target-role/location keywords (not personal data) to a search provider — a third party watchlist
+mode never touches. The help text + README say all of this rather than overselling.
+
+### Added
+- **`scripts/discover-querygen.py`** — deterministic, offline, field-agnostic: profile targets +
+  filters → a small (3–6, capped) list of ATS-scoped query strings + the `allowed_domains` to scope
+  them. Every term comes from the profile; nothing role/field-specific is hardcoded.
+- **`scripts/discover-extract.py`** — deterministic, offline: result URLs → unique `(ats, token)`
+  pairs. **Boundary guard:** emits **only** known-ATS tokens (drops anything else); a tiny, generic,
+  user-overridable reposter denylist (`jobgether`) drops aggregator noise. Mirrors fetch's URL
+  classifier so the parse can't drift.
+- **`skills/discover/SKILL.md` `--auto` mode** — `/coapply:discover --auto` (and natural language:
+  "find me jobs anywhere", "search for `<role>` roles"): querygen → **WebSearch** loop (Path A,
+  `allowed_domains`-scoped) → extract → an **ephemeral watchlist** (unioned with any manual rows,
+  deduped on `ats|token`) → the unchanged fetch/triage/**gate**/emit/dismiss spine. On a pick it
+  offers to **save the company to your watchlist**, so the list compounds over time.
+
+### Boundary / audit
+- **`WebSearch` is the sanctioned auto-mode Path A** — scoped by `allowed_domains` to public ATS
+  hosts, used only to find first-party tokens (never as job data). `audit.sh` boundary-point-3 now
+  allows WebSearch *in the skill* while keeping the ranker offline and **WebFetch of a posting
+  forbidden**.
+- **New `audit.sh` asserts (spec §6):** querygen + extract import no network module; extract refuses
+  a non-ATS URL and drops a denylisted token (behavioral negative tests, with a positive control);
+  querygen hardcodes no role/field literal (field-agnostic guard); help + README carry the
+  broad-not-exhaustive + search-provider-privacy framing.
+
+### Deferred (named, not dropped — spec §7)
+- Path B external SERP API (Brave / Serper) as a built default — seam kept, not built.
+- Scheduled/recurring watch · full feedback-learning (active/promising/backoff) · more ATS adapters
+  (Workday / iCIMS) · optional LLM re-rank.
+
 ## [0.7.1] — 2026-06-25 — Discovery: zsh-safe first-run dedup ledger
 
 Patch found by dogfooding `/coapply:discover` end-to-end against live public boards

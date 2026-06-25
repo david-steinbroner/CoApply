@@ -72,7 +72,7 @@ Here's what happens:
 4. **You review it, make it yours, and submit it.** CoApply never submits for you.
 
 Other commands:
-- `/coapply:discover` — surface roles from a **company watchlist** you keep: it checks each watched company's public job board, filters to titles matching your targets, and shows a ranked shortlist as a gate — you pick which ones become `/coapply:start` commands (no batch-applying). Add companies with `/coapply:discover add <careers or board URL>`. It's a *watchlist monitor*, not whole-market search — it finds openings at companies **you already chose to watch**, and can't yet suggest ones you didn't know about (a planned follow-up). Public ATS boards only, over plain HTTP — never aggregator scraping or logging into job sites.
+- `/coapply:discover` — surface roles as a gate; you pick which ones become `/coapply:start` commands (no batch-applying). **Watchlist mode** (default) checks each company on a list **you keep** — their public job board, filtered to your targets. Add companies with `/coapply:discover add <careers or board URL>`. **Auto mode** (`/coapply:discover --auto`) needs **no list**: it turns your target roles into web searches scoped to public ATS boards (Greenhouse / Lever / Ashby), finds companies hiring there, and runs them through the same gate. Auto mode is **broad, not exhaustive** — it surfaces what a web index already has indexed on those **public ATS** boards, and is **strongest for tech/startup roles** (a corpus limitation, not a bias); it's **not** LinkedIn/Indeed and never scrapes them. Its one privacy note: auto mode sends your role/location keywords (not personal data) to a **search provider**, a third party watchlist mode never touches. Public ATS boards only, over plain HTTP — never aggregator scraping or logging into job sites.
 - `/coapply:setup` — first-time setup (templates, billing check, budget tier).
 - `/coapply:tier` — change your budget tier (lite / standard / full) anytime.
 - `/coapply:list` — see your recent applications.
@@ -205,7 +205,7 @@ CoApply itself is free. It runs on Claude Code, which needs a paid Claude plan o
 No, on purpose. You always review and submit yourself. That's what keeps your applications good.
 
 **Can it find jobs for me?**
-Not yet — today you bring the job posting. Discovering roles from public job boards is on the roadmap.
+Yes — `/coapply:discover`. Either monitor a **watchlist** of companies you keep, or run **`/coapply:discover --auto`** to search public ATS boards (Greenhouse / Lever / Ashby) straight from your target roles — no list needed. Both end at the same gate, where you pick which finds become applications. It's broad, not exhaustive (public ATS boards only, strongest for tech/startup roles), and never scrapes aggregators or applies for you.
 
 **Do I need to save my work before I close?**
 No. CoApply writes everything to disk as it goes — every draft, and every edit to your profile, is a real file saved the moment it's made. Closing a session loses the *chat*, never your *work*. If you close in the middle of a run, just reopen and run `/coapply:resume` — finished pieces are kept, and only the unfinished one re-runs.
