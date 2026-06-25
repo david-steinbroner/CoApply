@@ -11,6 +11,10 @@ CLAUDE.local.md
 node_modules/
 *.log
 
+# python bytecode cache (discovery adapters are stdlib python3)
+__pycache__/
+*.pyc
+
 # the user's own profile + run output live OUTSIDE the plugin, but ignore them
 # here too in case someone keeps theirs inside the repo
 /profile/identity.md
