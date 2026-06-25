@@ -19,6 +19,7 @@ CoApply generates applications from **your** material. These files are that mate
 | `positioning-modes.md` | Pre-defined ways to frame yourself for different kinds of role (e.g. a teacher's "Classroom Lead" vs "Curriculum Designer" framing). CoApply picks the right mode per job. |
 | `portfolio-links.md` | Case studies, project links, hosted cover letters — anything you'd link a hiring manager to. |
 | `resumes/` | One or more resume variants in markdown. CoApply recommends which to send and which bullets to swap per job. |
+| `watchlist.md` | _(Optional)_ Companies for `/coapply:discover` to watch. CoApply checks each one's public job board and surfaces roles that match your targets — you still pick what to apply to. |
 
 ## Privacy
 
