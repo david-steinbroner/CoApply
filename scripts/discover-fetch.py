@@ -45,12 +45,11 @@ ALLOWED_HOSTS = {
     "api.ashbyhq.com",  # listed now; the Ashby adapter itself lands in step 5
 }
 
-# ATSes this script knows. greenhouse+lever are implemented in step 1; ashby (step 5)
-# and workday (deferred, spec §8) are recognized-but-not-yet-fetched so a watchlist
-# row for them is skipped-with-a-note rather than treated as a typo.
-IMPLEMENTED = {"greenhouse", "lever"}
-PENDING = {"ashby": "adapter pending (spec §10 step 5)",
-           "workday": "deferred (spec §8)"}
+# ATSes this script knows. greenhouse+lever (step 1) and ashby (step 5) are
+# implemented; workday (deferred, spec §8) is recognized-but-not-yet-fetched so a
+# watchlist row for it is skipped-with-a-note rather than treated as a typo.
+IMPLEMENTED = {"greenhouse", "lever", "ashby"}
+PENDING = {"workday": "deferred (spec §8)"}
 
 USER_AGENT = "CoApply-discovery/0.1 (+https://github.com/david-steinbroner/CoApply)"
 
@@ -186,6 +185,27 @@ def normalize_lever(jobs, company, token):
     return out
 
 
+def normalize_ashby(jobs, company, token):
+    """Ashby /posting-api/job-board → list[posting]. `location` is a top-level string
+    (spec §3.3). Ashby is the fetch *source* that's fragile (404 if the org didn't
+    enable the public API, handled in fetch_ashby) — but once we DO have JSON, the
+    schema is held to the same fail-loud standard as the others (a missing
+    title/id/url is still drift, not a row to emit empty)."""
+    out = []
+    for j in jobs:
+        ident = _require(j.get("id"), "id", company)
+        out.append({
+            "company": company, "ats": "ashby", "token": token,
+            "title": _require(j.get("title"), "title", company),
+            "location": (j.get("location") or ""),
+            "url": _require(j.get("jobUrl"), "url", company),
+            "id": ident,
+            "posted": _iso_date(j.get("publishedAt")),
+            "fp": _fp("ashby", token, ident),
+        })
+    return out
+
+
 # ------------------------------------------------------------------- adapters
 def fetch_greenhouse(token, timeout):
     """Greenhouse returns all jobs in one payload — no pagination (spec §2)."""
@@ -215,6 +235,33 @@ def fetch_lever(token, timeout, max_pages):
         sys.stderr.write(f"discover-fetch: warning: hit --max-pages={max_pages} "
                          f"on lever/{token}; may be truncated\n")
     return all_jobs, hosts_hit
+
+
+class AshbyUnavailable(Exception):
+    """Ashby's public posting API returned 404 — the org never enabled it and the
+    board is JS-rendered (spec §2: Ashby is the v1 fragility hotspot, shipped as
+    'best effort, may 404'). This is the EXPECTED outcome for most orgs, not a
+    failure: it's surfaced as a soft note in the receipt, never added to errors[],
+    and never kills the run."""
+
+
+def fetch_ashby(token, timeout):
+    """Ashby returns all jobs in one payload — no pagination (spec §2). The public
+    JSON API only responds if the org turned it on; otherwise it 404s (the board is
+    JS-rendered). A 404 is therefore treated as 'not available' (→ AshbyUnavailable,
+    a soft note), distinct from a real error like a 5xx or a JSON parse failure, which
+    propagate to the generic handler (spec §2/§3.3, best-effort, 404 → skip + flag)."""
+    url = f"https://api.ashbyhq.com/posting-api/job-board/{urllib.parse.quote(token)}"
+    try:
+        data = http_get_json(url, timeout)
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            raise AshbyUnavailable(
+                f"Ashby public API not enabled for '{token}' (404) — board is "
+                f"JS-rendered, not reachable over plain HTTP; skipped")
+        raise
+    jobs = data.get("jobs", []) if isinstance(data, dict) else []
+    return jobs, [url]
 
 
 # ------------------------------------------------------------------ watchlist
@@ -317,8 +364,17 @@ def main():
             elif ats == "lever":
                 jobs, urls = fetch_lever(token, args.timeout, args.max_pages)
                 norm = normalize_lever(jobs, company, token)
+            elif ats == "ashby":
+                jobs, urls = fetch_ashby(token, args.timeout)
+                norm = normalize_ashby(jobs, company, token)
             else:  # unreachable (parse_watchlist gates ats), kept for safety
                 continue
+        except AshbyUnavailable as e:
+            # Expected for most orgs (404 = public API off) — a soft note, NOT an
+            # error, so the receipt reads honestly and the run isn't flagged failed.
+            company_reports.append({"company": company, "ats": ats, "fetched": 0,
+                                    "new": 0, "note": str(e)})
+            continue
         except SchemaDrift as e:
             company_reports.append({"company": company, "ats": ats, "fetched": 0,
                                     "new": 0, "schema_drift": str(e)})
@@ -375,6 +431,8 @@ def main():
             er(f"  ! {c['company']} ({c['ats']}): schema drift — {c['schema_drift']}\n")
         elif "error" in c:
             er(f"  ! {c['company']} ({c['ats']}): {c['error']}\n")
+        elif "note" in c:
+            er(f"  ~ {c['company']} ({c['ats']}): {c['note']}\n")
         else:
             er(f"  · {c['company']} ({c['ats']}): {c['fetched']} fetched, {c['new']} new\n")
     for s in skipped:
