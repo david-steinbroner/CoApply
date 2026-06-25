@@ -2,6 +2,62 @@
 
 All notable changes to CoApply. Versioned on the `plugin.json` version line.
 
+## [0.7.0] — 2026-06-25 — Discovery: a company-watchlist job monitor that feeds the gate
+
+Roadmap item #6. CoApply can now *surface* roles, not only process a job you already found —
+without crossing the line the project draws. You keep a **watchlist** of companies; CoApply
+checks each one's **public ATS board over plain HTTP** (no browser, no auth, no aggregator
+scraping), filters to titles that match your target roles, and presents a ranked shortlist
+**as a gate**. You pick; each pick is handed back as a ready-to-run `/coapply:start` command —
+nothing batch-applies and no expensive agent runs before you decide. Built spec-first and
+reviewed by a brains-trust (Gemini 3.1 Pro + Claude Opus 4.8); spec in
+`docs/features/discovery/spec.md`.
+
+**Named honestly:** this is a *watchlist monitor*, not whole-market search. It finds openings
+at companies you already chose to watch; it can't yet suggest companies you didn't know to
+care about (seed-from-public-directories is a planned follow-up). The help text and README say
+so rather than overselling.
+
+### Added
+- **`/coapply:discover`** (`skills/discover/SKILL.md`) — the orchestrator: resolves paths +
+  `$USER_TARGETS`, ensures a usable watchlist (offers `add`, never invents companies), fetches,
+  ranks, **gates** on a ranked table, emits one copy-paste `/coapply:start` command per pick,
+  and supports **dismiss** (stop a seen-but-unwanted role resurfacing).
+- **`/coapply:discover add <careers or board URL>`** — detects the ATS and appends a watchlist
+  row; recognizes Workday but defers it (not yet fetchable).
+- **`scripts/discover-fetch.py`** — deterministic spine. Greenhouse + Lever + Ashby adapters,
+  Lever pagination, one normalized schema, fail-loud on schema drift, `sha1(ats|token|id)`
+  fingerprint, a light inline receipt. Ashby is best-effort: a `404` (org didn't enable the
+  public API) is a soft note, not a failure. Stdlib-only Python 3.
+- **`scripts/discover-triage.py`** — deterministic keyword/synonym title ranker with row
+  location/keyword filters and **descriptive-only reasons that quote real fields** (no model
+  writing "great fit"). No LLM, no network.
+- **`scripts/discover-resolve.sh`** — careers/board URL → `(ats, board-id)`; only ever *emits*
+  a known ATS.
+- **`profile.example/watchlist.md`** — the watchlist template (placeholder rows only; the
+  engine ships zero companies).
+- **Single-authoritative-ledger dedup** — `/coapply:start` now stamps the posting's `fp` into
+  its run's `_run.json` (`discoveryFp`, via `discover-fetch.py --fp-from-url`), so `start` and
+  `discover` share one fingerprint scheme; the dedup union is every run's `discoveryFp` ∪ the
+  `_discovery_seen.txt` dismiss cache.
+- **`audit.sh` section 15** — asserts the discovery **3-point network boundary** (fetch host
+  allowlist · resolve emits-only-a-known-ATS · triage has no network capability), a
+  **vendor-vs-company guard** (ATS infra `greenhouse`/`lever`/`ashby` is allowed, but the
+  watchlist template must ship only placeholder companies), and a **fingerprint guard**
+  (`ats|token|id`, never `company|id`).
+
+### The boundary (why this stays in bounds)
+- **Public ATS JSON over plain HTTP only** — a hardcoded host allowlist in the fetch script;
+  resolve validates the resolved host and refuses anything that isn't a known ATS; the default
+  triage is a pure ranker that *can't* fetch (the biggest stay-in-bounds risk in the v1 design
+  was an LLM triage that could WebFetch a posting and bypass the allowlist — removed).
+- **The gate stays:** discovery ends at a pick-list; the hand-off emits commands you run; no
+  auto-submit, no batch spend, every application is still a real go/no-go.
+
+### Deferred (named, not dropped — spec §8)
+- Workday adapter, seed-from-public-directory (the real answer to the cold-start gap), an
+  optional LLM triage re-rank, and recurring/scheduled watches.
+
 ## [0.6.0] — 2026-06-08 — Per-agent model tiering: the tier picks the model too
 
 Roadmap item #3. Until now `$TIER` only changed *how many* specialists ran; every agent

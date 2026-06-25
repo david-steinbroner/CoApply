@@ -72,6 +72,7 @@ Here's what happens:
 4. **You review it, make it yours, and submit it.** CoApply never submits for you.
 
 Other commands:
+- `/coapply:discover` — surface roles from a **company watchlist** you keep: it checks each watched company's public job board, filters to titles matching your targets, and shows a ranked shortlist as a gate — you pick which ones become `/coapply:start` commands (no batch-applying). Add companies with `/coapply:discover add <careers or board URL>`. It's a *watchlist monitor*, not whole-market search — it finds openings at companies **you already chose to watch**, and can't yet suggest ones you didn't know about (a planned follow-up). Public ATS boards only, over plain HTTP — never aggregator scraping or logging into job sites.
 - `/coapply:setup` — first-time setup (templates, billing check, budget tier).
 - `/coapply:tier` — change your budget tier (lite / standard / full) anytime.
 - `/coapply:list` — see your recent applications.

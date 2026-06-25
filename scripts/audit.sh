@@ -36,7 +36,7 @@ section "4. Structure & invariants"
 for f in .claude-plugin/plugin.json .claude-plugin/marketplace.json profile/prompts/master-apply.md PRINCIPLES.md LICENSE; do
   [ -f "$f" ] || { note "FAIL: missing $f"; fail=1; }
 done
-for s in start resume list help setup tier add feedback; do
+for s in start resume list help setup tier add feedback discover; do
   [ -f "skills/$s/SKILL.md" ] || { note "FAIL: missing skills/$s/SKILL.md"; fail=1; }
 done
 [ -d commands ] && { note "FAIL: commands/ exists — entry points must be skills (\${CLAUDE_PLUGIN_ROOT} doesn't resolve in commands)."; fail=1; }
@@ -266,6 +266,89 @@ _tagged=$(grep -hE 'instructed by `\$\{CLAUDE_PLUGIN_ROOT\}/profile/prompts/agen
   profile/prompts/phases/phase-research.md profile/prompts/phases/phase-content.md 2>/dev/null \
   | grep -cE '\[(mechanical|reasoning|voice)\]')
 [ "${_tagged:-0}" = "13" ] && note "clean — 13 agent dispatches tagged." || note "WARN: expected 13 tagged dispatches, found ${_tagged:-0}."
+
+section "15. Discovery — 3-point network boundary + vendor/company + fingerprint guards"
+# The whole discovery path must stay on the durable side of the line: public ATS JSON
+# over plain HTTP, no browser/auth/aggregator, no LLM that could fetch. The boundary is
+# a property of the WHOLE path, asserted at every place a network call can originate
+# (spec docs/features/discovery/spec.md §4/§7). v1's mistake was locating it in one script.
+_DF=scripts/discover-fetch.py
+_DR=scripts/discover-resolve.sh
+_DT=scripts/discover-triage.py
+_DS=skills/discover/SKILL.md
+_DW=profile.example/watchlist.md
+for f in "$_DF" "$_DR" "$_DT" "$_DS" "$_DW"; do
+  [ -f "$f" ] || { note "FAIL: missing discovery file $f"; fail=1; }
+done
+
+# --- Boundary point 1: discover-fetch.py host allowlist (closed) ---
+if grep -q 'ALLOWED_HOSTS' "$_DF" \
+   && grep -q 'boards-api.greenhouse.io' "$_DF" \
+   && grep -q 'api.lever.co' "$_DF" \
+   && grep -q 'api.ashbyhq.com' "$_DF" \
+   && grep -q 'not in the discovery allowlist' "$_DF"; then
+  note "clean — fetch host allowlist present + closed (boundary point 1)."
+else note "FAIL: discover-fetch.py lost its closed host allowlist (boundary point 1)."; fail=1; fi
+
+# --- Boundary point 2: discover-resolve.sh only ever EMITS a known ATS ---
+# Behavioral + offline: a known-ATS *input* URL short-circuits without a network call
+# (classify() gates emit), so these three cases never touch the network.
+_dr1=$(bash "$_DR" 'https://boards.greenhouse.io/acme' 2>/dev/null)
+if printf '%s' "$_dr1" | grep -qx 'ats=greenhouse' && printf '%s' "$_dr1" | grep -qx 'token=acme'; then
+  note "clean — resolve emits (ats,token) for a known ATS board URL (boundary point 2)."
+else note "FAIL: resolve didn't emit for a greenhouse board URL: [$_dr1]"; fail=1; fi
+# A bare name (no dot/slash) must be refused, not guessed — guessing a company's domain
+# is the forbidden aggregator-search path. Exit 1, no network.
+bash "$_DR" 'acme' >/dev/null 2>&1
+[ "$?" = 1 ] && note "clean — resolve refuses a bare name (no aggregator-search guess)." || { note "FAIL: resolve should refuse a bare name with exit 1."; fail=1; }
+# Workday is recognized but deferred (spec §8) — flagged (exit 3), never emitted as fetchable.
+bash "$_DR" 'https://acme.wd1.myworkdayjobs.com/careers' >/dev/null 2>&1
+[ "$?" = 3 ] && note "clean — resolve flags Workday as deferred (exit 3), not emitted." || { note "FAIL: resolve should exit 3 on a Workday URL."; fail=1; }
+
+# --- Boundary point 3: the triage step has NO network capability ---
+# The single biggest stay-in-bounds risk in v1 was an LLM triage that could WebFetch a
+# posting URL and bypass the fetch allowlist. The v2 default is a pure Python ranker, so
+# this is free — assert it: (a) the ranker imports no network module, and (b) no web/fetch
+# TOOL is actually granted/used in the discovery path. The words WebFetch/WebSearch may
+# appear, but ONLY inside an explicit prohibition (spec §4 pt 3 mandates that prohibition).
+if grep -nE '^[[:space:]]*(import|from)[[:space:]]+(urllib|http|requests|socket|aiohttp|httplib)' "$_DT" >/dev/null 2>&1; then
+  grep -nE '^[[:space:]]*(import|from)[[:space:]]+(urllib|http|requests|socket|aiohttp|httplib)' "$_DT"
+  note "FAIL: discover-triage.py imports a network module — the ranker must be offline (boundary point 3)."; fail=1
+else note "clean — discover-triage.py imports no network module (boundary point 3)."; fi
+_webrefs=$(grep -inE 'WebFetch|WebSearch' "$_DT" "$_DS" 2>/dev/null \
+  | grep -ivE "never|no network|cannot|can'?t|not |without|prohibit|no web|no fetch|no .*tool")
+if [ -n "$_webrefs" ]; then echo "$_webrefs"; note "FAIL: a web/fetch tool appears in the discovery path outside a prohibition (boundary point 3)."; fail=1
+else note "clean — web/fetch only ever appears as an explicit prohibition in the discovery path (boundary point 3)."; fi
+
+# --- Vendor infra vs. target-company guard (spec §7) ---
+# ATS *infrastructure* names (greenhouse/lever/ashby) are legitimately in the engine — they
+# are vendors, not the user's employers — so the field/PII scans above must NOT flag them.
+# But a real *company* name must never appear as an engine example.
+if grep -q 'greenhouse' "$_DF" && grep -q 'lever' "$_DF" && grep -q 'ashby' "$_DF"; then
+  note "clean — ATS vendor infra hosts (greenhouse/lever/ashby) allowed in the engine."
+else note "FAIL: discovery lost an ATS vendor host — adapters can't resolve."; fail=1; fi
+# The watchlist TEMPLATE ships zero companies: every data row's Company cell is a <…>
+# placeholder. A non-placeholder Company cell = a real employer leaked into the engine.
+_badrows=$(awk -F'|' '
+  /^\|/ {
+    c=$2; gsub(/^[[:space:]]+|[[:space:]]+$/,"",c);
+    if (c=="" || c=="Company") next;       # header / spacer
+    if (c ~ /^[-: ]+$/) next;              # |---|---| separator
+    if (c ~ /^<.*>$/) next;                # <placeholder> — fine
+    print c;                               # a real-looking company name
+  }' "$_DW")
+if [ -z "$_badrows" ]; then note "clean — watchlist template uses only placeholder company rows (ships no employer)."; else echo "$_badrows"; note "FAIL: watchlist template has a non-placeholder company name — the engine must ship none."; fail=1; fi
+
+# --- Fingerprint scheme guard: sha1(ats|token|id), NOT company|id (spec §3.3) ---
+# The display name is user-typed; fingerprinting on it means relabeling 'Acme'→'Acme Inc'
+# resurfaces every posting. token+id is stable. Guard against a regression to company|id.
+if grep -qF '{ats}|{token}|{ident}' "$_DF"; then
+  note "clean — fingerprint is sha1(ats|token|id)."
+else note "FAIL: discover-fetch.py fingerprint is not sha1(ats|token|id) (spec §3.3)."; fail=1; fi
+if grep -qF '{company}|' "$_DF"; then
+  grep -nF '{company}|' "$_DF"
+  note "FAIL: discover-fetch.py builds a company|id fingerprint — relabeling a row would resurface every posting (spec §3.3)."; fail=1
+else note "clean — no company|id fingerprint regression."; fi
 
 # A human-judgment gate the script CAN'T verify. Printed every run so it can't be skipped.
 section "Manual gate — confirm before you ship (not automatable)"
