@@ -2,6 +2,21 @@
 
 All notable changes to CoApply. Versioned on the `plugin.json` version line.
 
+## [0.7.1] — 2026-06-25 — Discovery: zsh-safe first-run dedup ledger
+
+Patch found by dogfooding `/coapply:discover` end-to-end against live public boards
+(Greenhouse + Lever + Ashby) before merge. On a user's **first-ever** run — an empty runs
+folder, no `_run.json` yet — the Step 3 seen-ledger build used a shell glob
+(`"${RUNS_DIR}"/*/_run.json`) that zsh's `nomatch` turns into a spurious
+`no matches found` error line. The run still worked (the union file is created empty and the
+fetch proceeds), but the stray "error" reads as a failure on the very first invocation.
+
+### Fixed
+- **`skills/discover/SKILL.md`** Step 3 — build the dedup union with
+  `grep -r --include='_run.json' "${RUNS_DIR}"` instead of a `*/_run.json` glob. No shell
+  glob means no zsh `nomatch` noise; behavior is identical when runs exist (verified: same
+  fingerprints extracted) and silent when the folder is empty. Clean under both bash and zsh.
+
 ## [0.7.0] — 2026-06-25 — Discovery: a company-watchlist job monitor that feeds the gate
 
 Roadmap item #6. CoApply can now *surface* roles, not only process a job you already found —

@@ -97,7 +97,7 @@ explicitly dismissed (in the derived cache `_discovery_seen.txt`). Build the uni
 transient file, then fetch:
 
 ```bash
-{ grep -rhoE '"discoveryFp"[[:space:]]*:[[:space:]]*"[0-9a-f]{40}"' "${RUNS_DIR}"/*/_run.json 2>/dev/null | grep -oE '[0-9a-f]{40}' ; cat "${RUNS_DIR}/_discovery_seen.txt" 2>/dev/null ; } | sort -u > "${RUNS_DIR}/.discovery_seen_union.txt"
+{ grep -rhoE '"discoveryFp"[[:space:]]*:[[:space:]]*"[0-9a-f]{40}"' --include='_run.json' "${RUNS_DIR}" 2>/dev/null | grep -oE '[0-9a-f]{40}' ; cat "${RUNS_DIR}/_discovery_seen.txt" 2>/dev/null ; } | sort -u > "${RUNS_DIR}/.discovery_seen_union.txt"
 "${CLAUDE_PLUGIN_ROOT}/scripts/discover-fetch.py" --watchlist "${PROFILE_DIR}/watchlist.md" --seen "${RUNS_DIR}/.discovery_seen_union.txt" > "${RUNS_DIR}/.discovery_fetch.json"
 ```
 

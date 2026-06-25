@@ -1,7 +1,7 @@
 {
   "name": "coapply",
   "description": "CoApply — your partner for the jobs you actually want. Turns a job posting into a complete, voice-matched, fit-gated application package: research → fit-score → human checkpoint → cover letter, tailored resume guidance, outreach, interview prep. It drafts, you decide, you send — never auto-submits.",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "author": { "name": "David Steinbroner" },
   "homepage": "https://github.com/david-steinbroner/CoApply",
   "repository": "https://github.com/david-steinbroner/CoApply",
