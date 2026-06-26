@@ -178,9 +178,15 @@ CoApply works great out of the box. When you want to tweak it:
 
 ---
 
-## The dashboard (coming soon)
+## The hub — your visual command center
 
-A local dashboard — a private web page showing your applications, what each step cost, and the gate decisions — is on the roadmap. It'll be an optional add-on; CoApply works fully without it.
+Run `/coapply:hub` to open the **hub**: a private web page, served only on your own machine (`127.0.0.1`), that renders your whole funnel in one returnable place — **surfaced roles → the gate → your runs**. It's a thin window over the files you already have: it reads your discover ledger and run folder and never sends anything anywhere.
+
+- **Browse what discover surfaced**, grouped by **seniority** (Associate → IC → Senior → Lead/Staff → Director → VP → C-suite) or by category lane — so you can see *what level* you're looking at at a glance.
+- **Filter & sort** with the lens — by level, status, remote, recurring, matched term, region, or free-text search; sort by relevance, freshness, persistence, seniority, and more.
+- **Stage roles into a queue** (a reversible shopping list — queuing sends nothing), then let `/coapply:start` work them one at a time, each still stopping at the human go/no-go gate.
+
+It's optional — CoApply works fully without it.
 
 ---
 

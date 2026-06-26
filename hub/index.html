@@ -227,6 +227,13 @@
     background: linear-gradient(180deg, var(--panel), var(--bg-2)); box-shadow: var(--shadow);
     display: grid; gap: 11px;
   }
+  /* the [hidden] attribute is display:none in the UA sheet, but an author `display`
+     rule above it wins — so collapse needs an explicit author override. */
+  .lens-panel[hidden] { display: none; }
+  /* group-by segmented control (the grouping axis: seniority / lane) */
+  .lens-group { display: inline-flex; align-items: center; gap: 6px; }
+  .lens-group .flabel { padding-top: 0; }
+  .seg { display: inline-flex; gap: 4px; }
   .fgroup { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
   .fgroup .flabel { flex: none; width: 64px; text-align: right; padding-top: 4px; }
   .flabel { font-family: var(--mono); font-size: 10.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--txt-faint); }
@@ -508,6 +515,7 @@ const App = {
     // Lives here (NOT in App.state, which the poll replaces wholesale) so it survives every tick.
     filters: {
       status:  new Set(),      // funnel statuses to SHOW (new|queued|dismissed|has-run); empty = all-but-dismissed
+      seniority: new Set(),    // seniority bands to SHOW (derived from title); empty = all
       lanes:   new Set(),      // category lanes to SHOW; empty = all
       sources: new Set(),      // surfacedBy values to SHOW; empty = all
       matched: new Set(),      // matched terms to SHOW (OR); empty = all
@@ -517,6 +525,7 @@ const App = {
       search:  "",             // free-text substring over title/company
     },
     sort: "relevance",         // default — preserves rankAtLastSeen order
+    groupBy: "seniority",      // grouping axis for the surfaced field: "seniority" | "lane"
     filtersOpen: false,        // the panel's open/closed state
     lensSig: null,             // signature of available option sets; rebuild the lens DOM only when it changes
   },
@@ -644,6 +653,47 @@ function groupByCompany(jobs, cmp) {
   return groups;
 }
 
+/* ───────────────── seniority — a field-agnostic role ladder (spec §13 v1.1) ──
+   Derived client-side from the title, keyed ONLY off generic rank qualifiers
+   (Senior, Director, VP, Chief…) — never a job noun — so it holds for a nurse or
+   accountant just as well as a PM. A title with no qualifier falls to IC. */
+const SENIORITY_LADDER = [
+  // [key, label, rank (high→low), matcher]  — matched top-down, first hit wins
+  ["exec",     "C-suite",                  7, /\bchief\b|\bc[efimoprt]o\b|c[-\s]?suite|c[-\s]?level/i],
+  ["vp",       "VP",                       6, /\b(s?vp|evp|vice[-\s]?president)\b/i],
+  ["director", "Director",                 5, /\bdirector\b|\bhead of\b|\bhead,/i],
+  ["lead",     "Lead / Staff / Principal", 4, /\b(principal|staff|lead|group)\b/i],
+  ["senior",   "Senior",                   3, /\b(senior|sr\.?)\b/i],
+  ["assoc",    "Associate / Junior",       1, /\b(associate|junior|jr\.?|entry|intern|graduate|apprentice|trainee|coordinator|assistant)\b/i],
+];
+const IC_BAND = { key: "ic", label: "Individual Contributor", rank: 2 };   // default
+const SENIORITY_ORDER = ["exec","vp","director","lead","senior","ic","assoc"];   // display: senior-most first
+const SENIORITY_LABEL = (() => { const m = {}; for (const [k,l] of SENIORITY_LADDER) m[k]=l; m[IC_BAND.key]=IC_BAND.label; return m; })();
+function seniorityOf(title) {
+  const t = String(title || "");
+  for (const [key,label,rank,re] of SENIORITY_LADDER) if (re.test(t)) return { key, label, rank };
+  return { ...IC_BAND };
+}
+function seniorityBands(jobs) {                   // bands actually present, in ladder order
+  const present = new Set((jobs||[]).map(j => seniorityOf(j.title).key));
+  return SENIORITY_ORDER.filter(k => present.has(k));
+}
+
+/* ── grouping axis: maps each job to a band key + orders the bands ──
+   "seniority" → ladder bands · "lane" → the surfaced.json category lanes (legacy default). */
+function bandKeyOf(j) {
+  return App.ui.groupBy === "seniority" ? seniorityOf(j.title).key : (j.category || "uncategorized");
+}
+function bandLabelOf(key) {
+  return App.ui.groupBy === "seniority" ? (SENIORITY_LABEL[key] || key) : key;
+}
+function bandsPresent(s, filtered) {
+  const present = new Set(filtered.map(bandKeyOf));
+  return App.ui.groupBy === "seniority"
+    ? SENIORITY_ORDER.filter(k => present.has(k))
+    : laneOrder(s).filter(lane => present.has(lane));
+}
+
 /* ─────────────────────── the lens: filter + sort (spec §13) ───────────────
    100% client-side over metadata already in /api/state — no server/contract change.
    Scope = the surfaced field only; the gate band + runs stay unfiltered (spec §13.4). */
@@ -653,6 +703,7 @@ const SORTS = [
   ["freshest",   "Freshest"],
   ["recent",     "Recently seen"],
   ["persistent", "Most persistent"],
+  ["seniority",  "Seniority"],
   ["company",    "Company A–Z"],
   ["status",     "Status priority"],
 ];
@@ -661,6 +712,7 @@ function cmpFor(sort) {
     case "freshest":   return (a,b) => (b.posted||"").localeCompare(a.posted||"") || (b.firstSeenAt||"").localeCompare(a.firstSeenAt||"");
     case "recent":     return (a,b) => (b.lastSeenAt||"").localeCompare(a.lastSeenAt||"") || (a.rankAtLastSeen||1e9)-(b.rankAtLastSeen||1e9);
     case "persistent": return (a,b) => (b.timesSeen||0)-(a.timesSeen||0) || (a.rankAtLastSeen||1e9)-(b.rankAtLastSeen||1e9);
+    case "seniority":  return (a,b) => seniorityOf(b.title).rank - seniorityOf(a.title).rank || (a.rankAtLastSeen||1e9)-(b.rankAtLastSeen||1e9);
     case "company":    return (a,b) => (a.company||"").localeCompare(b.company||"") || (b.posted||"").localeCompare(a.posted||"");
     case "status":     return (a,b) => statusRank(a.derivedStatus)-statusRank(b.derivedStatus) || (a.rankAtLastSeen||1e9)-(b.rankAtLastSeen||1e9);
     case "relevance":
@@ -685,6 +737,7 @@ function jobMatchesFilters(j) {
   } else if (j.derivedStatus === "dismissed") {
     return false;
   }
+  if (f.seniority.size && !f.seniority.has(seniorityOf(j.title).key)) return false;
   if (f.remote && !/remote/i.test(j.location||"")) return false;
   if (f.recurring && !((j.timesSeen||0) >= 2)) return false;
   if (f.region.trim() && !(j.location||"").toLowerCase().includes(f.region.trim().toLowerCase())) return false;
@@ -702,7 +755,7 @@ function jobMatchesFilters(j) {
 }
 function activeFilterCount() {                   // panel constraints only (search shows inline)
   const f = App.ui.filters;
-  let n = f.status.size + f.lanes.size + f.sources.size + f.matched.size;
+  let n = f.status.size + f.seniority.size + f.lanes.size + f.sources.size + f.matched.size;
   if (f.remote) n++;
   if (f.recurring) n++;
   if (f.region.trim()) n++;
@@ -721,11 +774,11 @@ function sourceValues(jobs) {
   return [...set].sort();
 }
 function lensSignature(s, jobs) {                 // rebuild the lens DOM only when options change
-  return JSON.stringify([laneOrder(s), matchedTerms(jobs), sourceValues(jobs)]);
+  return JSON.stringify([laneOrder(s), matchedTerms(jobs), sourceValues(jobs), seniorityBands(jobs)]);
 }
 function clearFilters() {
   const f = App.ui.filters;
-  f.status.clear(); f.lanes.clear(); f.sources.clear(); f.matched.clear();
+  f.status.clear(); f.seniority.clear(); f.lanes.clear(); f.sources.clear(); f.matched.clear();
   f.remote = false; f.recurring = false; f.region = ""; f.search = "";
   const se = $("lens-search"); if (se) se.value = "";
   const re = $("lens-region"); if (re) re.value = "";
@@ -802,34 +855,35 @@ function renderSurfaced(s) {
     return;
   }
 
-  // lanes — built from the FILTERED set; clusters recompute against it (spec §13.4 lane integrity)
-  const allLanes = laneOrder(s);
+  // bands — the grouping axis (seniority by default, or category lanes); built from the
+  // FILTERED set so clusters + counts recompute against it (spec §13.4 lane integrity)
+  const bands = bandsPresent(s, filtered);
   let html = "";
-  for (const lane of allLanes) {
-    const laneJobs = filtered.filter(j => (j.category||"uncategorized") === lane);
-    if (laneJobs.length === 0) continue;
-    const open = !App.ui.collapsedLanes.has(lane);
-    const fresh = laneJobs.reduce((m,j)=>(j.posted||"")>m?(j.posted||""):m, "");
-    const groups = groupByCompany(laneJobs, cmp);
-    const showAll = App.ui.shownAll.has(lane);
+  for (const band of bands) {
+    const bandJobs = filtered.filter(j => bandKeyOf(j) === band);
+    if (bandJobs.length === 0) continue;
+    const open = !App.ui.collapsedLanes.has(band);
+    const fresh = bandJobs.reduce((m,j)=>(j.posted||"")>m?(j.posted||""):m, "");
+    const groups = groupByCompany(bandJobs, cmp);
+    const showAll = App.ui.shownAll.has(band);
     const vis = showAll ? groups : groups.slice(0, LANE_VISIBLE);
 
     html += `<div class="lane ${open?"open":""}">`;
-    html += `<button class="lane-head" data-action="toggle-lane" data-lane="${esc(lane)}">
+    html += `<button class="lane-head" data-action="toggle-lane" data-lane="${esc(band)}">
         <span class="chev">▾</span>
-        <span class="lname">${esc(lane)}</span>
-        <span class="lcount">${laneJobs.length}</span>
+        <span class="lname">${esc(bandLabelOf(band))}</span>
+        <span class="lcount">${bandJobs.length}</span>
         <span class="lfresh">freshest ${fmtDate(fresh)}</span>
       </button>`;
     html += `<div class="lane-body">`;
     for (const g of vis) {
-      html += g.items.length > 1 ? clusterHtml(g, lane) : rowHtml(g.items[0], false);
+      html += g.items.length > 1 ? clusterHtml(g, band) : rowHtml(g.items[0], false);
     }
     if (groups.length > vis.length) {
       const remaining = groups.slice(LANE_VISIBLE).reduce((n,g)=>n+g.items.length,0);
-      html += `<div class="lane-more"><button data-action="show-all" data-lane="${esc(lane)}">Show all — ${remaining} more</button></div>`;
+      html += `<div class="lane-more"><button data-action="show-all" data-lane="${esc(band)}">Show all — ${remaining} more</button></div>`;
     } else if (showAll && groups.length > LANE_VISIBLE) {
-      html += `<div class="lane-more"><button data-action="show-less" data-lane="${esc(lane)}">Show less</button></div>`;
+      html += `<div class="lane-more"><button data-action="show-less" data-lane="${esc(band)}">Show less</button></div>`;
     }
     html += `</div></div>`;
   }
@@ -846,11 +900,13 @@ function buildLensIfNeeded(s, jobs) {
   const lanes = laneOrder(s);
   const terms = matchedTerms(jobs);
   const sources = sourceValues(jobs);
+  const bands = seniorityBands(jobs);
   // prune any filter selections that no longer exist after a fresh discover run
   const f = App.ui.filters;
-  for (const v of [...f.lanes])   if (!lanes.includes(v))   f.lanes.delete(v);
-  for (const v of [...f.matched]) if (!terms.includes(v))   f.matched.delete(v);
-  for (const v of [...f.sources]) if (!sources.includes(v)) f.sources.delete(v);
+  for (const v of [...f.lanes])     if (!lanes.includes(v))   f.lanes.delete(v);
+  for (const v of [...f.matched])   if (!terms.includes(v))   f.matched.delete(v);
+  for (const v of [...f.sources])   if (!sources.includes(v)) f.sources.delete(v);
+  for (const v of [...f.seniority]) if (!bands.includes(v))   f.seniority.delete(v);
 
   const chip = (group, val, label) =>
     `<button class="tbtn chip" data-action="lens-chip" data-group="${esc(group)}" data-val="${esc(val)}" aria-pressed="false">${esc(label)}</button>`;
@@ -861,6 +917,10 @@ function buildLensIfNeeded(s, jobs) {
     <div class="lens-field">${searchIcon}
       <input id="lens-search" type="text" placeholder="Search title or company…" data-action="lens-search" autocomplete="off" spellcheck="false">
     </div>
+    <span class="lens-group"><span class="flabel">Group</span><span class="seg">
+      <button class="tbtn" data-action="lens-groupby" data-val="seniority" aria-pressed="false">Seniority</button>
+      <button class="tbtn" data-action="lens-groupby" data-val="lane" aria-pressed="false">Lane</button>
+    </span></span>
     <label class="lens-sort"><span class="flabel">Sort</span>
       <select id="lens-sort-sel" class="lens-select" data-action="lens-sort">
         ${SORTS.map(([v,l]) => `<option value="${v}">${esc(l)}</option>`).join("")}
@@ -876,6 +936,7 @@ function buildLensIfNeeded(s, jobs) {
 
   const statusChips = [["new","New"],["queued","Queued"],["has-run","Has-run"],["dismissed","Dismissed"]]
     .map(([v,l]) => chip("status", v, l)).join("");
+  const seniorityChips = bands.length ? bands.map(k => chip("seniority", k, SENIORITY_LABEL[k]||k)).join("") : `<span class="tnote">—</span>`;
   const flagChips = chip("flag","remote","Remote-only") + chip("flag","recurring","Recurring ≥2");
   const laneChips = lanes.map(l => chip("lane", l, l)).join("");
   const sourceChips = sources.length ? sources.map(v => chip("source", v, v)).join("") : `<span class="tnote">—</span>`;
@@ -883,6 +944,7 @@ function buildLensIfNeeded(s, jobs) {
 
   h += `<div class="lens-panel" id="lens-panel" hidden>
     <div class="fgroup"><span class="flabel">Status</span><span class="chips">${statusChips}</span></div>
+    <div class="fgroup"><span class="flabel">Level</span><span class="chips">${seniorityChips}</span></div>
     <div class="fgroup"><span class="flabel">Show</span><span class="chips">${flagChips}</span></div>
     <div class="fgroup"><span class="flabel">Lane</span><span class="chips">${laneChips}</span></div>
     <div class="fgroup"><span class="flabel">Source</span><span class="chips">${sourceChips}</span></div>
@@ -907,20 +969,23 @@ function syncLensState(s, shown, total) {
     const g = c.dataset.group, v = c.dataset.val;
     let on = false;
     if (g === "status")  on = f.status.has(v);
+    else if (g === "seniority") on = f.seniority.has(v);
     else if (g === "lane")    on = f.lanes.has(v);
     else if (g === "source")  on = f.sources.has(v);
     else if (g === "matched") on = f.matched.has(v);
     else if (g === "flag")    on = !!f[v];
     c.setAttribute("aria-pressed", on ? "true" : "false");
   });
+  document.querySelectorAll('#surfaced-lens [data-action="lens-groupby"]').forEach(b =>
+    b.setAttribute("aria-pressed", App.ui.groupBy === b.dataset.val ? "true" : "false"));
   const panel = $("lens-panel"); if (panel) panel.hidden = !App.ui.filtersOpen;
   const tog = document.querySelector('#surfaced-lens .lens-toggle'); if (tog) tog.setAttribute("aria-pressed", App.ui.filtersOpen ? "true" : "false");
   const n = activeFilterCount();
   const fc = $("lens-fcount"); if (fc) { fc.hidden = n === 0; fc.textContent = n; }
   const clr = $("lens-clear"); if (clr) clr.hidden = !lensActive();
   const r = $("lens-result"); if (r) r.textContent = lensActive() ? `${shown} of ${total} shown` : "";
-  const lanes = laneOrder(s);
-  const allCollapsed = lanes.every(l => App.ui.collapsedLanes.has(l));
+  const curBands = bandsPresent(s, (s.jobs||[]).filter(jobMatchesFilters));
+  const allCollapsed = curBands.length > 0 && curBands.every(b => App.ui.collapsedLanes.has(b));
   const ex = $("lens-expand");
   if (ex) { ex.textContent = allCollapsed ? "Expand all" : "Collapse all"; ex.setAttribute("aria-pressed", allCollapsed ? "true" : "false"); }
 }
@@ -1100,6 +1165,7 @@ $("main").addEventListener("click", (e) => {
   if (a === "toggle-all-lanes") return toggleAllLanes(), render();
   if (a === "select-all-new") return selectAllNew(), render();
   if (a === "lens-toggle-panel") return (App.ui.filtersOpen = !App.ui.filtersOpen), relens();
+  if (a === "lens-groupby")   return (App.ui.groupBy = t.dataset.val), relens();
   if (a === "lens-chip")      return e.preventDefault(), toggleChip(t.dataset.group, t.dataset.val), relens();
   if (a === "lens-clear")     return e.preventDefault(), clearFilters(), relens();
   if (a === "unqueue")        return post("/api/queue/remove", [t.dataset.fp], "Removed from queue");
@@ -1133,6 +1199,7 @@ $("main").addEventListener("input", (e) => {
 function toggleChip(group, val) {
   const f = App.ui.filters;
   if (group === "status")  toggleSet(f.status, val);
+  else if (group === "seniority") toggleSet(f.seniority, val);
   else if (group === "lane")    toggleSet(f.lanes, val);
   else if (group === "source")  toggleSet(f.sources, val);
   else if (group === "matched") toggleSet(f.matched, val);
@@ -1172,18 +1239,19 @@ $("actionbar").addEventListener("click", (e) => {
 
 function toggleSet(set, key) { set.has(key) ? set.delete(key) : set.add(key); }
 function toggleAllLanes() {
-  const lanes = laneOrder(App.state);
-  const allCollapsed = lanes.every(l => App.ui.collapsedLanes.has(l));
-  if (allCollapsed) App.ui.collapsedLanes.clear();
-  else lanes.forEach(l => App.ui.collapsedLanes.add(l));
+  const bands = bandsPresent(App.state, (App.state.jobs||[]).filter(jobMatchesFilters));
+  const allCollapsed = bands.length > 0 && bands.every(b => App.ui.collapsedLanes.has(b));
+  if (allCollapsed) bands.forEach(b => App.ui.collapsedLanes.delete(b));
+  else bands.forEach(b => App.ui.collapsedLanes.add(b));
 }
 function selectAllNew() {
   for (const j of (App.state.jobs||[])) if (j.derivedStatus === "new") App.sel.add(j.fp);
 }
 function selectCompany(key, on) {
-  const [lane, co] = key.split("::");
+  const i = key.indexOf("::");
+  const band = key.slice(0, i), co = key.slice(i + 2);
   for (const j of (App.state.jobs||[])) {
-    if ((j.category||"uncategorized") === lane && (j.company||"—") === co) {
+    if (bandKeyOf(j) === band && (j.company||"—") === co) {
       on ? App.sel.add(j.fp) : App.sel.delete(j.fp);
     }
   }

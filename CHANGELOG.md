@@ -2,6 +2,27 @@
 
 All notable changes to CoApply. Versioned on the `plugin.json` version line.
 
+## [0.9.3] — 2026-06-26 — Hub seniority axis + collapsible lens
+
+Role titles carry many names for the same level, and grouping by the fuzzy `surfaced.json` category
+lanes ("Senior product management roles", "growth", "uncategorized") made it hard to tell *what
+seniority* you were looking at. This adds a **seniority axis** to the hub and makes the lens panel
+collapse. Spec: `docs/features/hub/spec.md §13`. **Pure `hub/index.html` change** — seniority is derived
+client-side from the title, so no `server.py`, API/contract, `surfaced.json` schema, or `audit.sh` change.
+
+- **Seniority ladder (field-agnostic)** — each role is placed on a generic rank ladder keyed *only* off
+  seniority qualifiers, never a job noun, so it holds for any field (a nurse, an accountant): `Associate /
+  Junior < Individual Contributor (no qualifier) < Senior < Lead / Staff / Principal < Director < VP <
+  C-suite`. A plain "Product Manager" correctly lands as IC, below "Senior PM".
+- **Group by Seniority (new default) or Lane** — a `Group` segmented control above the surfaced field.
+  Roles now cluster into clear ladder bands instead of fuzzy category lanes; switch back to Lane anytime.
+- **Level filter + Seniority sort** — multi-select `Level` chips in the lens (pick any bands), plus a new
+  *Seniority* sort (senior-most first). Both share the one `seniorityOf(title)` derivation.
+- **Collapsible lens (bug fix)** — the filter panel was *built* to collapse (`filtersOpen` defaults false)
+  but a `.lens-panel { display: grid }` rule overrode the `[hidden]` attribute, so it was always open and
+  ate the viewport. Added `.lens-panel[hidden] { display: none }` — it now defaults collapsed behind the
+  **Filters** button; search · group · sort · result pill stay in the always-visible bar.
+
 ## [0.9.2] — 2026-06-26 — Hub filter & sort (the lens controls)
 
 The accumulating surfaced ledger outgrew scan-only. At a few hundred rows in one lane (Senior PM = 183
