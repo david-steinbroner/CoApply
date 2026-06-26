@@ -78,7 +78,20 @@ $ARGUMENTS contains one of:
 - A **LinkedIn job URL** (`linkedin.com/jobs/...`) — WebFetch is blocked there, so do NOT fetch it. Ask: "LinkedIn blocks automatic reading — paste the job description text and I'll take it from there." Use the pasted text as the JD (source = `LinkedIn`).
 - Another URL (starts with `http://` or `https://`) — use WebFetch to get the page
 - Free-text JD (anything else)
-- Empty — ask the user: "Paste a JD URL or the full text."
+- **Empty — first check for a hub *apply queue*, then fall back to asking.** The hub (`/coapply:hub`)
+  lets the user stage roles; consuming that queue is a **gate hand-off**, never an auto-run. Read
+  `${RUNS_DIR}/.coapply_queue.json` (a plain read — `cat` it; if the file is absent or its `items`
+  array is empty, skip to the plain prompt below). If it has items:
+  - Show them as a compact list under a heading like **"You have N role(s) staged in the hub"** — one
+    row per item: `company · title · link`.
+  - Then **emit one ready-to-run `/coapply:start <url>` command per item**, each on its own line, for
+    the user to run at their own pace — exactly like `/coapply:discover`'s hand-off (no batch
+    auto-routing). Do **not** WebFetch, do **not** call any agent, do **not** write anything — the hub
+    is the **only** writer of the queue file, so leave it untouched (a role's "queued" state clears on
+    its own once it gains a run). Then **stop.** The user runs the per-job commands themselves; each
+    one re-enters this skill *with* a URL and hits its own fit gate.
+  - Mention they can instead paste a JD URL or full text to start a different role.
+  - If the queue is absent or empty: ask "Paste a JD URL or the full text."
 
 If URL: canonicalize it (lowercase hostname, strip `www.`, strip query string and fragment) BEFORE any downstream use (hashing, dedup, routing).
 

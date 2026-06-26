@@ -11,7 +11,7 @@ note() { printf '  %s\n' "$1"; }
 section() { printf '\n=== %s ===\n' "$1"; }
 
 # Scan the shipping engine + templates + manifest + docs — NOT a user's real profile.
-SCAN_PATHS=(skills profile profile.example .claude-plugin README.md PRINCIPLES.md SECURITY.md CLAUDE.md CHANGELOG.md scripts/discover-surface.py)
+SCAN_PATHS=(skills profile profile.example .claude-plugin README.md PRINCIPLES.md SECURITY.md CLAUDE.md CHANGELOG.md scripts/discover-surface.py hub)
 
 section "1. Personal-data leak scan"
 # Anything personally identifying should never appear in the engine.
@@ -25,18 +25,18 @@ if [ -n "$hits" ]; then echo "$hits"; note "FAIL: personal-data tokens found in 
 section "2. Field-assumption scan (engine must be field-agnostic)"
 # High-signal tells that the engine assumes the user is a PM / in tech.
 FIELD='Growth PM|Compliance PM|product manager|product-manager|pm-builder|pm-growth|fintech\b'
-hits=$(grep -rInE "$FIELD" skills profile profile.example .claude-plugin README.md scripts/discover-surface.py 2>/dev/null)
+hits=$(grep -rInE "$FIELD" skills profile profile.example .claude-plugin README.md scripts/discover-surface.py hub 2>/dev/null)
 if [ -n "$hits" ]; then echo "$hits"; note "FAIL: field/PM assumptions found — genericize them."; fail=1; else note "clean — no PM/field assumptions."; fi
 
 section "3. Stray absolute paths / unresolved engine vars"
-hits=$(grep -rInE '/Users/|/Projects/apply' skills profile profile.example scripts/discover-surface.py 2>/dev/null)
+hits=$(grep -rInE '/Users/|/Projects/apply' skills profile profile.example scripts/discover-surface.py hub 2>/dev/null)
 if [ -n "$hits" ]; then echo "$hits"; note "FAIL: hardcoded absolute paths found."; fail=1; else note "clean — no hardcoded absolute paths."; fi
 
 section "4. Structure & invariants"
 for f in .claude-plugin/plugin.json .claude-plugin/marketplace.json profile/prompts/master-apply.md PRINCIPLES.md LICENSE; do
   [ -f "$f" ] || { note "FAIL: missing $f"; fail=1; }
 done
-for s in start resume list help setup tier add feedback discover; do
+for s in start resume list help setup tier add feedback discover hub; do
   [ -f "skills/$s/SKILL.md" ] || { note "FAIL: missing skills/$s/SKILL.md"; fail=1; }
 done
 [ -d commands ] && { note "FAIL: commands/ exists — entry points must be skills (\${CLAUDE_PLUGIN_ROOT} doesn't resolve in commands)."; fail=1; }
@@ -399,6 +399,76 @@ if grep -qiE 'broad|not whole-market|not exhaustive|public ATS' "$_HELP" \
    && grep -qiE 'broad|not whole-market|not exhaustive|search provider|public ATS' README.md; then
   note "clean — help + README carry the honest auto-mode framing (broad-not-exhaustive, spec §6)."
 else note "FAIL: help/README missing the honest auto-mode framing (broad-not-exhaustive / privacy note, spec §6)."; fail=1; fi
+
+section "16. Hub boundary — local-only, read-mostly, no network, no url-hashing (spec features/hub/spec.md §5/§8)"
+# The hub is a NEW visible surface (a server + a page + a launcher). It must hold the same
+# stay-in-bounds line as the rest of the engine: bind loopback only, never reach the network,
+# write only its three allow-listed files inside RUNS_DIR, and never recompute a fingerprint from
+# a URL. GOTCHA: server.py's header COMMENTS contain the literal strings `0.0.0.0` and `sha1(url)`
+# (documenting the guards it deliberately avoids) — so every assert below targets executable code
+# or behavior, never a grep that a comment could satisfy.
+_HS=hub/server.py
+_HP=hub/index.html
+_HK=skills/hub/SKILL.md
+for f in "$_HS" "$_HP" "$_HK"; do
+  [ -f "$f" ] || { note "FAIL: missing hub file $f"; fail=1; }
+done
+
+# (a) Loopback-only — BEHAVIORAL: launching with --host 0.0.0.0 must be refused (exit 2) before any
+# bind happens. This executes the guard, so a commented-out check can't pass it.
+_hub_t=$(mktemp -d)
+python3 "$_HS" --runs-dir "$_hub_t" --host 0.0.0.0 >/dev/null 2>&1
+if [ "$?" = 2 ]; then note "clean — server refuses a non-loopback (0.0.0.0) bind, exit 2 (boundary: local-only)."; else note "FAIL: server did not refuse a 0.0.0.0 bind — the local-only invariant is broken."; fail=1; fi
+rm -rf "$_hub_t"
+# Default host is loopback + the loopback allow-set is present (structural backstop).
+if grep -q 'LOOPBACK_HOSTS' "$_HS" && grep -qE -- '--host", *default="127\.0\.0\.1"' "$_HS"; then
+  note "clean — LOOPBACK_HOSTS allow-set present and the default host is 127.0.0.1."
+else note "FAIL: server.py lost LOOPBACK_HOSTS or its 127.0.0.1 default host."; fail=1; fi
+
+# (b) No OUTBOUND network. The hub serves a LOCAL page (http.server / socketserver are inbound and
+# fine) but must never act as a network CLIENT. Ban the outbound-client signatures; allow
+# urllib.parse (pure string parsing) and http.server (the local listener).
+_hub_net=$(grep -nE '(^|[^.])\b(requests|aiohttp|httplib|http\.client)\b|urllib\.request|\burlopen\b|socket\.create_connection' "$_HS" "$_HP" 2>/dev/null)
+if [ -n "$_hub_net" ]; then echo "$_hub_net"; note "FAIL: hub references an outbound network client — it must never leave the machine."; fail=1
+else note "clean — hub imports no outbound network client (urllib.parse / http.server for the local listener only)."; fi
+
+# (c) Writes ONLY the three allow-listed files, each path-confined to RUNS_DIR. Assert the allow-list
+# constants and the realpath+startswith confinement are present (a write outside RUNS_DIR is the
+# exfiltration risk; the confinement is the guard).
+if grep -q 'QUEUE_FILE *= *"\.coapply_queue\.json"' "$_HS" \
+   && grep -q 'HUB_STATE_FILE *= *"\.coapply_hub_state\.json"' "$_HS" \
+   && grep -q 'SEEN_FILE *= *"_discovery_seen\.txt"' "$_HS" \
+   && grep -q 'os\.path\.realpath' "$_HS" \
+   && grep -qE 'startswith\(RUNS_DIR' "$_HS"; then
+  note "clean — server writes only the 3 allow-listed files, path-confined to RUNS_DIR (realpath + startswith)."
+else note "FAIL: server.py lost its write allow-list or its RUNS_DIR path confinement."; fail=1; fi
+
+# (d) No url->fp hashing anywhere in the hub. The hub READS the stored fp/discoveryFp and VALIDATES
+# its shape; it must never compute a hash (fp = sha1(ats|token|id), not sha1(url) — recomputing would
+# let a relabel/URL change resurface a job). Comment-proof: the documenting comments say "sha1(...)",
+# never "hashlib"/"createHash"/"subtle.digest" — those are the only ways to ACTUALLY hash in py/js.
+_hub_hash=$(grep -nE 'hashlib|crypto\.subtle|subtle\.digest|createHash' "$_HS" "$_HP" 2>/dev/null)
+if [ -n "$_hub_hash" ]; then echo "$_hub_hash"; note "FAIL: hub contains hashing code — it must read the stored fp, never recompute one from a URL."; fail=1
+else note "clean — hub does no hashing (reads/validates the stored fp; never sha1(url))."; fi
+
+# (e) The page is fully self-contained — NO external assets (a CDN/font fetch phones home and breaks
+# both the local-only invariant and offline use; spec §6).
+_hub_ext=$(grep -inE '<script[^>]+src=|<link[^>]+href="https?:|cdn\.|googleapis|tailwind|unpkg|jsdelivr|fonts\.google' "$_HP" 2>/dev/null)
+if [ -n "$_hub_ext" ]; then echo "$_hub_ext"; note "FAIL: index.html pulls an external asset — it must be fully self-contained (no CDN/web fonts)."; fail=1
+else note "clean — index.html is fully self-contained (no external script/style/font/CDN)."; fi
+
+# (f) Queue consumer SHIPS (the dead-end guard, spec §7). The hub's primary action (Add to apply
+# queue) is a no-op unless a gate skill consumes .coapply_queue.json. /coapply:start consumes it on
+# an empty invocation — assert that wiring exists so the loop closes in this release.
+if grep -q '\.coapply_queue\.json' skills/start/SKILL.md && grep -qiE 'queue' skills/start/SKILL.md; then
+  note "clean — /coapply:start consumes the hub apply queue (the queue loop closes; not a dead-end)."
+else note "FAIL: no skill consumes .coapply_queue.json — the hub's queue action would be a dead-end (spec §7)."; fail=1; fi
+
+# (g) The launcher is a SKILL (commands don't substitute \${CLAUDE_PLUGIN_ROOT}) and runs the
+# resolver bare (Step-0 discipline) rather than the un-allowlistable VAR="$(...)" wrapper.
+if grep -q 'profile-status.sh' "$_HK" && grep -q '\${CLAUDE_PLUGIN_ROOT}/hub/server.py' "$_HK"; then
+  note "clean — hub launcher is a skill that resolves paths then launches the server with the real RUNS_DIR."
+else note "FAIL: hub launcher skill is missing its profile-status.sh resolve or its server launch line."; fail=1; fi
 
 # A human-judgment gate the script CAN'T verify. Printed every run so it can't be skipped.
 section "Manual gate — confirm before you ship (not automatable)"

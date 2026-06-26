@@ -2,6 +2,59 @@
 
 All notable changes to CoApply. Versioned on the `plugin.json` version line.
 
+## [0.9.0] — 2026-06-26 — The hub: CoApply's returnable home
+
+CoApply gets its first **persistent visual surface**. Until now its only surface was an ephemeral
+chat: you ran discover, saw a table, it scrolled away. **The hub** is a local, single-page command
+center that renders the whole funnel in one returnable place — **discover (surfaced roles) → the
+gate → runs** — joined by the `fp`/`discoveryFp` fingerprint. It is a **thin lens over durable
+files**: it reads the curated discover ledger (`surfaced.json`) and your run folder, joins them,
+derives status read-time, and writes exactly one thing — a queue the human gate picks up. It
+**binds `127.0.0.1` only**, makes **no network calls**, runs **no agent**, and **never submits**.
+Spec: `docs/features/hub/spec.md` (6-lens audited).
+
+**The face, not the heart.** The gate, the honest fit-check, and the no-fabrication writing are
+still the soul — the hub just makes the funnel *legible so it compounds*. It is read-mostly by
+design and stays a thin projector: zero engine judgment lives in the page.
+
+### Added
+- **`scripts/discover-surface.py` + discover Step 4.5** *(shipped 0.8.x branch, the hub's data
+  spine)* — deterministic, offline curation of triage output into `surfaced.json`: dedup + accumulate
+  on `fp`, per-company cap (N=8) with `moreAtCompany` overflow, category lanes from the profile's
+  target-role phrases, `firstSeen`/`lastSeen`/`timesSeen`. No LLM, no network — inherits triage's
+  no-fabrication/no-network guarantees. Runs on **every** check, both modes, pre-gate.
+- **`hub/server.py`** — stdlib `http.server`, **binds `127.0.0.1` only** (refuses a non-loopback bind
+  outright), zero network imports. Reads `surfaced.json` + `runs/*/_run.json` (never the multi-MB
+  triage/fetch inputs) + `plugin.json` for the version badge; tolerant reads. Writes **only** three
+  allow-listed, path-confined files (`.coapply_queue.json`, `.coapply_hub_state.json`, an append to
+  `_discovery_seen.txt`). `GET /api/state?since=` (full join + derived status, `304` on unchanged
+  mtime), `POST /api/queue[/remove]`, `POST /api/dismiss`, health/version. `fp` validated
+  `^[0-9a-f]{40}$` on every endpoint.
+- **`hub/index.html`** — one self-contained page (all CSS/JS inline, **zero external assets**),
+  instrument-panel identity (near-black canvas, one iris accent, tabular numerals, conic fit gauge
+  labeled `/10`). The **layout is the funnel**: wide surfaced field (category lanes → collapsible
+  company clusters → dense one-line rows, "new" dots) → an always-present staging **gate** band →
+  committed runs (fit gauge + done/no-go badge + expand to pickup note + artifact grid). One
+  `state` + idempotent `render()`, event delegation, selection in a `Set` that survives polls,
+  conditional ~4s `304` polling, three field-agnostic empty states that each name their chat command.
+- **`skills/hub/SKILL.md`** — the launcher. Resolves paths via `profile-status.sh` (bare), warm-routes
+  a not-set/bad-path profile, then starts the server (start-or-reuse) bound to `127.0.0.1` and opens
+  `http://127.0.0.1:7878/`. A skill (not a command) because `${CLAUDE_PLUGIN_ROOT}` only substitutes
+  in skills.
+- **Queue consumer at the gate** — `/coapply:start` **with no argument** now reads
+  `.coapply_queue.json`, lists the staged roles, and emits one copy-paste `/coapply:start <url>` per
+  job, then **stops**. It is **read-only** (the hub stays the single writer of the queue) and runs
+  **zero agents** — each emitted command hits its own fit gate. This closes the loop so the hub's
+  primary action isn't a dead-end.
+
+### Changed
+- **`scripts/audit.sh`** — `hub` added to the personal-data / field-assumption / stray-path scans and
+  the skill-presence list; a new **§16 hub-boundary section** asserts (behaviorally where it matters):
+  the server refuses a `0.0.0.0` bind (exit 2), imports no outbound network client, writes only its
+  three path-confined files, does **no** url→fp hashing, ships a fully self-contained page, and that a
+  skill actually consumes the queue. Comment-proof: server.py's header documents `0.0.0.0`/`sha1(url)`
+  as guards it *avoids*, so the asserts target executable code and behavior, never those strings.
+
 ## [0.8.0] — 2026-06-25 — Discovery-Auto: zero-curation, profile-driven discovery
 
 Roadmap follow-up to Discovery 0.7.1. `/coapply:discover` gains an **`--auto` mode** that needs
