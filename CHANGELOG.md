@@ -2,6 +2,17 @@
 
 All notable changes to CoApply. Versioned on the `plugin.json` version line.
 
+## [0.9.1] — 2026-06-26 — Hub readability pass
+
+The hub shipped too small to read comfortably. This is a pure `hub/index.html` type + contrast pass —
+no server, API, or contract change (`server.py` and `audit.sh` untouched).
+
+- **Type scale bumped ~15%** across the board: base body 14→16px, content rows / lane + company names
+  13→15px, secondary meta text floored at 12px (was 10–11px), micro all-caps labels at 10–11px. Body
+  line-height 1.45→1.55 for looser, more scannable rows.
+- **Contrast lifted** on the two low-contrast text tokens (`--txt-dim`, `--txt-faint`) so secondary
+  meta (locations, dates, counts) is legible on the dark canvas.
+
 ## [0.9.0] — 2026-06-26 — The hub: CoApply's returnable home
 
 CoApply gets its first **persistent visual surface**. Until now its only surface was an ephemeral
