@@ -176,6 +176,65 @@
   .tbtn[aria-pressed="true"] { color: var(--accent-lit); border-color: var(--accent-line); background: var(--accent-soft); }
   .tnote { font-size: 12.5px; color: var(--txt-faint); font-family: var(--mono); }
 
+  /* ─── the lens: filter + sort controls over the surfaced field (spec §13) ───
+     A mechanical lens — zero judgment, all client-side over /api/state metadata. */
+  .lens { margin: 0 2px 14px; }
+  .lens-row { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+  /* search field — recessed, leading glyph */
+  .lens-field {
+    display: flex; align-items: center; gap: 7px; min-width: 210px; flex: 1 1 210px; max-width: 320px;
+    background: var(--bg); border: 1px solid var(--line-2); border-radius: var(--r-s); padding: 0 10px;
+    transition: border-color .14s, box-shadow .14s;
+  }
+  .lens-field:focus-within { border-color: var(--accent-line); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .lens-field svg { flex: none; color: var(--txt-faint); }
+  .lens-field input {
+    flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--txt);
+    font-family: var(--sans); font-size: 13.5px; padding: 7px 0;
+  }
+  .lens-field input::placeholder { color: var(--txt-faint); }
+  /* sort select — styled native control with a drawn caret */
+  .lens-sort { display: flex; align-items: center; gap: 7px; }
+  .lens-sort .flabel { color: var(--txt-faint); }
+  .lens-select {
+    appearance: none; -webkit-appearance: none;
+    font-family: var(--mono); font-size: 12.5px; letter-spacing: .03em; color: var(--txt-dim);
+    background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-s);
+    padding: 6px 26px 6px 11px; transition: .14s; cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' viewBox='0 0 10 7'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23828da1' stroke-width='1.4' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 9px center;
+  }
+  .lens-select:hover { color: var(--txt); border-color: var(--line-2); }
+  .lens-select:focus { outline: 0; border-color: var(--accent-line); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .lens-select option { background: var(--panel); color: var(--txt); }
+  /* filters toggle + active-count badge */
+  .lens-toggle {
+    font-family: var(--mono); font-size: 12.5px; letter-spacing: .04em; color: var(--txt-dim);
+    background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-s);
+    padding: 6px 11px; display: inline-flex; align-items: center; gap: 7px; transition: .14s;
+  }
+  .lens-toggle:hover { color: var(--txt); border-color: var(--line-2); }
+  .lens-toggle[aria-pressed="true"] { color: var(--accent-lit); border-color: var(--accent-line); background: var(--accent-soft); }
+  .fbadge {
+    font-family: var(--mono); font-size: 11px; line-height: 1; color: #0a0c12; background: var(--accent-lit);
+    border-radius: 100px; padding: 2px 6px; min-width: 16px; text-align: center; font-variant-numeric: tabular-nums;
+  }
+  .lens-spacer { flex: 1 1 12px; }
+  .lens-result { font-family: var(--mono); font-size: 12px; color: var(--accent-lit); white-space: nowrap; }
+  /* the collapsible filter panel */
+  .lens-panel {
+    margin-top: 10px; padding: 13px 14px; border: 1px solid var(--line); border-radius: var(--r);
+    background: linear-gradient(180deg, var(--panel), var(--bg-2)); box-shadow: var(--shadow);
+    display: grid; gap: 11px;
+  }
+  .fgroup { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .fgroup .flabel { flex: none; width: 64px; text-align: right; padding-top: 4px; }
+  .flabel { font-family: var(--mono); font-size: 10.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--txt-faint); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; }
+  .chip { font-size: 12px; padding: 4px 10px; }
+  .fgroup .lens-field { min-width: 180px; max-width: 280px; flex: 0 1 240px; }
+  .lens-empty { /* "no roles match" message inside the lanes container */ }
+
   .lane { margin-bottom: 12px; border: 1px solid var(--line); border-radius: var(--r); background: linear-gradient(180deg, var(--panel), var(--bg-2)); overflow: hidden; box-shadow: var(--shadow); }
   .lane-head {
     display: flex; align-items: center; gap: 12px; width: 100%;
@@ -380,7 +439,7 @@
         <span class="count" id="surfaced-count"></span>
         <span class="spacer"></span>
       </div>
-      <div class="toolbar" id="surfaced-toolbar"></div>
+      <div class="lens" id="surfaced-lens"></div>
       <div id="surfaced"></div>
     </section>
 
@@ -445,6 +504,21 @@ const App = {
     expandedCompanies: new Set(),
     expandedRuns: new Set(),
     shownAll: new Set(),
+    // the lens (spec §13) — a client-side filter/sort over the surfaced field.
+    // Lives here (NOT in App.state, which the poll replaces wholesale) so it survives every tick.
+    filters: {
+      status:  new Set(),      // funnel statuses to SHOW (new|queued|dismissed|has-run); empty = all-but-dismissed
+      lanes:   new Set(),      // category lanes to SHOW; empty = all
+      sources: new Set(),      // surfacedBy values to SHOW; empty = all
+      matched: new Set(),      // matched terms to SHOW (OR); empty = all
+      remote:  false,          // location contains "remote"
+      recurring: false,        // timesSeen >= 2
+      region:  "",             // free-text substring over location
+      search:  "",             // free-text substring over title/company
+    },
+    sort: "relevance",         // default — preserves rankAtLastSeen order
+    filtersOpen: false,        // the panel's open/closed state
+    lensSig: null,             // signature of available option sets; rebuild the lens DOM only when it changes
   },
   polling: false,
   newestFirstSeen: null,       // the latest firstSeenAt cohort → per-row "new" dot
@@ -549,8 +623,9 @@ function computeDerived() {
   for (const fp of [...App.sel]) if (!live.has(fp)) App.sel.delete(fp);
 }
 
-/* group a lane's jobs by company, newest-posted first */
-function groupByCompany(jobs) {
+/* group a lane's jobs by company, ordered by the active sort comparator */
+function groupByCompany(jobs, cmp) {
+  cmp = cmp || cmpFor("relevance");
   const map = new Map();
   for (const j of jobs) {
     const co = j.company || "—";
@@ -559,13 +634,101 @@ function groupByCompany(jobs) {
   }
   const groups = [];
   for (const [co, items] of map) {
-    items.sort((a,b) => (b.posted||"").localeCompare(a.posted||""));
+    items.sort(cmp);                            // rows within a company follow the sort
     const fresh = items.reduce((m,j) => (j.posted||"") > m ? (j.posted||"") : m, "");
     const more = items.reduce((m,j) => Math.max(m, j.moreAtCompany||0), 0);
-    groups.push({ co, items, fresh, more });
+    groups.push({ co, items, fresh, more, rep: items[0] });
   }
-  groups.sort((a,b) => b.fresh.localeCompare(a.fresh) || b.items.length - a.items.length);
+  // company groups order by their best (first) row under the same comparator
+  groups.sort((a,b) => cmp(a.rep, b.rep) || b.items.length - a.items.length);
   return groups;
+}
+
+/* ─────────────────────── the lens: filter + sort (spec §13) ───────────────
+   100% client-side over metadata already in /api/state — no server/contract change.
+   Scope = the surfaced field only; the gate band + runs stay unfiltered (spec §13.4). */
+const HAS_RUN = new Set(["done","no-go","running","in-progress"]);   // the "has-run" funnel group
+const SORTS = [
+  ["relevance",  "Relevance"],
+  ["freshest",   "Freshest"],
+  ["recent",     "Recently seen"],
+  ["persistent", "Most persistent"],
+  ["company",    "Company A–Z"],
+  ["status",     "Status priority"],
+];
+function cmpFor(sort) {
+  switch (sort) {
+    case "freshest":   return (a,b) => (b.posted||"").localeCompare(a.posted||"") || (b.firstSeenAt||"").localeCompare(a.firstSeenAt||"");
+    case "recent":     return (a,b) => (b.lastSeenAt||"").localeCompare(a.lastSeenAt||"") || (a.rankAtLastSeen||1e9)-(b.rankAtLastSeen||1e9);
+    case "persistent": return (a,b) => (b.timesSeen||0)-(a.timesSeen||0) || (a.rankAtLastSeen||1e9)-(b.rankAtLastSeen||1e9);
+    case "company":    return (a,b) => (a.company||"").localeCompare(b.company||"") || (b.posted||"").localeCompare(a.posted||"");
+    case "status":     return (a,b) => statusRank(a.derivedStatus)-statusRank(b.derivedStatus) || (a.rankAtLastSeen||1e9)-(b.rankAtLastSeen||1e9);
+    case "relevance":
+    default:           return (a,b) => (a.rankAtLastSeen||1e9)-(b.rankAtLastSeen||1e9);
+  }
+}
+function statusRank(ds) {                        // funnel order: new → queued → has-run → dismissed
+  if (ds === "new") return 0;
+  if (ds === "queued") return 1;
+  if (HAS_RUN.has(ds)) return 2;
+  if (ds === "dismissed") return 3;
+  return 4;
+}
+// does a job pass the active filter set? (the lens predicate)
+function jobMatchesFilters(j) {
+  const f = App.ui.filters;
+  // status (multi-toggle funnel lens); default hides dismissed when no status is chosen
+  if (f.status.size) {
+    const ds = j.derivedStatus;
+    const ok = f.status.has(ds) || (f.status.has("has-run") && HAS_RUN.has(ds));
+    if (!ok) return false;
+  } else if (j.derivedStatus === "dismissed") {
+    return false;
+  }
+  if (f.remote && !/remote/i.test(j.location||"")) return false;
+  if (f.recurring && !((j.timesSeen||0) >= 2)) return false;
+  if (f.region.trim() && !(j.location||"").toLowerCase().includes(f.region.trim().toLowerCase())) return false;
+  if (f.lanes.size && !f.lanes.has(j.category||"uncategorized")) return false;
+  if (f.sources.size && !f.sources.has(j.surfacedBy||"")) return false;
+  if (f.matched.size) {
+    const ms = j.matched || [];
+    if (!ms.some(m => f.matched.has(m))) return false;
+  }
+  if (f.search.trim()) {
+    const q = f.search.trim().toLowerCase();
+    if (!((j.title||"").toLowerCase().includes(q) || (j.company||"").toLowerCase().includes(q))) return false;
+  }
+  return true;
+}
+function activeFilterCount() {                   // panel constraints only (search shows inline)
+  const f = App.ui.filters;
+  let n = f.status.size + f.lanes.size + f.sources.size + f.matched.size;
+  if (f.remote) n++;
+  if (f.recurring) n++;
+  if (f.region.trim()) n++;
+  return n;
+}
+function lensActive() { return activeFilterCount() > 0 || !!App.ui.filters.search.trim(); }
+// the available option sets, derived from the payload (field-agnostic — nothing hardcoded)
+function matchedTerms(jobs) {                     // union of matched[], by frequency, capped
+  const freq = new Map();
+  for (const j of jobs) for (const m of (j.matched||[])) freq.set(m, (freq.get(m)||0)+1);
+  return [...freq.entries()].sort((a,b) => b[1]-a[1] || a[0].localeCompare(b[0])).slice(0,24).map(e => e[0]);
+}
+function sourceValues(jobs) {
+  const set = new Set();
+  for (const j of jobs) if (j.surfacedBy) set.add(j.surfacedBy);
+  return [...set].sort();
+}
+function lensSignature(s, jobs) {                 // rebuild the lens DOM only when options change
+  return JSON.stringify([laneOrder(s), matchedTerms(jobs), sourceValues(jobs)]);
+}
+function clearFilters() {
+  const f = App.ui.filters;
+  f.status.clear(); f.lanes.clear(); f.sources.clear(); f.matched.clear();
+  f.remote = false; f.recurring = false; f.region = ""; f.search = "";
+  const se = $("lens-search"); if (se) se.value = "";
+  const re = $("lens-region"); if (re) re.value = "";
 }
 
 /* ─────────────────────────────── render ──────────────────────────────── */
@@ -596,7 +759,7 @@ function renderHeaderMeta(s) {
   $("newpill").innerHTML = n > 0 ? `<span class="newpill">${n} new since last visit</span>` : "";
 }
 
-/* ── surfaced field: category lanes → company clusters → one-line rows ── */
+/* ── surfaced field: lens controls → category lanes → company clusters → rows ── */
 function renderSurfaced(s) {
   const stage = $("stage-surfaced");
   const jobs = s.jobs || [];
@@ -605,7 +768,8 @@ function renderSurfaced(s) {
   if (jobs.length === 0) {
     stage.hidden = false;
     $("surfaced-count").textContent = "";
-    $("surfaced-toolbar").innerHTML = "";
+    $("surfaced-lens").innerHTML = "";
+    App.ui.lensSig = null;
     $("surfaced").innerHTML = emptyState("◷",
       "No roles surfaced yet",
       `Run <code>/coapply:discover</code> in Claude Code to surface open roles into your pipeline.`);
@@ -615,25 +779,38 @@ function renderSurfaced(s) {
   stage.hidden = false;
   $("connector-1").hidden = false;
 
-  const companies = new Set(jobs.map(j => j.company)).size;
-  $("surfaced-count").textContent = `${jobs.length} role${jobs.length===1?"":"s"} · ${companies} companies`;
+  buildLensIfNeeded(s, jobs);                       // (re)build lens DOM only when options change
 
-  // toolbar
+  // apply the lens: filter, then sort within the existing lane structure
+  const filtered = jobs.filter(jobMatchesFilters);
+  const cmp = cmpFor(App.ui.sort);
+
+  const companies = new Set(filtered.map(j => j.company)).size;
+  const total = jobs.length;
+  $("surfaced-count").textContent =
+    (lensActive() ? `${filtered.length} of ${total}` : `${total}`) +
+    ` role${total===1?"":"s"} · ${companies} compan${companies===1?"y":"ies"}`;
+
+  syncLensState(s, filtered.length, total);
+
+  // no roles pass the active lens — a real message, never a blank table
+  if (filtered.length === 0) {
+    $("surfaced").innerHTML = `<div class="empty"><div class="ei">⊘</div>
+      <h3>No roles match the filters</h3>
+      <p>${total} surfaced role${total===1?"":"s"} are hidden by the active lens.
+      <a href="#" data-action="lens-clear">Clear filters</a> to see them.</p></div>`;
+    return;
+  }
+
+  // lanes — built from the FILTERED set; clusters recompute against it (spec §13.4 lane integrity)
   const allLanes = laneOrder(s);
-  const allCollapsed = allLanes.every(l => App.ui.collapsedLanes.has(l));
-  $("surfaced-toolbar").innerHTML =
-    `<button class="tbtn" data-action="toggle-all-lanes" aria-pressed="${allCollapsed}">${allCollapsed?"Expand all":"Collapse all"}</button>` +
-    `<button class="tbtn" data-action="select-all-new">Select all new</button>` +
-    `<span class="tnote">${countByStatus(jobs)}</span>`;
-
-  // lanes
   let html = "";
   for (const lane of allLanes) {
-    const laneJobs = jobs.filter(j => (j.category||"uncategorized") === lane);
+    const laneJobs = filtered.filter(j => (j.category||"uncategorized") === lane);
     if (laneJobs.length === 0) continue;
     const open = !App.ui.collapsedLanes.has(lane);
     const fresh = laneJobs.reduce((m,j)=>(j.posted||"")>m?(j.posted||""):m, "");
-    const groups = groupByCompany(laneJobs);
+    const groups = groupByCompany(laneJobs, cmp);
     const showAll = App.ui.shownAll.has(lane);
     const vis = showAll ? groups : groups.slice(0, LANE_VISIBLE);
 
@@ -659,6 +836,98 @@ function renderSurfaced(s) {
   $("surfaced").innerHTML = html;
 }
 
+/* Build the lens controls ONCE, and only re-build when the available option sets change.
+   Inputs (search/region) are never rebuilt on a poll, so focus + caret survive every tick. */
+function buildLensIfNeeded(s, jobs) {
+  const sig = lensSignature(s, jobs);
+  if (sig === App.ui.lensSig && $("surfaced-lens").firstChild) return;
+  App.ui.lensSig = sig;
+
+  const lanes = laneOrder(s);
+  const terms = matchedTerms(jobs);
+  const sources = sourceValues(jobs);
+  // prune any filter selections that no longer exist after a fresh discover run
+  const f = App.ui.filters;
+  for (const v of [...f.lanes])   if (!lanes.includes(v))   f.lanes.delete(v);
+  for (const v of [...f.matched]) if (!terms.includes(v))   f.matched.delete(v);
+  for (const v of [...f.sources]) if (!sources.includes(v)) f.sources.delete(v);
+
+  const chip = (group, val, label) =>
+    `<button class="tbtn chip" data-action="lens-chip" data-group="${esc(group)}" data-val="${esc(val)}" aria-pressed="false">${esc(label)}</button>`;
+  const searchIcon =
+    `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.6"/><path d="M20 20l-3.5-3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>`;
+
+  let h = `<div class="lens-row">
+    <div class="lens-field">${searchIcon}
+      <input id="lens-search" type="text" placeholder="Search title or company…" data-action="lens-search" autocomplete="off" spellcheck="false">
+    </div>
+    <label class="lens-sort"><span class="flabel">Sort</span>
+      <select id="lens-sort-sel" class="lens-select" data-action="lens-sort">
+        ${SORTS.map(([v,l]) => `<option value="${v}">${esc(l)}</option>`).join("")}
+      </select>
+    </label>
+    <button class="lens-toggle" data-action="lens-toggle-panel" aria-pressed="false">Filters<span class="fbadge" id="lens-fcount" hidden>0</span></button>
+    <button class="tbtn" id="lens-clear" data-action="lens-clear" hidden>Clear</button>
+    <span class="lens-spacer"></span>
+    <span class="lens-result" id="lens-result"></span>
+    <button class="tbtn" data-action="toggle-all-lanes" id="lens-expand" aria-pressed="false">Collapse all</button>
+    <button class="tbtn" data-action="select-all-new">Select all new</button>
+  </div>`;
+
+  const statusChips = [["new","New"],["queued","Queued"],["has-run","Has-run"],["dismissed","Dismissed"]]
+    .map(([v,l]) => chip("status", v, l)).join("");
+  const flagChips = chip("flag","remote","Remote-only") + chip("flag","recurring","Recurring ≥2");
+  const laneChips = lanes.map(l => chip("lane", l, l)).join("");
+  const sourceChips = sources.length ? sources.map(v => chip("source", v, v)).join("") : `<span class="tnote">—</span>`;
+  const termChips = terms.length ? terms.map(t => chip("matched", t, t)).join("") : `<span class="tnote">—</span>`;
+
+  h += `<div class="lens-panel" id="lens-panel" hidden>
+    <div class="fgroup"><span class="flabel">Status</span><span class="chips">${statusChips}</span></div>
+    <div class="fgroup"><span class="flabel">Show</span><span class="chips">${flagChips}</span></div>
+    <div class="fgroup"><span class="flabel">Lane</span><span class="chips">${laneChips}</span></div>
+    <div class="fgroup"><span class="flabel">Source</span><span class="chips">${sourceChips}</span></div>
+    <div class="fgroup"><span class="flabel">Matched</span><span class="chips">${termChips}</span></div>
+    <div class="fgroup"><span class="flabel">Region</span>
+      <span class="lens-field"><input id="lens-region" type="text" placeholder="e.g. New York, Remote…" data-action="lens-region" autocomplete="off" spellcheck="false"></span>
+    </div>
+  </div>`;
+
+  $("surfaced-lens").innerHTML = h;
+  // restore live input values (rebuild happens on option-set change, mid-session)
+  $("lens-search").value = f.search;
+  $("lens-region").value = f.region;
+}
+
+/* Update only the dynamic bits of the lens — pressed states, counts, labels — never the inputs.
+   Targeted DOM writes (no innerHTML), so a poll-driven sync never disturbs focus or selection. */
+function syncLensState(s, shown, total) {
+  const f = App.ui.filters;
+  const sel = $("lens-sort-sel"); if (sel) sel.value = App.ui.sort;
+  document.querySelectorAll('#surfaced-lens [data-action="lens-chip"]').forEach(c => {
+    const g = c.dataset.group, v = c.dataset.val;
+    let on = false;
+    if (g === "status")  on = f.status.has(v);
+    else if (g === "lane")    on = f.lanes.has(v);
+    else if (g === "source")  on = f.sources.has(v);
+    else if (g === "matched") on = f.matched.has(v);
+    else if (g === "flag")    on = !!f[v];
+    c.setAttribute("aria-pressed", on ? "true" : "false");
+  });
+  const panel = $("lens-panel"); if (panel) panel.hidden = !App.ui.filtersOpen;
+  const tog = document.querySelector('#surfaced-lens .lens-toggle'); if (tog) tog.setAttribute("aria-pressed", App.ui.filtersOpen ? "true" : "false");
+  const n = activeFilterCount();
+  const fc = $("lens-fcount"); if (fc) { fc.hidden = n === 0; fc.textContent = n; }
+  const clr = $("lens-clear"); if (clr) clr.hidden = !lensActive();
+  const r = $("lens-result"); if (r) r.textContent = lensActive() ? `${shown} of ${total} shown` : "";
+  const lanes = laneOrder(s);
+  const allCollapsed = lanes.every(l => App.ui.collapsedLanes.has(l));
+  const ex = $("lens-expand");
+  if (ex) { ex.textContent = allCollapsed ? "Expand all" : "Collapse all"; ex.setAttribute("aria-pressed", allCollapsed ? "true" : "false"); }
+}
+
+// re-apply the lens to the surfaced field only (gate + runs are unfiltered, spec §13.4)
+function relens() { if (App.state) renderSurfaced(App.state); }
+
 function laneOrder(s) {
   const cats = s.categories || {};
   const keys = Object.keys(cats);
@@ -666,16 +935,6 @@ function laneOrder(s) {
   // uncategorized always last
   return keys.filter(k => k !== "uncategorized").concat(keys.includes("uncategorized") ? ["uncategorized"] : []);
 }
-function countByStatus(jobs) {
-  const c = {};
-  for (const j of jobs) c[j.derivedStatus] = (c[j.derivedStatus]||0)+1;
-  const parts = [];
-  for (const k of ["new","queued","done","in-progress","running","no-go","dismissed"]) {
-    if (c[k]) parts.push(`${c[k]} ${k}`);
-  }
-  return parts.join("  ·  ");
-}
-
 function clusterHtml(g, lane) {
   const key = lane + "::" + g.co;
   const open = App.ui.expandedCompanies.has(key);
@@ -840,13 +1099,16 @@ $("main").addEventListener("click", (e) => {
   if (a === "toggle-run")     return toggleSet(App.ui.expandedRuns, t.dataset.slug), render();
   if (a === "toggle-all-lanes") return toggleAllLanes(), render();
   if (a === "select-all-new") return selectAllNew(), render();
+  if (a === "lens-toggle-panel") return (App.ui.filtersOpen = !App.ui.filtersOpen), relens();
+  if (a === "lens-chip")      return e.preventDefault(), toggleChip(t.dataset.group, t.dataset.val), relens();
+  if (a === "lens-clear")     return e.preventDefault(), clearFilters(), relens();
   if (a === "unqueue")        return post("/api/queue/remove", [t.dataset.fp], "Removed from queue");
   if (a === "queue-selected") return queueSelected();
   if (a === "dismiss-selected") return dismissSelected();
   if (a === "clear-selection")  return (App.sel.clear(), render());
 });
 
-// checkbox changes (delegated 'change' — selection lives in the Set)
+// checkbox + select changes (delegated 'change' — selection lives in the Set)
 $("main").addEventListener("change", (e) => {
   const t = e.target;
   if (t.dataset.action === "select") {
@@ -855,8 +1117,27 @@ $("main").addEventListener("change", (e) => {
   } else if (t.dataset.action === "select-company") {
     selectCompany(t.dataset.key, t.checked);
     render();
+  } else if (t.dataset.action === "lens-sort") {
+    App.ui.sort = t.value;
+    relens();
   }
 });
+
+// free-text lens inputs (delegated 'input' — re-filters without rebuilding the lens, so focus survives)
+$("main").addEventListener("input", (e) => {
+  const a = e.target.dataset.action;
+  if (a === "lens-search") { App.ui.filters.search = e.target.value; relens(); }
+  else if (a === "lens-region") { App.ui.filters.region = e.target.value; relens(); }
+});
+
+function toggleChip(group, val) {
+  const f = App.ui.filters;
+  if (group === "status")  toggleSet(f.status, val);
+  else if (group === "lane")    toggleSet(f.lanes, val);
+  else if (group === "source")  toggleSet(f.sources, val);
+  else if (group === "matched") toggleSet(f.matched, val);
+  else if (group === "flag")    f[val] = !f[val];
+}
 
 // funnel thread: hovering a job lights its run row and vice-versa
 $("main").addEventListener("mouseover", (e) => {

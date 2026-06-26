@@ -2,6 +2,29 @@
 
 All notable changes to CoApply. Versioned on the `plugin.json` version line.
 
+## [0.9.2] — 2026-06-26 — Hub filter & sort (the lens controls)
+
+The accumulating surfaced ledger outgrew scan-only. At a few hundred rows in one lane (Senior PM = 183
+of 263), you need to *narrow and reorder*. This adds **the lens** — filter + sort controls above the
+surfaced field. Spec: `docs/features/hub/spec.md §13`. **Pure `hub/index.html` change** — no `server.py`,
+no API/contract, no `surfaced.json` schema, no `audit.sh` change. Every control derives from metadata
+already in `/api/state`, so it's a mechanical lens (zero judgment) and stays field-agnostic: lanes,
+matched terms, sources, and locations all come from the payload, nothing hardcoded.
+
+- **Filters** — Status (New · Queued · Has-run · Dismissed; *default hides Dismissed*), Remote-only,
+  Recurring (`timesSeen ≥ 2`), Lane, Source (`watchlist`/`auto`), Matched-term chips (union of `matched[]`,
+  top-24 by frequency), free-text Region (over `location`) and Search (over title/company). An active-filter
+  count badge on **Filters**, a one-click **Clear**, and an **N of M shown** result pill.
+- **Sorts** — Relevance (`rankAtLastSeen`, default) · Freshest (`posted`) · Recently seen (`lastSeenAt`)
+  · Most persistent (`timesSeen`) · Company A–Z · Status priority (new → queued → has-run → dismissed).
+- **Scope = the surfaced field only** (spec §13.4) — the gate band and runs stay unfiltered; company
+  clusters + lane counts recompute against the filtered set. **`openState` filter is intentionally omitted**
+  (it's monotone `"open"` in v1 — it unlocks with the §9 close-reconciliation, never shipped as a dead control).
+- **FE discipline preserved:** filter/sort state lives in `App.ui` (not the poll-replaced `App.state`), the
+  lens DOM rebuilds only when option sets change (so search/region focus + caret survive every 4s poll),
+  and the multi-select `Set` survives filtering. Verified with a Playwright pass (each filter/sort + persisted
+  selection across a re-render); zero console errors. Audit still **PASSES** unchanged.
+
 ## [0.9.1] — 2026-06-26 — Hub readability pass
 
 The hub shipped too small to read comfortably. This is a pure `hub/index.html` type + contrast pass —
