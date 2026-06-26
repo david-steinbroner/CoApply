@@ -216,6 +216,27 @@ against the target terms + the per-row filters; its reasons quote real fields on
 "great fit" — there is no fabrication surface here). Then **Read** `${RUNS_DIR}/.discovery_triage.json`
 to render the gate.
 
+## Step 4.5 — Surface into the curated ledger (the hub's data spine)
+
+Curate this check's ranked results into the accumulating `surfaced.json` ledger that the hub renders.
+Run this on **every** check, in **both** modes, **before** the gate and **independent of what the user
+picks** — the ledger is the "surfaced universe," not just the jobs someone engages. Pass `--mode auto`
+when you arrived from Step A, otherwise `--mode watchlist`:
+
+```bash
+"${CLAUDE_PLUGIN_ROOT}/scripts/discover-surface.py" --triage "${RUNS_DIR}/.discovery_triage.json" --targets "<$USER_TARGETS text>" --surfaced "${RUNS_DIR}/surfaced.json" --mode <watchlist|auto>
+```
+
+Substitute the real `$USER_TARGETS` string (quoted), exactly as you did for triage. The script is
+deterministic — no LLM, no network: it dedups + accumulates on the fingerprint (`firstSeenAt`/`timesSeen`
+preserved across checks), caps each company to its top results so one company can't flood the list
+(recording the overflow as `moreAtCompany`), and derives a field-agnostic category lane from the user's
+own target-role phrases. It prints a short receipt to **stderr** (new/updated, any capped companies,
+the lanes); you can surface that, but it's secondary to the gate. It writes **only**
+`${RUNS_DIR}/surfaced.json` (atomically), stores **no** status (the hub derives that read-time), and
+never blocks the run — a bad/half-written existing ledger is reported and replaced, not fatal. Then
+continue to the gate.
+
 ## Step 5 — The gate (a stop — the human decides)
 
 From the triage `kept` array (already ranked: most target terms matched, then most recent), render

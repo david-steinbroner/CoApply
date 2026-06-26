@@ -11,7 +11,7 @@ note() { printf '  %s\n' "$1"; }
 section() { printf '\n=== %s ===\n' "$1"; }
 
 # Scan the shipping engine + templates + manifest + docs — NOT a user's real profile.
-SCAN_PATHS=(skills profile profile.example .claude-plugin README.md PRINCIPLES.md SECURITY.md CLAUDE.md CHANGELOG.md)
+SCAN_PATHS=(skills profile profile.example .claude-plugin README.md PRINCIPLES.md SECURITY.md CLAUDE.md CHANGELOG.md scripts/discover-surface.py)
 
 section "1. Personal-data leak scan"
 # Anything personally identifying should never appear in the engine.
@@ -25,11 +25,11 @@ if [ -n "$hits" ]; then echo "$hits"; note "FAIL: personal-data tokens found in 
 section "2. Field-assumption scan (engine must be field-agnostic)"
 # High-signal tells that the engine assumes the user is a PM / in tech.
 FIELD='Growth PM|Compliance PM|product manager|product-manager|pm-builder|pm-growth|fintech\b'
-hits=$(grep -rInE "$FIELD" skills profile profile.example .claude-plugin README.md 2>/dev/null)
+hits=$(grep -rInE "$FIELD" skills profile profile.example .claude-plugin README.md scripts/discover-surface.py 2>/dev/null)
 if [ -n "$hits" ]; then echo "$hits"; note "FAIL: field/PM assumptions found — genericize them."; fail=1; else note "clean — no PM/field assumptions."; fi
 
 section "3. Stray absolute paths / unresolved engine vars"
-hits=$(grep -rInE '/Users/|/Projects/apply' skills profile profile.example 2>/dev/null)
+hits=$(grep -rInE '/Users/|/Projects/apply' skills profile profile.example scripts/discover-surface.py 2>/dev/null)
 if [ -n "$hits" ]; then echo "$hits"; note "FAIL: hardcoded absolute paths found."; fail=1; else note "clean — no hardcoded absolute paths."; fi
 
 section "4. Structure & invariants"
