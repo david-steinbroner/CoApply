@@ -176,10 +176,12 @@ def normalize_run(raw, slug, mtime_s, now_s):
 
 
 def load_runs(now_s):
-    """All runs under RUNS_DIR/runs (skip dotfiles/dirs — same as apply's loadRuns and the
-    /coapply:list scanner). Reads ONLY each run's _run.json — never the multi-MB triage/fetch
-    ledgers, which are discover-surface.py's inputs, not the hub's."""
-    runs_root = confined("runs")
+    """All runs under RUNS_DIR (each run is a direct child dir holding a _run.json; skip
+    dotfiles/dirs — same as apply's loadRuns and the /coapply:list scanner). RUNS_DIR already
+    IS the runs folder (PROFILE_DIR/runs): run dirs, surfaced.json, and the dot-ledgers are
+    siblings here. Reads ONLY each run's _run.json — never the multi-MB triage/fetch ledgers,
+    which are discover-surface.py's inputs, not the hub's."""
+    runs_root = RUNS_DIR
     if not os.path.isdir(runs_root):
         return []
     out = []
@@ -260,7 +262,7 @@ def state_mtime():
     the giant triage/fetch ledgers — the hub never reads them, so they can't affect the page."""
     token = 0
     paths = [confined("surfaced.json"), confined(QUEUE_FILE), confined(SEEN_FILE)]
-    runs_root = confined("runs")
+    runs_root = RUNS_DIR
     if os.path.isdir(runs_root):
         try:
             for name in os.listdir(runs_root):

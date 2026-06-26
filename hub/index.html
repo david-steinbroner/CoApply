@@ -1,0 +1,938 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CoApply · hub</title>
+<!--
+  CoApply — the HUB page (docs/features/hub/spec.md §6). One self-contained file.
+
+  A THIN PROJECTOR over hub/server.py's /api/state read-model. It holds NO engine logic:
+  no fit math, no dedup, no status meaning beyond a tiny generic status→badge map (unknown
+  statuses render verbatim). The server joins surfaced.json ↔ runs ↔ queue ↔ dismiss-cache
+  and derives every status read-time; this page only lays the funnel out and draws it.
+
+  Hard invariants honored here (audit asserts them — spec §8):
+    • LOCAL ONLY / OFFLINE — every asset is inline. No CDN, no web font, no external <img>,
+      nothing that phones home. System + monospace font stacks only.
+    • NO embedded fixtures/demo rows — against an empty RUNS_DIR this shows only empty states.
+    • READ-MOSTLY — the only mutations are POST /api/queue[/remove] and /api/dismiss; the page
+      never submits an application, never runs an agent, never recomputes a fingerprint.
+
+  FE disciplines (the framework-less app stays clean only with these — spec §6):
+    • ONE `App.state` + ONE idempotent render(). Every mutation calls render(); no handler
+      pokes innerHTML directly.
+    • EVENT DELEGATION on a stable root — never re-bind per poll (that leaks listeners and
+      drops in-flight clicks).
+    • SELECTION lives in a JS Set keyed by fp, read from the Set not the DOM — so a background
+      poll re-render never wipes a multi-select.
+    • CONDITIONAL POLLING (~4s, ?since=<mtime> → 304 skips render entirely); selection, scroll
+      and open/closed UI all survive a no-op tick.
+-->
+<style>
+  /* ───────────────────────────── design tokens ─────────────────────────────
+     Instrument-panel identity: near-black cool-undertone canvas, hairline
+     construction, ONE iris signal accent (CoApply's own — not apply's amber),
+     green=done, red almost never, tabular mono numerals everywhere. */
+  :root {
+    --bg:        #080a0e;
+    --bg-2:      #0b0e13;
+    --panel:     #0f131a;
+    --panel-2:   #131822;
+    --elev:      #182030;
+    --line:      #1f2533;
+    --line-2:    #2a3243;
+    --line-lit:  #39425a;
+    --txt:       #e8ebf2;
+    --txt-dim:   #939cb0;
+    --txt-faint: #5b6577;
+
+    --accent:      #7c8cff;            /* iris — the single signal accent       */
+    --accent-lit:  #9aa8ff;
+    --accent-deep: #5563d6;
+    --accent-soft: rgba(124,140,255,.12);
+    --accent-line: rgba(124,140,255,.40);
+    --accent-glow: rgba(124,140,255,.22);
+
+    --done:  #46cf8b;                  /* green — cleared / done                */
+    --done-soft: rgba(70,207,139,.13);
+    --nogo:  #ef6b76;                  /* red — used sparingly (no-go only)      */
+    --nogo-soft: rgba(239,107,118,.13);
+    --cyan:  #4fd0d6;                  /* queued — staged, distinct from done    */
+    --cyan-soft: rgba(79,208,214,.12);
+
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, "Cascadia Mono", Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+    --r:   10px;
+    --r-s: 7px;
+    --shadow: 0 1px 0 rgba(255,255,255,.02) inset, 0 18px 40px -24px rgba(0,0,0,.8);
+
+    /* funnel taper — each stage narrows toward the gate */
+    --w-surfaced: 1120px;
+    --w-gate:      720px;
+    --w-runs:      940px;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.45;
+    color: var(--txt);
+    background-color: var(--bg);
+    /* layered atmosphere: faint dot-grid + a cool overhead glow + bottom vignette */
+    background-image:
+      radial-gradient(circle at 50% -10%, rgba(124,140,255,.07), transparent 55%),
+      radial-gradient(rgba(255,255,255,.022) 1px, transparent 1px),
+      linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
+    background-size: 100% 100%, 22px 22px, 100% 100%;
+    background-attachment: fixed;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+  }
+  .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  .num  { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  a { color: var(--accent-lit); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  button { font-family: inherit; cursor: pointer; }
+  ::selection { background: var(--accent-glow); }
+
+  /* ───────────────────────────── header bar ───────────────────────────── */
+  header {
+    position: sticky; top: 0; z-index: 40;
+    display: flex; align-items: center; gap: 18px;
+    padding: 12px clamp(16px, 4vw, 40px);
+    background: linear-gradient(180deg, rgba(10,12,17,.92), rgba(10,12,17,.74));
+    backdrop-filter: blur(14px) saturate(1.2);
+    -webkit-backdrop-filter: blur(14px) saturate(1.2);
+    border-bottom: 1px solid var(--line);
+  }
+  .brand { display: flex; align-items: center; gap: 11px; }
+  .brand .glyph { width: 22px; height: 22px; display: block; }
+  .brand .name {
+    font-family: var(--mono);
+    font-weight: 600; font-size: 14px; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--txt);
+  }
+  .brand .tag {
+    font-family: var(--mono); font-size: 10px; letter-spacing: .2em;
+    text-transform: uppercase; color: var(--accent-lit);
+    border: 1px solid var(--accent-line); border-radius: 4px;
+    padding: 1px 6px; background: var(--accent-soft);
+  }
+  .head-spacer { flex: 1; }
+  .head-meta { display: flex; align-items: center; gap: 16px; font-size: 12px; color: var(--txt-dim); }
+  .lastrun { display: flex; align-items: center; gap: 7px; }
+  .lastrun b { color: var(--txt); font-weight: 500; }
+  .newpill {
+    font-family: var(--mono); font-size: 11px; letter-spacing: .03em;
+    color: var(--accent-lit); background: var(--accent-soft);
+    border: 1px solid var(--accent-line); border-radius: 100px;
+    padding: 3px 11px; display: inline-flex; align-items: center; gap: 6px;
+  }
+  .newpill::before { content:""; width:5px; height:5px; border-radius:50%; background: var(--accent-lit); box-shadow: 0 0 8px var(--accent-lit); }
+  .pulse { position: relative; display: inline-flex; align-items: center; gap: 7px; color: var(--txt-faint); font-size: 11px; font-family: var(--mono); }
+  .pulse .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--done); box-shadow: 0 0 8px var(--done-soft); }
+  .pulse.stale .dot { background: var(--txt-faint); box-shadow:none; }
+  .pulse.busy .dot { animation: blink .9s steps(2,end) infinite; }
+  @keyframes blink { 50% { opacity: .25; } }
+
+  /* ───────────────────────────── funnel scaffold ───────────────────────── */
+  main { padding: 26px clamp(12px, 4vw, 40px) 120px; }
+  .stage { margin: 0 auto; transition: max-width .3s ease; }
+  .stage--surfaced { max-width: var(--w-surfaced); }
+  .stage--gate     { max-width: var(--w-gate); }
+  .stage--runs     { max-width: var(--w-runs); }
+
+  .stage-head { display: flex; align-items: baseline; gap: 12px; margin: 0 2px 12px; }
+  .stage-head h2 {
+    margin: 0; font-family: var(--mono); font-size: 12px; font-weight: 600;
+    letter-spacing: .22em; text-transform: uppercase; color: var(--txt-dim);
+  }
+  .stage-head .count { font-family: var(--mono); font-size: 12px; color: var(--txt-faint); }
+  .stage-head .spacer { flex: 1; }
+
+  /* funnel connector: a tapering pair of walls + a downward chevron + label */
+  .connector { position: relative; height: 64px; margin: 6px auto 2px; max-width: var(--w-surfaced); }
+  .connector svg { display: block; width: 100%; height: 100%; }
+  .connector .clabel {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
+    font-family: var(--mono); font-size: 10px; letter-spacing: .22em; text-transform: uppercase;
+    color: var(--txt-faint); background: var(--bg-2); padding: 3px 12px; border-radius: 100px;
+    border: 1px solid var(--line); white-space: nowrap;
+  }
+
+  /* ───────────────────────────── surfaced lanes ────────────────────────── */
+  .toolbar { display: flex; align-items: center; gap: 10px; margin: 0 2px 14px; flex-wrap: wrap; }
+  .tbtn {
+    font-family: var(--mono); font-size: 11px; letter-spacing: .04em;
+    color: var(--txt-dim); background: var(--panel); border: 1px solid var(--line);
+    border-radius: var(--r-s); padding: 5px 11px; transition: .14s;
+  }
+  .tbtn:hover { color: var(--txt); border-color: var(--line-2); background: var(--panel-2); }
+  .tbtn[aria-pressed="true"] { color: var(--accent-lit); border-color: var(--accent-line); background: var(--accent-soft); }
+  .tnote { font-size: 11px; color: var(--txt-faint); font-family: var(--mono); }
+
+  .lane { margin-bottom: 12px; border: 1px solid var(--line); border-radius: var(--r); background: linear-gradient(180deg, var(--panel), var(--bg-2)); overflow: hidden; box-shadow: var(--shadow); }
+  .lane-head {
+    display: flex; align-items: center; gap: 12px; width: 100%;
+    padding: 11px 14px; background: transparent; border: 0; text-align: left;
+    border-bottom: 1px solid transparent; transition: background .14s;
+  }
+  .lane.open .lane-head { border-bottom-color: var(--line); }
+  .lane-head:hover { background: rgba(255,255,255,.015); }
+  .lane-head .chev { color: var(--txt-faint); font-size: 10px; width: 12px; transition: transform .18s; transform: rotate(-90deg); }
+  .lane.open .lane-head .chev { transform: rotate(0deg); }
+  .lane-head .lname { font-weight: 600; font-size: 13px; color: var(--txt); letter-spacing: .01em; }
+  .lane-head .lcount { font-family: var(--mono); font-size: 11px; color: var(--accent-lit); background: var(--accent-soft); border:1px solid var(--accent-line); border-radius: 100px; padding: 1px 8px; }
+  .lane-head .lfresh { font-family: var(--mono); font-size: 11px; color: var(--txt-faint); margin-left: auto; }
+  .lane-body { display: none; }
+  .lane.open .lane-body { display: block; }
+
+  /* dense one-line rows */
+  .row {
+    display: grid; grid-template-columns: 26px 1fr auto auto; align-items: center; gap: 10px;
+    padding: 7px 14px 7px 12px; border-top: 1px solid var(--line);
+    transition: background .12s;
+  }
+  .lane-body > .row:first-child, .lane-body > .cluster:first-child .row { border-top: 0; }
+  .row:hover { background: rgba(124,140,255,.04); }
+  .row.thread-lit { background: var(--accent-soft); box-shadow: inset 2px 0 0 var(--accent); }
+  .row.dismissed .rtitle { color: var(--txt-faint); text-decoration: line-through; text-decoration-color: var(--line-2); }
+  .row .rtitle { font-size: 13px; color: var(--txt); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row .rtitle .rco { color: var(--txt-dim); }
+  .row .rtitle .rco::after { content: " · "; color: var(--txt-faint); }
+  .row .rloc { font-family: var(--mono); font-size: 11px; color: var(--txt-faint); white-space: nowrap; max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
+  .row .rposted { font-family: var(--mono); font-size: 11px; color: var(--txt-faint); white-space: nowrap; }
+  .newdot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 7px var(--accent-glow); margin-right: 6px; vertical-align: middle; }
+
+  /* checkbox — custom, instrument-style */
+  .ck { appearance: none; -webkit-appearance: none; width: 16px; height: 16px; border: 1px solid var(--line-2); border-radius: 4px; background: var(--bg); display: grid; place-content: center; transition: .12s; }
+  .ck:hover { border-color: var(--accent-line); }
+  .ck:checked { background: var(--accent); border-color: var(--accent); }
+  .ck:checked::after { content: ""; width: 4px; height: 8px; border: solid var(--bg); border-width: 0 2px 2px 0; transform: rotate(42deg) translateY(-1px); }
+  .ck:disabled { opacity: .3; cursor: not-allowed; }
+
+  /* company cluster (multi-role company collapses to one row) */
+  .cluster { border-top: 1px solid var(--line); }
+  .cluster-head { display: grid; grid-template-columns: 26px 1fr auto; align-items: center; gap: 10px; width: 100%; padding: 7px 14px 7px 12px; background: transparent; border: 0; text-align: left; transition: background .12s; }
+  .cluster-head:hover { background: rgba(255,255,255,.015); }
+  .cluster-head .chev { color: var(--txt-faint); font-size: 9px; transition: transform .18s; transform: rotate(-90deg); }
+  .cluster.open .cluster-head .chev { transform: rotate(0deg); }
+  .cluster-head .cco { font-size: 13px; font-weight: 600; color: var(--txt); }
+  .cluster-head .ccount { font-family: var(--mono); font-size: 11px; color: var(--txt-dim); }
+  .cluster-head .cmore { font-family: var(--mono); font-size: 10px; color: var(--txt-faint); margin-left: 8px; }
+  .cluster-head .cfresh { font-family: var(--mono); font-size: 11px; color: var(--txt-faint); margin-left: auto; }
+  .cluster-body { display: none; }
+  .cluster.open .cluster-body { display: block; }
+  .cluster-body .row { padding-left: 34px; background: rgba(0,0,0,.14); }
+  .cluster-body .row .rtitle .rco { display: none; }
+
+  .lane-more { padding: 8px 14px; border-top: 1px solid var(--line); }
+  .lane-more button { font-family: var(--mono); font-size: 11px; color: var(--accent-lit); background: none; border: 0; padding: 2px 0; }
+  .lane-more button:hover { text-decoration: underline; }
+
+  /* status badge — tiny generic map; unknown statuses render verbatim */
+  .badge { font-family: var(--mono); font-size: 10px; letter-spacing: .04em; text-transform: uppercase; padding: 2px 7px; border-radius: 100px; border: 1px solid var(--line-2); color: var(--txt-dim); white-space: nowrap; }
+  .badge.done     { color: var(--done); border-color: rgba(70,207,139,.4);  background: var(--done-soft); }
+  .badge.nogo     { color: var(--nogo); border-color: rgba(239,107,118,.4); background: var(--nogo-soft); }
+  .badge.running  { color: var(--accent-lit); border-color: var(--accent-line); background: var(--accent-soft); }
+  .badge.running::before { content:""; display:inline-block; width:5px; height:5px; border-radius:50%; background: var(--accent-lit); margin-right:5px; vertical-align: middle; animation: blink .9s steps(2,end) infinite; }
+  .badge.inprogress { color: var(--accent-lit); border-color: var(--accent-line); }
+  .badge.queued   { color: var(--cyan); border-color: rgba(79,208,214,.4); background: var(--cyan-soft); }
+  .badge.dismissed{ color: var(--txt-faint); }
+  .badge.thread { cursor: default; }
+
+  /* ───────────────────────────── gate band ────────────────────────────── */
+  .gate {
+    position: relative; border: 1px solid var(--accent-line); border-radius: var(--r);
+    background: linear-gradient(180deg, rgba(124,140,255,.05), var(--panel) 60%);
+    padding: 16px 18px; box-shadow: 0 0 0 1px rgba(124,140,255,.04), 0 24px 50px -30px var(--accent-glow);
+  }
+  .gate-rail { position: absolute; inset: 0; border-radius: var(--r); pointer-events: none;
+    background: repeating-linear-gradient(135deg, transparent 0 7px, rgba(124,140,255,.03) 7px 8px); }
+  .gate-copy { display: flex; gap: 11px; align-items: flex-start; position: relative; }
+  .gate-copy .lock { flex: none; margin-top: 1px; color: var(--accent-lit); }
+  .gate-copy p { margin: 0; font-size: 12.5px; color: var(--txt-dim); }
+  .gate-copy p b { color: var(--txt); font-weight: 600; }
+  .gate-list { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 8px; position: relative; }
+  .qcard { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center;
+    padding: 10px 12px; border: 1px solid var(--line-2); border-radius: var(--r-s);
+    background: var(--panel-2); }
+  .qcard .qtitle { font-size: 13px; color: var(--txt); }
+  .qcard .qco { font-family: var(--mono); font-size: 11px; color: var(--accent-lit); }
+  .qcard a.qurl { font-family: var(--mono); font-size: 10.5px; color: var(--txt-faint); }
+  .qcard .qrm { font-family: var(--mono); font-size: 11px; color: var(--txt-dim); background: var(--bg); border: 1px solid var(--line-2); border-radius: var(--r-s); padding: 4px 9px; transition: .14s; }
+  .qcard .qrm:hover { color: var(--nogo); border-color: rgba(239,107,118,.4); }
+  .gate-consume { position: relative; margin-top: 14px; padding-top: 13px; border-top: 1px dashed var(--line-2);
+    font-size: 12px; color: var(--txt-dim); }
+  .gate-consume code { font-family: var(--mono); font-size: 11.5px; color: var(--accent-lit); background: var(--accent-soft); border: 1px solid var(--accent-line); border-radius: 5px; padding: 1px 7px; }
+
+  /* ───────────────────────────── runs ─────────────────────────────────── */
+  .runrow { border: 1px solid var(--line); border-radius: var(--r); background: linear-gradient(180deg, var(--panel), var(--bg-2)); margin-bottom: 10px; overflow: hidden; box-shadow: var(--shadow); }
+  .runrow.thread-lit { border-color: var(--accent-line); box-shadow: 0 0 0 1px var(--accent-line), 0 24px 50px -30px var(--accent-glow); }
+  .run-head { display: grid; grid-template-columns: 56px 1fr auto auto; align-items: center; gap: 14px; width: 100%; padding: 13px 16px; background: transparent; border: 0; text-align: left; transition: background .14s; }
+  .run-head:hover { background: rgba(255,255,255,.015); }
+
+  /* fitScore conic gauge — labeled /10 (scale confirmed from fit-score.md), never an unlabeled fill */
+  .gauge { width: 52px; height: 52px; border-radius: 50%; display: grid; place-content: center; position: relative;
+    background: conic-gradient(var(--gc, var(--accent)) calc(var(--fit,0) * 36deg), var(--line) 0); }
+  .gauge::after { content: ""; position: absolute; inset: 5px; border-radius: 50%; background: var(--bg-2); border: 1px solid var(--line); }
+  .gauge .gv { position: relative; font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 14px; font-weight: 600; color: var(--txt); line-height: 1; }
+  .gauge .gd { position: relative; font-family: var(--mono); font-size: 8.5px; color: var(--txt-faint); letter-spacing: .05em; margin-top: 1px; }
+  .gauge.nofit { background: var(--line); }
+  .gauge.nofit .gv { color: var(--txt-faint); font-size: 11px; }
+
+  .run-id .rrole { font-size: 14px; font-weight: 600; color: var(--txt); }
+  .run-id .rco { font-family: var(--mono); font-size: 11.5px; color: var(--txt-dim); }
+  .run-id .rorphan { font-family: var(--mono); font-size: 10px; color: var(--txt-faint); border: 1px dashed var(--line-2); border-radius: 4px; padding: 0 6px; margin-left: 8px; }
+  .run-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+  .run-nogo { font-family: var(--mono); font-size: 11px; color: var(--nogo); max-width: 320px; text-align: right; }
+  .run-head .rchev { color: var(--txt-faint); font-size: 11px; transition: transform .18s; transform: rotate(-90deg); }
+  .runrow.open .run-head .rchev { transform: rotate(0deg); }
+  .run-body { display: none; padding: 0 16px 16px 16px; }
+  .runrow.open .run-body { display: block; }
+  .pickup { display: flex; gap: 10px; padding: 12px 14px; border: 1px solid var(--line-2); border-radius: var(--r-s); background: var(--panel-2); margin-bottom: 14px; }
+  .pickup .pk { flex: none; color: var(--accent-lit); }
+  .pickup .pkt { font-size: 12.5px; color: var(--txt); line-height: 1.5; }
+  .pickup .pkl { display: block; font-family: var(--mono); font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--txt-faint); margin-bottom: 4px; }
+  .arts { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px,1fr)); gap: 6px; }
+  .art { display: flex; align-items: center; gap: 8px; padding: 6px 9px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg-2); font-size: 12px; }
+  .art .as { width: 6px; height: 6px; border-radius: 50%; flex: none; background: var(--txt-faint); }
+  .art .as.done { background: var(--done); box-shadow: 0 0 6px var(--done-soft); }
+  .art .an { font-family: var(--mono); font-size: 11px; color: var(--txt-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* ───────────────────────────── empty states ─────────────────────────── */
+  .empty { text-align: center; padding: 44px 24px; border: 1px dashed var(--line-2); border-radius: var(--r); background: linear-gradient(180deg, var(--panel), var(--bg-2)); color: var(--txt-dim); }
+  .empty .ei { font-size: 22px; margin-bottom: 10px; opacity: .8; }
+  .empty h3 { margin: 0 0 6px; font-size: 14px; color: var(--txt); font-weight: 600; }
+  .empty p { margin: 0; font-size: 12.5px; }
+  .empty code { font-family: var(--mono); font-size: 12px; color: var(--accent-lit); background: var(--accent-soft); border: 1px solid var(--accent-line); border-radius: 5px; padding: 1px 7px; }
+
+  /* ───────────────────────────── selection action bar ─────────────────── */
+  .actionbar {
+    position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%) translateY(140%);
+    z-index: 50; display: flex; align-items: center; gap: 14px;
+    padding: 10px 12px 10px 18px; border-radius: 100px;
+    background: linear-gradient(180deg, var(--elev), var(--panel));
+    border: 1px solid var(--accent-line);
+    box-shadow: 0 20px 50px -16px rgba(0,0,0,.7), 0 0 0 1px rgba(124,140,255,.08), 0 0 40px -10px var(--accent-glow);
+    transition: transform .26s cubic-bezier(.2,.8,.2,1);
+  }
+  .actionbar.show { transform: translateX(-50%) translateY(0); }
+  .actionbar .seln { font-family: var(--mono); font-size: 12px; color: var(--txt); }
+  .actionbar .seln b { color: var(--accent-lit); }
+  .abtn { font-family: var(--mono); font-size: 12px; letter-spacing: .02em; border-radius: 100px; padding: 7px 15px; border: 1px solid var(--line-2); background: var(--bg); color: var(--txt-dim); transition: .14s; }
+  .abtn:hover { color: var(--txt); border-color: var(--line-lit); }
+  .abtn.primary { background: var(--accent); border-color: var(--accent); color: #0a0c12; font-weight: 600; }
+  .abtn.primary:hover { background: var(--accent-lit); }
+  .abtn.ghost { border-color: transparent; }
+
+  /* ───────────────────────────── footer / toast ───────────────────────── */
+  footer { max-width: var(--w-surfaced); margin: 30px auto 0; padding: 18px 2px; border-top: 1px solid var(--line);
+    display: flex; align-items: center; gap: 14px; font-family: var(--mono); font-size: 11px; color: var(--txt-faint); }
+  footer .vbadge { color: var(--txt-dim); border: 1px solid var(--line); border-radius: 5px; padding: 2px 8px; }
+  footer .runsdir { margin-left: auto; opacity: .8; }
+  .toast { position: fixed; left: 50%; bottom: 84px; transform: translate(-50%, 20px); opacity: 0; z-index: 60;
+    font-family: var(--mono); font-size: 12px; color: var(--txt); background: var(--elev);
+    border: 1px solid var(--line-2); border-radius: 100px; padding: 8px 16px; pointer-events: none;
+    transition: .22s; box-shadow: 0 12px 30px -12px rgba(0,0,0,.7); }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+  .toast.err { border-color: rgba(239,107,118,.5); color: var(--nogo); }
+
+  .boot { text-align: center; padding: 80px 20px; color: var(--txt-faint); font-family: var(--mono); font-size: 12px; }
+
+  @media (max-width: 640px) {
+    .row { grid-template-columns: 24px 1fr auto; }
+    .row .rloc { display: none; }
+    .head-meta .lastrun { display: none; }
+  }
+</style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <!-- inline funnel glyph (no external asset) -->
+      <svg class="glyph" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M2 4h20l-7 8v7l-6 3v-10L2 4Z" stroke="#7c8cff" stroke-width="1.4" stroke-linejoin="round"/>
+        <path d="M2 4h20" stroke="#9aa8ff" stroke-width="1.4" stroke-linecap="round"/>
+      </svg>
+      <span class="name">CoApply</span>
+      <span class="tag">hub</span>
+    </div>
+    <div class="head-spacer"></div>
+    <div class="head-meta">
+      <span class="lastrun" id="lastrun"></span>
+      <span id="newpill"></span>
+      <span class="pulse stale" id="pulse" title="poll status"><span class="dot"></span><span id="pulsetxt">…</span></span>
+    </div>
+  </header>
+
+  <main id="main">
+    <div class="boot" id="boot">connecting to the hub…</div>
+
+    <section class="stage stage--surfaced" id="stage-surfaced" hidden>
+      <div class="stage-head">
+        <h2>Surfaced</h2>
+        <span class="count" id="surfaced-count"></span>
+        <span class="spacer"></span>
+      </div>
+      <div class="toolbar" id="surfaced-toolbar"></div>
+      <div id="surfaced"></div>
+    </section>
+
+    <div class="connector" id="connector-1" hidden>
+      <svg viewBox="0 0 1120 64" preserveAspectRatio="none" aria-hidden="true">
+        <path d="M0 0 L460 64 M1120 0 L660 64" stroke="#1f2533" stroke-width="1" fill="none"/>
+      </svg>
+      <span class="clabel">stage at the gate ↓</span>
+    </div>
+
+    <section class="stage stage--gate" id="stage-gate" hidden>
+      <div class="stage-head">
+        <h2>The gate</h2>
+        <span class="count" id="gate-count"></span>
+      </div>
+      <div id="gate"></div>
+    </section>
+
+    <div class="connector" id="connector-2" hidden>
+      <svg viewBox="0 0 1120 64" preserveAspectRatio="none" aria-hidden="true">
+        <path d="M330 0 L420 64 M790 0 L700 64" stroke="#1f2533" stroke-width="1" fill="none"/>
+      </svg>
+      <span class="clabel">committed ↓</span>
+    </div>
+
+    <section class="stage stage--runs" id="stage-runs" hidden>
+      <div class="stage-head">
+        <h2>Runs</h2>
+        <span class="count" id="runs-count"></span>
+      </div>
+      <div id="runs"></div>
+    </section>
+
+    <footer id="footer" hidden>
+      <span class="vbadge" id="vbadge">v—</span>
+      <span>local · 127.0.0.1 · never leaves your machine</span>
+      <span class="runsdir" id="runsdir"></span>
+    </footer>
+  </main>
+
+  <div class="actionbar" id="actionbar">
+    <span class="seln"><b id="selcount">0</b> selected</span>
+    <button class="abtn primary" data-action="queue-selected">Add to apply queue</button>
+    <button class="abtn" data-action="dismiss-selected">Dismiss</button>
+    <button class="abtn ghost" data-action="clear-selection">Clear</button>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+/* ════════════════════════════════════════════════════════════════════════
+   The whole app: one App namespace, one state object, one render().
+   No engine logic — this only projects /api/state and posts user intent.
+   ════════════════════════════════════════════════════════════════════════ */
+const App = {
+  state: null,                 // last /api/state payload (the server's read-model)
+  mtime: null,                 // cache token for conditional polls
+  sel: new Set(),              // selected surfaced fps (the multi-select — Set, not DOM)
+  ui: {                        // client-only view state; survives every poll
+    collapsedLanes: new Set(),
+    expandedCompanies: new Set(),
+    expandedRuns: new Set(),
+    shownAll: new Set(),
+  },
+  polling: false,
+  newestFirstSeen: null,       // the latest firstSeenAt cohort → per-row "new" dot
+};
+
+const POLL_MS = 4000;
+const LANE_VISIBLE = 10;       // company-blocks shown per lane before "show all"
+const $ = (id) => document.getElementById(id);
+
+/* ─────────────────────────────── helpers ─────────────────────────────── */
+function esc(s) {
+  return String(s == null ? "" : s)
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+}
+function fmtDate(s) {                // "2026-06-25" → "Jun 25"
+  if (!s || typeof s !== "string") return "";
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
+  if (!m) return esc(s);
+  const mon = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][(+m[2])-1] || "";
+  return mon + " " + (+m[3]);
+}
+function fmtTime(iso) {              // ISO → "14:36"
+  if (!iso || typeof iso !== "string") return "";
+  const m = /T(\d{2}):(\d{2})/.exec(iso);
+  return m ? m[1]+":"+m[2] : "";
+}
+// tiny generic status→badge map; anything not listed renders verbatim (thin projector)
+const STATUS = {
+  "done":        { cls: "done",       label: "done" },
+  "no-go":       { cls: "nogo",       label: "no-go" },
+  "running":     { cls: "running",    label: "running" },
+  "in-progress": { cls: "inprogress", label: "in progress" },
+  "queued":      { cls: "queued",     label: "queued" },
+  "dismissed":   { cls: "dismissed",  label: "dismissed" },
+};
+function badge(status, opts) {
+  if (status === "new") return "";                 // "new" is the default — shown as a dot, not a chip
+  const meta = STATUS[status] || { cls: "", label: status };  // unknown → verbatim
+  const thread = opts && opts.thread ? " thread" : "";
+  const slugAttr = opts && opts.runSlug ? ` data-run-slug="${esc(opts.runSlug)}"` : "";
+  return `<span class="badge ${meta.cls}${thread}"${slugAttr}>${esc(meta.label)}</span>`;
+}
+
+/* ─────────────────────────────── networking ──────────────────────────── */
+async function poll() {
+  if (App.polling) return;
+  App.polling = true;
+  setPulse("busy");
+  try {
+    const q = App.mtime != null ? "?since=" + encodeURIComponent(App.mtime) : "";
+    const res = await fetch("/api/state" + q, { headers: { "Accept": "application/json" } });
+    if (res.status === 304) { setPulse("live"); return; }   // no change — keep UI exactly as-is
+    if (!res.ok) throw new Error("state " + res.status);
+    const data = await res.json();
+    App.state = data;
+    App.mtime = data.mtime;
+    computeDerived();
+    render();                                                 // a real change → re-render once
+    setPulse("live");
+  } catch (e) {
+    setPulse("stale");
+  } finally {
+    App.polling = false;
+  }
+}
+async function post(path, fps, okMsg) {
+  try {
+    const res = await fetch(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fps }),
+    });
+    if (!res.ok) throw new Error(path + " " + res.status);
+    const data = await res.json();
+    App.mtime = null;            // force a full refresh so the new status shows immediately
+    await poll();
+    if (okMsg) toast(okMsg);
+    return data;
+  } catch (e) {
+    toast("Action failed — is the hub still running?", true);
+    return null;
+  }
+}
+
+function setPulse(kind) {
+  const el = $("pulse"), t = $("pulsetxt");
+  el.className = "pulse " + (kind === "live" ? "" : kind);
+  t.textContent = kind === "busy" ? "syncing" : kind === "stale" ? "offline" : "live";
+}
+
+/* ─────────────────────────── derived view data ───────────────────────── */
+function computeDerived() {
+  const jobs = (App.state && App.state.jobs) || [];
+  let newest = null;
+  for (const j of jobs) {
+    if (typeof j.firstSeenAt === "string" && (newest === null || j.firstSeenAt > newest)) newest = j.firstSeenAt;
+  }
+  App.newestFirstSeen = newest;
+  // prune selection of fps that no longer exist (e.g. dismissed away)
+  const live = new Set(jobs.map(j => j.fp));
+  for (const fp of [...App.sel]) if (!live.has(fp)) App.sel.delete(fp);
+}
+
+/* group a lane's jobs by company, newest-posted first */
+function groupByCompany(jobs) {
+  const map = new Map();
+  for (const j of jobs) {
+    const co = j.company || "—";
+    if (!map.has(co)) map.set(co, []);
+    map.get(co).push(j);
+  }
+  const groups = [];
+  for (const [co, items] of map) {
+    items.sort((a,b) => (b.posted||"").localeCompare(a.posted||""));
+    const fresh = items.reduce((m,j) => (j.posted||"") > m ? (j.posted||"") : m, "");
+    const more = items.reduce((m,j) => Math.max(m, j.moreAtCompany||0), 0);
+    groups.push({ co, items, fresh, more });
+  }
+  groups.sort((a,b) => b.fresh.localeCompare(a.fresh) || b.items.length - a.items.length);
+  return groups;
+}
+
+/* ─────────────────────────────── render ──────────────────────────────── */
+function render() {
+  const scrollY = window.scrollY;     // preserve scroll across the swap (spec §6)
+  const s = App.state;
+
+  $("boot").hidden = true;
+  $("footer").hidden = false;
+  $("vbadge").textContent = "v" + (s.version || "—");
+  $("runsdir").textContent = (s.runs ? s.runs.length : 0) + " run" + ((s.runs||[]).length===1?"":"s") + " on disk";
+
+  renderHeaderMeta(s);
+  renderSurfaced(s);
+  renderGate(s);
+  renderRuns(s);
+  renderActionBar();
+
+  window.scrollTo(0, scrollY);
+}
+
+function renderHeaderMeta(s) {
+  const lr = s.lastRun || {};
+  const when = fmtTime(lr.at || s.generatedAt);
+  $("lastrun").innerHTML = lr.mode || when
+    ? `last check <b>${esc(lr.mode||"")}</b>${when?` · ${when}`:""}` : "";
+  const n = s.newSinceLastVisit || 0;
+  $("newpill").innerHTML = n > 0 ? `<span class="newpill">${n} new since last visit</span>` : "";
+}
+
+/* ── surfaced field: category lanes → company clusters → one-line rows ── */
+function renderSurfaced(s) {
+  const stage = $("stage-surfaced");
+  const jobs = s.jobs || [];
+
+  // empty state (a): no surfaced ledger at all
+  if (jobs.length === 0) {
+    stage.hidden = false;
+    $("surfaced-count").textContent = "";
+    $("surfaced-toolbar").innerHTML = "";
+    $("surfaced").innerHTML = emptyState("◷",
+      "No roles surfaced yet",
+      `Run <code>/coapply:discover</code> in Claude Code to surface open roles into your pipeline.`);
+    $("connector-1").hidden = false;
+    return;
+  }
+  stage.hidden = false;
+  $("connector-1").hidden = false;
+
+  const companies = new Set(jobs.map(j => j.company)).size;
+  $("surfaced-count").textContent = `${jobs.length} role${jobs.length===1?"":"s"} · ${companies} companies`;
+
+  // toolbar
+  const allLanes = laneOrder(s);
+  const allCollapsed = allLanes.every(l => App.ui.collapsedLanes.has(l));
+  $("surfaced-toolbar").innerHTML =
+    `<button class="tbtn" data-action="toggle-all-lanes" aria-pressed="${allCollapsed}">${allCollapsed?"Expand all":"Collapse all"}</button>` +
+    `<button class="tbtn" data-action="select-all-new">Select all new</button>` +
+    `<span class="tnote">${countByStatus(jobs)}</span>`;
+
+  // lanes
+  let html = "";
+  for (const lane of allLanes) {
+    const laneJobs = jobs.filter(j => (j.category||"uncategorized") === lane);
+    if (laneJobs.length === 0) continue;
+    const open = !App.ui.collapsedLanes.has(lane);
+    const fresh = laneJobs.reduce((m,j)=>(j.posted||"")>m?(j.posted||""):m, "");
+    const groups = groupByCompany(laneJobs);
+    const showAll = App.ui.shownAll.has(lane);
+    const vis = showAll ? groups : groups.slice(0, LANE_VISIBLE);
+
+    html += `<div class="lane ${open?"open":""}">`;
+    html += `<button class="lane-head" data-action="toggle-lane" data-lane="${esc(lane)}">
+        <span class="chev">▾</span>
+        <span class="lname">${esc(lane)}</span>
+        <span class="lcount">${laneJobs.length}</span>
+        <span class="lfresh">freshest ${fmtDate(fresh)}</span>
+      </button>`;
+    html += `<div class="lane-body">`;
+    for (const g of vis) {
+      html += g.items.length > 1 ? clusterHtml(g, lane) : rowHtml(g.items[0], false);
+    }
+    if (groups.length > vis.length) {
+      const remaining = groups.slice(LANE_VISIBLE).reduce((n,g)=>n+g.items.length,0);
+      html += `<div class="lane-more"><button data-action="show-all" data-lane="${esc(lane)}">Show all — ${remaining} more</button></div>`;
+    } else if (showAll && groups.length > LANE_VISIBLE) {
+      html += `<div class="lane-more"><button data-action="show-less" data-lane="${esc(lane)}">Show less</button></div>`;
+    }
+    html += `</div></div>`;
+  }
+  $("surfaced").innerHTML = html;
+}
+
+function laneOrder(s) {
+  const cats = s.categories || {};
+  const keys = Object.keys(cats);
+  keys.sort((a,b) => (cats[b]||0) - (cats[a]||0));
+  // uncategorized always last
+  return keys.filter(k => k !== "uncategorized").concat(keys.includes("uncategorized") ? ["uncategorized"] : []);
+}
+function countByStatus(jobs) {
+  const c = {};
+  for (const j of jobs) c[j.derivedStatus] = (c[j.derivedStatus]||0)+1;
+  const parts = [];
+  for (const k of ["new","queued","done","in-progress","running","no-go","dismissed"]) {
+    if (c[k]) parts.push(`${c[k]} ${k}`);
+  }
+  return parts.join("  ·  ");
+}
+
+function clusterHtml(g, lane) {
+  const key = lane + "::" + g.co;
+  const open = App.ui.expandedCompanies.has(key);
+  const allSel = g.items.every(j => App.sel.has(j.fp));
+  let h = `<div class="cluster ${open?"open":""}">`;
+  h += `<div class="cluster-head" data-action="toggle-company" data-key="${esc(key)}">
+      <input class="ck" type="checkbox" data-action="select-company" data-key="${esc(key)}" ${allSel?"checked":""} onclick="event.stopPropagation()">
+      <span><span class="chev">▾</span> <span class="cco">${esc(g.co)}</span> <span class="ccount">${g.items.length} roles</span>${g.more?`<span class="cmore">+${g.more} more not surfaced</span>`:""}</span>
+      <span class="cfresh">${fmtDate(g.fresh)}</span>
+    </div>`;
+  h += `<div class="cluster-body">`;
+  for (const j of g.items) h += rowHtml(j, true);
+  h += `</div></div>`;
+  return h;
+}
+
+function rowHtml(j, inCluster) {
+  const selected = App.sel.has(j.fp);
+  const isNew = App.newestFirstSeen && j.firstSeenAt === App.newestFirstSeen;
+  const dismissed = j.derivedStatus === "dismissed";
+  const threadAttrs = j.runSlug ? ` data-run-slug="${esc(j.runSlug)}"` : "";
+  const title = inCluster
+    ? esc(j.title)
+    : `<span class="rco">${esc(j.company)}</span>${esc(j.title)}`;
+  return `<div class="row ${dismissed?"dismissed":""}" data-fp="${esc(j.fp)}"${threadAttrs}>
+      <input class="ck" type="checkbox" data-action="select" data-fp="${esc(j.fp)}" ${selected?"checked":""}>
+      <a class="rtitle" href="${esc(j.url)}" target="_blank" rel="noopener noreferrer" title="${esc(j.title)} — open posting">${isNew?'<span class="newdot"></span>':""}${title}</a>
+      <span class="rloc">${esc(j.location||"")}</span>
+      <span class="rposted">${badge(j.derivedStatus, {runSlug:j.runSlug, thread:!!j.runSlug})}${j.derivedStatus==="new"?fmtDate(j.posted):""}</span>
+    </div>`;
+}
+
+/* ── the gate band: always present; standing copy + staged queue cards ── */
+function renderGate(s) {
+  $("stage-gate").hidden = false;
+  $("connector-2").hidden = false;
+  const queue = s.queue || [];
+  $("gate-count").textContent = queue.length ? `${queue.length} staged` : "";
+
+  let h = `<div class="gate"><div class="gate-rail"></div>
+    <div class="gate-copy">
+      <svg class="lock" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <rect x="4" y="10" width="16" height="11" rx="2" stroke="#9aa8ff" stroke-width="1.5"/>
+        <path d="M8 10V7a4 4 0 0 1 8 0v3" stroke="#9aa8ff" stroke-width="1.5"/></svg>
+      <p><b>Queuing sends nothing.</b> Each job still stops at the human go/no-go gate in Claude Code, one at a time. This is a shopping list — reversible until you act on it.</p>
+    </div>`;
+
+  if (queue.length === 0) {
+    h += `<ul class="gate-list"><li class="empty" style="padding:26px">
+      <p>No roles staged. Select roles above and <b>Add to apply queue</b> to line them up here.</p></li></ul>`;
+  } else {
+    h += `<ul class="gate-list">`;
+    for (const it of queue) {
+      h += `<li class="qcard" data-fp="${esc(it.fp)}">
+        <div>
+          <span class="qco">${esc(it.company||"")}</span> &nbsp;<span class="qtitle">${esc(it.title||"")}</span><br>
+          <a class="qurl" href="${esc(it.url)}" target="_blank" rel="noopener noreferrer">${esc(it.url||"")}</a>
+        </div>
+        <button class="qrm" data-action="unqueue" data-fp="${esc(it.fp)}">remove</button>
+      </li>`;
+    }
+    h += `</ul>`;
+    h += `<div class="gate-consume">Consume the queue in Claude Code — run <code>/coapply:start</code> with no argument and it lists these at the gate, one <code>/coapply:start &lt;url&gt;</code> per job. Nothing auto-submits.</div>`;
+  }
+  h += `</div>`;
+  $("gate").innerHTML = h;
+}
+
+/* ── committed runs: fit gauge + status + expand to pickup note + artifacts ── */
+function renderRuns(s) {
+  $("stage-runs").hidden = false;
+  const runs = s.runs || [];
+  $("runs-count").textContent = runs.length ? `${runs.length}` : "";
+
+  if (runs.length === 0) {
+    // empty state (b): surfaced exists but nothing started yet
+    $("runs").innerHTML = emptyState("◇",
+      "Your applications will appear here",
+      `Stage a role at the gate, then run <code>/coapply:start</code> in Claude Code. Each run lands here with its fit score and pickup notes.`);
+    return;
+  }
+
+  let h = "";
+  for (const r of runs) {
+    const open = App.ui.expandedRuns.has(r.slug);
+    const st = r.derivedStatus;
+    const stMeta = STATUS[st] || { cls:"", label: st };
+    const fit = (typeof r.fitScore === "number") ? r.fitScore : null;
+    const gc = st === "done" ? "var(--done)" : st === "no-go" ? "var(--nogo)" : "var(--accent)";
+    const gauge = fit !== null
+      ? `<div class="gauge" style="--fit:${fit};--gc:${gc}"><span class="gv">${fit}</span><span class="gd">/10</span></div>`
+      : `<div class="gauge nofit"><span class="gv">—</span></div>`;
+    const threadAttrs = r.discoveryFp ? ` data-slug="${esc(r.slug)}" data-fp="${esc(r.discoveryFp)}"` : ` data-slug="${esc(r.slug)}"`;
+    const orphan = r.discoveryFp ? "" : `<span class="rorphan" title="not linked to a surfaced job — pasted JD or pre-discover">direct</span>`;
+    const nogoReason = (st === "no-go" && (r.abortReason)) ? `<div class="run-nogo">✕ ${esc(r.abortReason)}</div>` : "";
+
+    h += `<div class="runrow ${open?"open":""}"${threadAttrs}>
+      <button class="run-head" data-action="toggle-run" data-slug="${esc(r.slug)}">
+        ${gauge}
+        <span class="run-id">
+          <span class="rrole">${esc(r.role||r.slug)}</span>${orphan}<br>
+          <span class="rco">${esc(r.company||"")}</span>
+        </span>
+        <span class="run-meta">
+          ${badge(st)}
+          ${nogoReason}
+        </span>
+        <span class="rchev">▾</span>
+      </button>
+      <div class="run-body">${runBody(r)}</div>
+    </div>`;
+  }
+  $("runs").innerHTML = h;
+}
+
+function runBody(r) {
+  let h = "";
+  if (r.applicationStatusNote) {
+    h += `<div class="pickup">
+      <svg class="pk" width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M9 11l3 3L22 4" stroke="#9aa8ff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" stroke="#9aa8ff" stroke-width="1.6" stroke-linecap="round"/></svg>
+      <div><span class="pkl">pickup note · ${esc(r.applicationStatus||"")}</span><span class="pkt">${esc(r.applicationStatusNote)}</span></div>
+    </div>`;
+  }
+  const arts = r.artifacts || [];
+  if (arts.length) {
+    h += `<div class="arts">`;
+    for (const a of arts) {
+      const done = a.status === "done";
+      h += `<div class="art"><span class="as ${done?"done":""}"></span><span class="an" title="${esc(a.path||"")}">${esc(a.name||a.path||"—")}</span></div>`;
+    }
+    h += `</div>`;
+  }
+  if (!h) h = `<p style="font-family:var(--mono);font-size:12px;color:var(--txt-faint);margin:0">No artifacts recorded.</p>`;
+  return h;
+}
+
+/* ── selection action bar ── */
+function renderActionBar() {
+  const n = App.sel.size;
+  $("selcount").textContent = n;
+  $("actionbar").classList.toggle("show", n > 0);
+}
+
+function emptyState(icon, title, body) {
+  return `<div class="empty"><div class="ei">${esc(icon)}</div>
+    <h3>${esc(title)}</h3><p>${body}</p></div>`;
+}
+
+/* ───────────────────────────── interactions ──────────────────────────── */
+// ONE delegated click handler on a stable root — never re-bound per poll.
+$("main").addEventListener("click", (e) => {
+  const t = e.target.closest("[data-action]");
+  if (!t) return;
+  const a = t.dataset.action;
+
+  if (a === "toggle-lane")    return toggleSet(App.ui.collapsedLanes, t.dataset.lane), render();
+  if (a === "show-all")       return App.ui.shownAll.add(t.dataset.lane), render();
+  if (a === "show-less")      return App.ui.shownAll.delete(t.dataset.lane), render();
+  if (a === "toggle-company") return toggleSet(App.ui.expandedCompanies, t.dataset.key), render();
+  if (a === "toggle-run")     return toggleSet(App.ui.expandedRuns, t.dataset.slug), render();
+  if (a === "toggle-all-lanes") return toggleAllLanes(), render();
+  if (a === "select-all-new") return selectAllNew(), render();
+  if (a === "unqueue")        return post("/api/queue/remove", [t.dataset.fp], "Removed from queue");
+  if (a === "queue-selected") return queueSelected();
+  if (a === "dismiss-selected") return dismissSelected();
+  if (a === "clear-selection")  return (App.sel.clear(), render());
+});
+
+// checkbox changes (delegated 'change' — selection lives in the Set)
+$("main").addEventListener("change", (e) => {
+  const t = e.target;
+  if (t.dataset.action === "select") {
+    t.checked ? App.sel.add(t.dataset.fp) : App.sel.delete(t.dataset.fp);
+    renderActionBar();
+  } else if (t.dataset.action === "select-company") {
+    selectCompany(t.dataset.key, t.checked);
+    render();
+  }
+});
+
+// funnel thread: hovering a job lights its run row and vice-versa
+$("main").addEventListener("mouseover", (e) => {
+  const el = e.target.closest("[data-run-slug],[data-slug]");
+  if (!el) return;
+  const slug = el.dataset.runSlug || el.dataset.slug;
+  if (slug) lightThread(slug, true);
+});
+$("main").addEventListener("mouseout", (e) => {
+  const el = e.target.closest("[data-run-slug],[data-slug]");
+  if (!el) return;
+  const slug = el.dataset.runSlug || el.dataset.slug;
+  if (slug) lightThread(slug, false);
+});
+function lightThread(slug, on) {
+  document.querySelectorAll(`[data-run-slug="${cssEsc(slug)}"], [data-slug="${cssEsc(slug)}"]`).forEach(el => {
+    const rowOrRun = el.closest(".row, .runrow");
+    if (rowOrRun) rowOrRun.classList.toggle("thread-lit", on);
+  });
+}
+function cssEsc(s){ return String(s).replace(/["\\]/g, "\\$&"); }
+
+// the floating action bar lives outside #main → its own listener
+$("actionbar").addEventListener("click", (e) => {
+  const t = e.target.closest("[data-action]");
+  if (!t) return;
+  const a = t.dataset.action;
+  if (a === "queue-selected")   return queueSelected();
+  if (a === "dismiss-selected") return dismissSelected();
+  if (a === "clear-selection")  return (App.sel.clear(), render());
+});
+
+function toggleSet(set, key) { set.has(key) ? set.delete(key) : set.add(key); }
+function toggleAllLanes() {
+  const lanes = laneOrder(App.state);
+  const allCollapsed = lanes.every(l => App.ui.collapsedLanes.has(l));
+  if (allCollapsed) App.ui.collapsedLanes.clear();
+  else lanes.forEach(l => App.ui.collapsedLanes.add(l));
+}
+function selectAllNew() {
+  for (const j of (App.state.jobs||[])) if (j.derivedStatus === "new") App.sel.add(j.fp);
+}
+function selectCompany(key, on) {
+  const [lane, co] = key.split("::");
+  for (const j of (App.state.jobs||[])) {
+    if ((j.category||"uncategorized") === lane && (j.company||"—") === co) {
+      on ? App.sel.add(j.fp) : App.sel.delete(j.fp);
+    }
+  }
+}
+function queueSelected() {
+  if (App.sel.size === 0) return;
+  const fps = [...App.sel];
+  App.sel.clear();
+  post("/api/queue", fps, `Staged ${fps.length} role${fps.length===1?"":"s"} at the gate`);
+}
+function dismissSelected() {
+  if (App.sel.size === 0) return;
+  const fps = [...App.sel];
+  App.sel.clear();
+  post("/api/dismiss", fps, `Dismissed ${fps.length} role${fps.length===1?"":"s"}`);
+}
+
+let toastT;
+function toast(msg, isErr) {
+  const el = $("toast");
+  el.textContent = msg;
+  el.className = "toast show" + (isErr ? " err" : "");
+  clearTimeout(toastT);
+  toastT = setTimeout(() => { el.className = "toast"; }, 2600);
+}
+
+/* ───────────────────────────── boot ──────────────────────────────────── */
+poll();
+setInterval(poll, POLL_MS);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) poll(); });
+</script>
+</body>
+</html>
