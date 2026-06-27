@@ -2,6 +2,36 @@
 
 All notable changes to CoApply. Versioned on the `plugin.json` version line.
 
+## [0.10.0] — 2026-06-26 — Hub redesign ("the ledger") + discovery relevance gate
+
+Two hub follow-ups after seeing 0.9.3 live: a full front-end design pass on the hub, and a
+curation fix for the off-target roles that were polluting it.
+
+- **Hub redesign — warm editorial "ledger" identity.** The hub moved off the dark
+  instrument-panel look (near-black canvas + iris accent + all-mono type) to a warm ivory
+  broadsheet: ink type set in an oldstyle serif (`Iowan Old Style` → `Palatino`/`Georgia`
+  fallback) for the names + section heads, a humanist sans (`Avenir Next` → system) for the
+  chrome, and mono reserved for data/numerals. One pine-green signal that doubles as
+  "go/done", with ochre (staged) and brick (no-go) kept rare; hairline sepia rules and a faint
+  inline paper grain. **Pure `hub/index.html`** — same DOM/classes, so the funnel, the lens,
+  and the seniority axis are untouched; only the visual identity changed. Still fully
+  self-contained: system faces only, the grain is an inline SVG data-URI — no web font, no CDN
+  (audit §16 stays green).
+- **Discovery relevance gate (`discover-surface.py`) — drops off-target function-noise.**
+  Triage keeps a title when it hits any target term, so a stray *fragment* of the user's prose
+  target ("full" from "full-stack PM", "builder", "ship", "matter") pulled in unrelated roles —
+  Full-Stack Engineers, Subject-Matter Experts, a Shipping Clerk — which then showed in every
+  seniority band. The surface step now (a) matches a title to a lane only on the phrase's
+  **content words**, ignoring generic org/seniority words ("management", "senior", "director")
+  so a title can't join a lane on a bare level word, and (b) **does not surface** a role that
+  matches no target-role phrase at all. Field-agnostic by construction — the only inputs are
+  the user's own target phrases and a generic-word list (no role nouns, no field literals). The
+  receipt reports the drop count (no silent cut). On the dogfood ledger this trimmed 263 → 203
+  with zero real PM roles lost. **Known limit:** a title carrying the user's *domain* word but a
+  different function ("Product **Designer**", "Software Engineer, … **Product**") still surfaces —
+  separating those cleanly needs a role taxonomy (a field assumption we won't bake in) or
+  user-supplied profile exclusions; an LLM re-rank remains the v1.1 path.
+
 ## [0.9.3] — 2026-06-26 — Hub seniority axis + collapsible lens
 
 Role titles carry many names for the same level, and grouping by the fuzzy `surfaced.json` category

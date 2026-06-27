@@ -10,8 +10,11 @@
 # kept 1151 of 6885 postings, with 699 from ONE company and a matched-terms array
 # polluted by stopwords — rendering `triage.kept` raw is the #1 failure mode every
 # review lens flagged. This script is the CURATION layer: dedup+accumulate on the
-# fingerprint, a per-company cap, and a field-agnostic category lane derived from the
-# user's own target-role phrases. It is the SAME discipline as triage — pure, no LLM,
+# fingerprint, a per-company cap, a field-agnostic category lane derived from the user's
+# own target-role phrases, and a RELEVANCE GATE that drops off-target function-noise — a
+# title triage kept on a stray prose fragment (a "Full-Stack Engineer" matching "full"
+# from the user's "full-stack PM") never reaches the ledger, where it would otherwise
+# pollute every seniority band. It is the SAME discipline as triage — pure, no LLM,
 # no network — so it inherits triage's two guarantees: no fabrication surface (every
 # stored field is a real fetch field or a deterministic derivation, never model prose)
 # and no network surface (it only reads/writes local JSON). See docs/features/hub/spec.md
@@ -119,6 +122,37 @@ def _phrase_terms(phrase):
             if w not in _T.STOPWORDS and len(w) >= 2]
 
 
+# Generic org / seniority / structure words. These describe a job's LEVEL or shape in
+# EVERY discipline — they never name the discipline itself ("manager", "senior", "lead"
+# fit a nurse, an accountant, or a PM alike). They are field-agnostic by construction:
+# the list contains no role NOUN (no "product", "nursing", "sales"). We strip them from a
+# lane phrase before matching so a title can only join a lane on a CONTENT word — the part
+# that names the actual function. Without this, "Vulnerability Management Engineer" lands
+# in a "...management..." lane on the bare word "management", and every "Senior X" title
+# matches every "Senior …" phrase. (Same structural-guard philosophy as MAX_LANE_WORDS:
+# we look at word ROLE, never at field.) Seeds run through the same _words() pipeline that
+# produces phrase terms, so the singularized forms line up for membership tests.
+_GENERIC_SEEDS = (
+    "senior sr junior jr entry lead leads principal staff associate intern internship "
+    "graduate apprentice trainee chief head executive officer president vice vp svp evp "
+    "director directors manager managers management supervisor coordinator specialist "
+    "generalist administrator assistant deputy "
+    "role roles position positions opening openings opportunity team teams group groups "
+    "global regional national member members level"
+).split()
+GENERIC_ROLE_WORDS = {w for s in _GENERIC_SEEDS for w in _T._words(s)}
+
+
+def _content_terms(phrase):
+    """The discipline-naming (content) words of a phrase: its significant words minus the
+    generic org/seniority words above. These are what a title must share to belong to the
+    lane. Falls back to ALL significant words when a phrase is entirely generic (e.g. a
+    user who literally typed "senior manager"), so such a phrase still matches something."""
+    sig = _phrase_terms(phrase)
+    content = [w for w in sig if w not in GENERIC_ROLE_WORDS]
+    return content or sig
+
+
 def categorize(title, phrase_terms_by_phrase):
     """Best-matching target-role phrase for a title (spec §4.1, decision §11.2), or
     "uncategorized". Score = count of a phrase's significant words present in the title
@@ -206,9 +240,17 @@ def merge(kept, existing_ledger, phrase_terms, mode, now):
         fp = j.get("fp")
         if isinstance(fp, str):
             existing[fp] = j
-    # Start from every previously-surfaced job (the ledger ACCUMULATES); jobs touched by
-    # this run get updated below, untouched ones carry forward verbatim.
-    result = dict(existing)
+    # The ledger ACCUMULATES, but it is CURATED, not a dump: a surfaced role must match at
+    # least one of the user's target-role phrases on a content word (categorize != it falls
+    # to "uncategorized"). Off-target titles — triage kept them on a stray prose fragment
+    # ("full" from "full-stack", "builder", "matter") and they otherwise pollute every
+    # seniority band — are NOT surfaced. So we build the result from scratch and gate each
+    # admission, rather than carrying the whole prior ledger forward verbatim. This is the
+    # relevance gate (spec §4.1); it is field-agnostic — the only inputs are the user's own
+    # phrases and the generic-word list. n_dropped is reported in the receipt (no silent cut).
+    result = {}
+    seen_in_run = set()        # fps handled by this check (so pass B skips them)
+    n_dropped = 0              # off-target roles not surfaced (this run + tidied legacy)
 
     by_company = defaultdict(list)
     for j in kept:
@@ -219,6 +261,7 @@ def merge(kept, existing_ledger, phrase_terms, mode, now):
     n_new = n_updated = 0
     capped = []  # (company, overflow) for the receipt
 
+    # Pass A — this check's ranked `kept`, per company under the cap, through the gate.
     for company, jobs in by_company.items():
         jobs.sort(key=lambda j: j.get("rank", 1 << 30))  # rank 1 = best
         already = [j for j in jobs if j["fp"] in existing]
@@ -230,7 +273,11 @@ def merge(kept, existing_ledger, phrase_terms, mode, now):
             capped.append((company, overflow))
 
         for j in already + admit_fresh:
+            seen_in_run.add(j["fp"])
             category = categorize(j.get("title", ""), phrase_terms)
+            if category == "uncategorized":
+                n_dropped += 1
+                continue  # off-target — matched no target-role phrase; do not surface
             prior = existing.get(j["fp"])
             if prior is None:
                 result[j["fp"]] = {
@@ -276,6 +323,21 @@ def merge(kept, existing_ledger, phrase_terms, mode, now):
                 result[j["fp"]] = rec
                 n_updated += 1
 
+    # Pass B — carry forward previously-surfaced jobs this check didn't touch, re-gated
+    # under the CURRENT logic. This tidies legacy noise: a job that only ever matched on a
+    # generic word (or a prose fragment) is now dropped, and a carried job's lane is
+    # refreshed so a stricter categorization takes effect across the whole ledger.
+    for fp, j in existing.items():
+        if fp in seen_in_run:
+            continue
+        category = categorize(j.get("title", ""), phrase_terms)
+        if category == "uncategorized":
+            n_dropped += 1
+            continue
+        carried = dict(j)
+        carried["category"] = category
+        result[fp] = carried
+
     jobs_out = list(result.values())
     # Lane counts over the WHOLE ledger, for the hub's lane headers (spec §4.1).
     categories = defaultdict(int)
@@ -297,7 +359,7 @@ def merge(kept, existing_ledger, phrase_terms, mode, now):
         "jobs": jobs_out,
     }
     stats = {"new": n_new, "updated": n_updated, "total": len(jobs_out),
-             "capped": capped, "categories": dict(categories)}
+             "capped": capped, "dropped": n_dropped, "categories": dict(categories)}
     return ledger, stats
 
 
@@ -316,7 +378,9 @@ def main():
 
     kept = load_triage_kept(args.triage)
     phrases = target_phrases(args.targets)
-    phrase_terms = [(p, _phrase_terms(p)) for p in phrases]
+    # Match on each phrase's CONTENT words (discipline-naming), not its generic org words,
+    # so a title joins a lane only on the part that names the function (see _content_terms).
+    phrase_terms = [(p, _content_terms(p)) for p in phrases]
     existing_ledger = load_ledger(args.surfaced)
     now = datetime.now(timezone.utc).astimezone()  # local tz, ISO offset (spec examples)
 
@@ -328,6 +392,9 @@ def main():
     er("\n— discovery surface —\n")
     er(f"mode: {args.mode}   merged: {stats['new']} new, {stats['updated']} updated   "
        f"ledger now holds {stats['total']} surfaced job(s)\n")
+    if stats["dropped"]:
+        er(f"  · dropped {stats['dropped']} off-target role(s) "
+           f"(matched no target-role phrase on a content word)\n")
     if stats["capped"]:
         for company, overflow in sorted(stats["capped"], key=lambda c: -c[1]):
             er(f"  · capped {company}: +{overflow} more not surfaced "
