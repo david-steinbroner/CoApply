@@ -1,5 +1,7 @@
 # Working on CoApply
 
+Standards: inherits ../engineering-standards.md. Overrides & project-specifics below.
+
 Rules for anyone — human or AI — changing this repo. CoApply is a Claude Code plugin: a profile-driven, field-agnostic engine that turns a job posting into a complete, fit-gated application package. It was built solo by a PM with Claude Code as the engineering partner; these rules keep that disciplined.
 
 ## Non-negotiable invariants (see `PRINCIPLES.md`)

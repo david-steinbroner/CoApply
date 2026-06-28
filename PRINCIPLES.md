@@ -1,5 +1,7 @@
 # CoApply — Operating Principles
 
+(Code-quality standards live in ../engineering-standards.md — this file covers product invariants / operating principles only.)
+
 The invariants every CoApply run honors. These are not aspirations; they are rules the engine follows and that any change to it must preserve. They're also a fair description of what the tool will and won't do, so you know what you're installing.
 
 ## What CoApply always does
