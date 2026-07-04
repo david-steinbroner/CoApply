@@ -263,7 +263,7 @@
   }
   .lane.open .lane-head { border-bottom-color: var(--line); }
   .lane-head:hover { background: rgba(31,111,92,.045); }
-  .lane-head .chev { color: var(--accent); font-size: 11.5px; width: 12px; transition: transform .18s; transform: rotate(-90deg); }
+  .lane-head .chev { color: var(--accent); width: 22px; height: 22px; transition: transform .18s; transform: rotate(-90deg); }
   .lane.open .lane-head .chev { transform: rotate(0deg); }
   .lane-head .lname { font-family: var(--serif); font-weight: 600; font-size: 18px; color: var(--txt); letter-spacing: .002em; }
   .lane-head .lcount { font-family: var(--mono); font-size: 12.5px; color: var(--accent); background: var(--accent-soft); border:1px solid var(--accent-line); border-radius: 100px; padding: 1px 8px; }
@@ -299,7 +299,7 @@
   .cluster { border-top: 1px solid var(--line); }
   .cluster-head { display: grid; grid-template-columns: 26px 1fr auto; align-items: center; gap: 10px; width: 100%; padding: 7px 14px 7px 12px; background: transparent; border: 0; text-align: left; transition: background .12s; }
   .cluster-head:hover { background: rgba(31,111,92,.045); }
-  .cluster-head .chev { color: var(--accent); font-size: 10.5px; transition: transform .18s; transform: rotate(-90deg); }
+  .cluster-head .chev { color: var(--accent); width: 18px; height: 18px; vertical-align: middle; transition: transform .18s; transform: rotate(-90deg); }
   .cluster.open .cluster-head .chev { transform: rotate(0deg); }
   .cluster-head .cco { font-family: var(--serif); font-size: 16.5px; font-weight: 600; color: var(--txt); }
   .cluster-head .ccount { font-family: var(--mono); font-size: 12.5px; color: var(--txt-dim); }
@@ -370,7 +370,7 @@
   .run-id .rorphan { font-family: var(--mono); font-size: 11.5px; color: var(--txt-faint); border: 1px dashed var(--line-2); border-radius: 4px; padding: 0 6px; margin-left: 8px; }
   .run-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
   .run-nogo { font-family: var(--mono); font-size: 12.5px; color: var(--nogo); max-width: 320px; text-align: right; }
-  .run-head .rchev { color: var(--txt-faint); font-size: 12.5px; transition: transform .18s; transform: rotate(-90deg); }
+  .run-head .rchev { color: var(--txt-faint); width: 16px; height: 16px; transition: transform .18s; transform: rotate(-90deg); }
   .runrow.open .run-head .rchev { transform: rotate(0deg); }
   .run-body { display: none; padding: 0 16px 16px 16px; }
   .runrow.open .run-body { display: block; }
@@ -555,6 +555,10 @@ function esc(s) {
   return String(s == null ? "" : s)
     .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
     .replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+}
+// disclosure chevron — stroked SVG so it stays crisp when sized up; rotated via CSS on .open
+function chevSVG(cls) {
+  return `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>`;
 }
 function fmtDate(s) {                // "2026-06-25" → "Jun 25"
   if (!s || typeof s !== "string") return "";
@@ -886,7 +890,7 @@ function renderSurfaced(s) {
 
     html += `<div class="lane ${open?"open":""}">`;
     html += `<button class="lane-head" data-action="toggle-lane" data-lane="${esc(band)}">
-        <span class="chev">▾</span>
+        ${chevSVG('chev')}
         <span class="lname">${esc(bandLabelOf(band))}</span>
         <span class="lcount">${bandJobs.length}</span>
         <span class="lfresh">freshest ${fmtDate(fresh)}</span>
@@ -1023,7 +1027,7 @@ function clusterHtml(g, lane) {
   let h = `<div class="cluster ${open?"open":""}">`;
   h += `<div class="cluster-head" data-action="toggle-company" data-key="${esc(key)}">
       <input class="ck" type="checkbox" data-action="select-company" data-key="${esc(key)}" ${allSel?"checked":""} onclick="event.stopPropagation()">
-      <span><span class="chev">▾</span> <span class="cco">${esc(g.co)}</span> <span class="ccount">${g.items.length} roles</span>${g.more?`<span class="cmore">+${g.more} more not surfaced</span>`:""}</span>
+      <span>${chevSVG('chev')} <span class="cco">${esc(g.co)}</span> <span class="ccount">${g.items.length} roles</span>${g.more?`<span class="cmore">+${g.more} more not surfaced</span>`:""}</span>
       <span class="cfresh">${fmtDate(g.fresh)}</span>
     </div>`;
   h += `<div class="cluster-body">`;
@@ -1123,7 +1127,7 @@ function renderRuns(s) {
           ${badge(st)}
           ${nogoReason}
         </span>
-        <span class="rchev">▾</span>
+        ${chevSVG('rchev')}
       </button>
       <div class="run-body">${runBody(r)}</div>
     </div>`;

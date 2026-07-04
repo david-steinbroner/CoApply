@@ -2,6 +2,16 @@
 
 All notable changes to CoApply. Versioned on the `plugin.json` version line.
 
+## [0.11.4] — 2026-07-04 — hub: bigger, crisper disclosure arrows
+
+- **The expand/collapse arrows in the hub are now a real affordance.** They had been sized
+  to the small mono "data" tier (~10.5–12.5px) from the 0.10.0 ledger redesign, so they read
+  as decoration next to the serif band/company names they open. Each is now a stroked inline
+  SVG chevron (`chevSVG()`) sized to its heading: seniority-band arrows 22px, company-cluster
+  18px, run-row 16px — all still rotating −90°↔0° on collapse/open. Pure `hub/index.html`
+  change (inline SVG, audit §16 self-contained stays clean); no server/API/contract change.
+  (Version 0.11.3 is reserved for the in-flight tiering ground-truth work on its own branch.)
+
 ## [0.11.2] — 2026-07-03 — `make hub` — start the hub with no Claude, no tokens
 
 - **New standalone launcher `scripts/hub.sh` + a `make hub` shim.** `/coapply:hub` starts the hub via
