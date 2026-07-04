@@ -180,13 +180,15 @@ CoApply works great out of the box. When you want to tweak it:
 
 ## The hub — your visual command center
 
-Run `/coapply:hub` to open the **hub**: a private web page, served only on your own machine (`127.0.0.1`), that renders your whole funnel in one returnable place — **surfaced roles → the gate → your runs**. It's a thin window over the files you already have: it reads your discover ledger and run folder and never sends anything anywhere.
+**To open the hub, type `/coapply:hub` in Claude Code.** It opens at **http://127.0.0.1:7878/** — a private web page, served only on your own machine (`127.0.0.1`), that renders your whole funnel in one returnable place — **surfaced roles → the gate → your runs**. It's a thin window over the files you already have: it reads your discover ledger and run folder and never sends anything anywhere. (Already running? Re-running `/coapply:hub` just reuses it.)
 
 - **Browse what discover surfaced**, grouped by **seniority** (Associate → IC → Senior → Lead/Staff → Director → VP → C-suite) or by category lane — so you can see *what level* you're looking at at a glance.
 - **Filter & sort** with the lens — by level, status, remote, recurring, matched term, region, or free-text search; sort by relevance, freshness, persistence, seniority, and more.
 - **Stage roles into a queue** (a reversible shopping list — queuing sends nothing), then let `/coapply:start` work them one at a time, each still stopping at the human go/no-go gate.
 
 It's optional — CoApply works fully without it.
+
+> **All commands in one place:** see [`COMMANDS.md`](COMMANDS.md) for the full command reference, or run `/coapply:help` inside Claude Code.
 
 ---
 

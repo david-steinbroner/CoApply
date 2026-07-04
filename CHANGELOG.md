@@ -2,6 +2,16 @@
 
 All notable changes to CoApply. Versioned on the `plugin.json` version line.
 
+## [0.11.1] — 2026-07-03 — Command reference doc
+
+- **New `COMMANDS.md`** at the repo root — a one-page quick reference for every `/coapply:…` command
+  (grouped: getting started, applying, finding roles, tuning & feedback, plus a hub section). Command
+  names + descriptions are lifted straight from each skill's frontmatter, and it includes the
+  maintainer "run the hub from source" command (generic `<your-profile>/runs`, loopback only — no
+  personal paths, audit stays green).
+- **README** — the hub section now states the launch command explicitly (**`/coapply:hub`** →
+  http://127.0.0.1:7878/) and links the new `COMMANDS.md`. Docs only.
+
 ## [0.11.0] — 2026-07-03 — Discovery off-function gate (closes 0.10.0's known limit)
 
 The domain-word-wrong-function leak that 0.10.0 flagged as its **known limit** — a title carrying
