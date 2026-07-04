@@ -2,6 +2,33 @@
 
 All notable changes to CoApply. Versioned on the `plugin.json` version line.
 
+## [0.11.0] — 2026-07-03 — Discovery off-function gate (closes 0.10.0's known limit)
+
+The domain-word-wrong-function leak that 0.10.0 flagged as its **known limit** — a title carrying
+the user's *domain* word but a different function ("Product **Designer**", "Sales **Manager**,
+Payments", "Software **Engineer**, Product") — is now closed, without baking in a role taxonomy.
+
+- **`discover-surface.py` — a second, FUNCTION half of the relevance gate.** 0.10.0's `categorize`
+  is the *domain* half (does a title share a content word with a target role?); it can't tell a
+  *manager* of a domain from a *designer* or *engineer* in it. The new `off_function` gate drops a
+  title that names a profession **distinct from the user's target function** — a generic dictionary
+  of discipline nouns (`OFF_FUNCTION_WORDS`: designer, engineer, analyst, recruiter, counsel, nurse,
+  teacher…) plus multi-word functions whose head noun is generic (`account executive`, `sales
+  manager`, `program manager`, `customer success`…). **Field-agnostic by the same construction as
+  0.10.0:** a word/phrase counts as off-function *only when the user's own target phrases don't
+  claim it* — a UX designer's profile lists "designer", which protects designer titles for them; the
+  same code drops designers for a PM and PMs for a designer. Pure/offline, same singularizing
+  tokenizer as the rest of triage. Runs in both merge passes, so it also **tidies legacy leaks**
+  admitted before the gate existed. The receipt reports the off-function drop count (no silent cut).
+- **Hub seniority ladder — `lead` disambiguation (`hub/index.html`).** "principal"/"staff"/"group"
+  are unambiguous rank words, but "lead" doubles as a sales-lead noun ("lead generation", "lead
+  qualification"), so a Lead-Gen role wrongly ranked as staff-level. The Lead/Staff/Principal band
+  regex now requires "lead" *not* be followed by that noun sense. Pure `index.html`, no
+  server/contract change (audit §16 stays green).
+- **Dogfood:** regenerated the live ledger — **380 → 233** jobs (168 off-function dropped, incl.
+  legacy leaks; 15 off-target), zero real PM roles lost, zero remaining designer/engineer/sales
+  titles on a spot-check. `audit.sh` PASSES.
+
 ## [0.10.0] — 2026-06-26 — Hub redesign ("the ledger") + discovery relevance gate
 
 Two hub follow-ups after seeing 0.9.3 live: a full front-end design pass on the hub, and a

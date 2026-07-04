@@ -675,7 +675,10 @@ const SENIORITY_LADDER = [
   ["exec",     "C-suite",                  7, /\bchief\b|\bc[efimoprt]o\b|c[-\s]?suite|c[-\s]?level/i],
   ["vp",       "VP",                       6, /\b(s?vp|evp|vice[-\s]?president)\b/i],
   ["director", "Director",                 5, /\bdirector\b|\bhead of\b|\bhead,/i],
-  ["lead",     "Lead / Staff / Principal", 4, /\b(principal|staff|lead|group)\b/i],
+  // "principal"/"staff"/"group" are unambiguous rank words. "lead" is not: it doubles as a
+  // sales-lead noun ("lead generation", "lead qualification"), so we require it NOT be
+  // followed by that noun sense — otherwise a Lead-Gen role wrongly ranks as staff-level.
+  ["lead",     "Lead / Staff / Principal", 4, /\b(principal|staff|group)\b|\blead\b(?!\s+(?:gen(?:eration)?|qualif\w*|scoring|nurtur\w*|funnel|sourc\w*|list))/i],
   ["senior",   "Senior",                   3, /\b(senior|sr\.?)\b/i],
   ["assoc",    "Associate / Junior",       1, /\b(associate|junior|jr\.?|entry|intern|graduate|apprentice|trainee|coordinator|assistant)\b/i],
 ];

@@ -153,6 +153,68 @@ def _content_terms(phrase):
     return content or sig
 
 
+# -------------------------------------------------------------- off-function gate
+# `categorize` above is the DOMAIN half of the relevance gate: does a title share a content
+# word with the user's target roles ("product", "growth")?  It cannot tell a *manager* of a
+# domain from a *designer* or *engineer* in it — a "Principal Product Designer" shares
+# "product" and slips into a manager's ledger, polluting every seniority band. This is the
+# FUNCTION half. It is field-agnostic by the same construction as GENERIC_ROLE_WORDS:
+# OFF_FUNCTION_SEEDS is a generic dictionary of profession/discipline nouns — it privileges
+# no single field — and a title is dropped ONLY when it names one of these AND the user's
+# OWN target roles do not claim it (a UX designer's profile lists "designer", which protects
+# designer titles for THEM). The same code drops designers for a manager and managers for a
+# designer; nothing about any one field is baked in. Pure/no-network like the rest of triage.
+# Seeds run through the same _words() pipeline as everything else so singular forms line up.
+_OFF_FUNCTION_SEEDS = (
+    "designer illustrator animator photographer videographer "
+    "engineer developer programmer coder sysadmin "
+    "scientist analyst statistician economist researcher "
+    "marketer marketing copywriter writer editor journalist "
+    "recruiter sourcer "
+    "counsel attorney lawyer paralegal "
+    "accountant auditor bookkeeper actuary "
+    "nurse physician clinician therapist pharmacist technician "
+    "teacher professor instructor tutor "
+    "salesperson"
+).split()
+OFF_FUNCTION_WORDS = {w for s in _OFF_FUNCTION_SEEDS for w in _T._words(s)}
+
+# Multi-word functions whose HEAD noun is generic ("manager", "executive", "lead") and would
+# pass the single-word set — the discipline lives in the qualifier, so we match the whole
+# phrase. Each phrase's FIRST word is its distinctive discipline word; a user whose targets
+# claim that word (e.g. a salesperson targeting "sales") protects the phrase for themselves.
+# Seeds go through _words() so their singularized forms line up with a title's tokens
+# ("sales" → "sale"); matching against raw literals here silently misses every such title.
+_OFF_FUNCTION_PHRASE_SEEDS = (
+    "account executive", "account manager",
+    "sales manager", "sales representative", "sales development",
+    "sales director", "sales lead", "sales associate",
+    "business development", "customer success",
+    "solutions engineer", "solution engineer",
+    "content strategist", "engineering manager",
+    "program manager", "program management",
+    "project manager", "project management",
+)
+OFF_FUNCTION_PHRASES = [_T._words(s) for s in _OFF_FUNCTION_PHRASE_SEEDS]
+
+
+def off_function(title, protected):
+    """True when the title names a profession DISTINCT from the user's target function
+    (see OFF_FUNCTION_WORDS / _PHRASES) that the user's own target roles do not claim.
+    Field-agnostic: a word/phrase counts as off-function only when the user's target
+    phrases don't contain it (`protected`). Same singularized tokenizer as everywhere."""
+    t_words = set(_T._words(title))
+    for w in OFF_FUNCTION_WORDS:
+        if w not in protected and w in t_words:
+            return True
+    for phrase in OFF_FUNCTION_PHRASES:
+        if phrase[0] in protected:        # user targets this discipline → not off-function for them
+            continue
+        if all(pw in t_words for pw in phrase):
+            return True
+    return False
+
+
 def categorize(title, phrase_terms_by_phrase):
     """Best-matching target-role phrase for a title (spec §4.1, decision §11.2), or
     "uncategorized". Score = count of a phrase's significant words present in the title
@@ -230,7 +292,7 @@ def write_atomic(path, obj):
 
 
 # ------------------------------------------------------------------ the merge
-def merge(kept, existing_ledger, phrase_terms, mode, now):
+def merge(kept, existing_ledger, phrase_terms, protected, mode, now):
     """Dedup+accumulate the ranked `kept` list into the ledger (spec §4.1 curation)."""
     today = now.date().isoformat()
     run_id = now.isoformat(timespec="seconds")
@@ -250,7 +312,8 @@ def merge(kept, existing_ledger, phrase_terms, mode, now):
     # phrases and the generic-word list. n_dropped is reported in the receipt (no silent cut).
     result = {}
     seen_in_run = set()        # fps handled by this check (so pass B skips them)
-    n_dropped = 0              # off-target roles not surfaced (this run + tidied legacy)
+    n_dropped = 0              # off-target roles not surfaced (matched no target phrase)
+    n_offfunc = 0              # right domain, wrong FUNCTION (e.g. a designer in a PM ledger)
 
     by_company = defaultdict(list)
     for j in kept:
@@ -278,6 +341,9 @@ def merge(kept, existing_ledger, phrase_terms, mode, now):
             if category == "uncategorized":
                 n_dropped += 1
                 continue  # off-target — matched no target-role phrase; do not surface
+            if off_function(j.get("title", ""), protected):
+                n_offfunc += 1
+                continue  # right domain, wrong function (a designer/engineer, not the target)
             prior = existing.get(j["fp"])
             if prior is None:
                 result[j["fp"]] = {
@@ -334,6 +400,9 @@ def merge(kept, existing_ledger, phrase_terms, mode, now):
         if category == "uncategorized":
             n_dropped += 1
             continue
+        if off_function(j.get("title", ""), protected):
+            n_offfunc += 1          # tidies legacy leaks admitted before the function gate existed
+            continue
         carried = dict(j)
         carried["category"] = category
         result[fp] = carried
@@ -359,7 +428,8 @@ def merge(kept, existing_ledger, phrase_terms, mode, now):
         "jobs": jobs_out,
     }
     stats = {"new": n_new, "updated": n_updated, "total": len(jobs_out),
-             "capped": capped, "dropped": n_dropped, "categories": dict(categories)}
+             "capped": capped, "dropped": n_dropped, "offfunc": n_offfunc,
+             "categories": dict(categories)}
     return ledger, stats
 
 
@@ -381,10 +451,15 @@ def main():
     # Match on each phrase's CONTENT words (discipline-naming), not its generic org words,
     # so a title joins a lane only on the part that names the function (see _content_terms).
     phrase_terms = [(p, _content_terms(p)) for p in phrases]
+    # `protected` = every significant word the user typed in their target roles (INCLUDING
+    # generic ones like "manager"). The off-function gate uses it so a word only counts as
+    # off-function when the user's own targets don't claim it — this is what keeps the gate
+    # field-agnostic (a designer's "designer", a nurse's "nurse" protects their own titles).
+    protected = {w for p in phrases for w in _phrase_terms(p)}
     existing_ledger = load_ledger(args.surfaced)
     now = datetime.now(timezone.utc).astimezone()  # local tz, ISO offset (spec examples)
 
-    ledger, stats = merge(kept, existing_ledger, phrase_terms, args.mode, now)
+    ledger, stats = merge(kept, existing_ledger, phrase_terms, protected, args.mode, now)
     write_atomic(args.surfaced, ledger)
 
     # --- human receipt to stderr (mirrors the other discover scripts, spec §3.4) ---
@@ -395,6 +470,9 @@ def main():
     if stats["dropped"]:
         er(f"  · dropped {stats['dropped']} off-target role(s) "
            f"(matched no target-role phrase on a content word)\n")
+    if stats["offfunc"]:
+        er(f"  · dropped {stats['offfunc']} off-function role(s) "
+           f"(right domain, wrong function — not among the user's target roles)\n")
     if stats["capped"]:
         for company, overflow in sorted(stats["capped"], key=lambda c: -c[1]):
             er(f"  · capped {company}: +{overflow} more not surfaced "
