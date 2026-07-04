@@ -58,6 +58,17 @@ It's idempotent — if the hub is already up, re-running `/coapply:hub` just reu
 the background server process (or close the Claude Code session). The hub is optional; CoApply works
 fully without it.
 
+**Prefer the terminal? Start it with no Claude / no tokens.** From the repo directory:
+
+```bash
+make hub          # or: bash scripts/hub.sh
+```
+
+Same hub, same URL — this launches the server directly (`scripts/hub.sh`), resolving your profile the
+same way `/coapply:setup` saved it, so it needs no arguments. It runs in the foreground; **Ctrl-C to
+stop**. If a hub is already running it just reuses it. (Haven't run `/coapply:setup`? Point it at a
+folder: `bash scripts/hub.sh --profile-dir /path/to/profile`.)
+
 ### Running the hub from source (maintainers)
 
 If you're working on CoApply from a clone (not the installed plugin), you can start the server

@@ -188,6 +188,8 @@ CoApply works great out of the box. When you want to tweak it:
 
 It's optional — CoApply works fully without it.
 
+**Prefer the terminal (and no token cost)?** From the repo directory, `make hub` (or `bash scripts/hub.sh`) starts the same hub directly — no Claude, no tokens. It runs in the foreground; Ctrl-C to stop.
+
 > **All commands in one place:** see [`COMMANDS.md`](COMMANDS.md) for the full command reference, or run `/coapply:help` inside Claude Code.
 
 ---

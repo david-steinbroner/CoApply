@@ -2,6 +2,20 @@
 
 All notable changes to CoApply. Versioned on the `plugin.json` version line.
 
+## [0.11.2] — 2026-07-03 — `make hub` — start the hub with no Claude, no tokens
+
+- **New standalone launcher `scripts/hub.sh` + a `make hub` shim.** `/coapply:hub` starts the hub via
+  the Claude skill, which spends tokens every time. `scripts/hub.sh` does the same three steps
+  straight from the terminal — resolve the runs folder, start `hub/server.py`, open the browser —
+  with zero Claude involvement. It **reuses the existing resolver** (`profile-status.sh` →
+  `resolve-profile-dir.sh`, which reads the flat `~/.coapply_profile_path` file `/coapply:setup`
+  writes), so for a set-up user it needs **no arguments**; non-setup users can pass `--profile-dir`
+  or `--runs-dir`. Runs in the foreground (Ctrl-C to stop), reuses an already-running hub instead of
+  erroring on a taken port, and — like the skill — **only ever binds `127.0.0.1`** (audit §16a stays
+  green). A one-line root `Makefile` exposes it as `make hub`.
+- **Docs** — README + `COMMANDS.md` hub sections note the token-free `make hub` / `bash scripts/hub.sh`
+  path alongside `/coapply:hub`.
+
 ## [0.11.1] — 2026-07-03 — Command reference doc
 
 - **New `COMMANDS.md`** at the repo root — a one-page quick reference for every `/coapply:…` command
