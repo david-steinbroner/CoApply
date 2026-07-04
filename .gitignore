@@ -1,6 +1,9 @@
 # os / misc
 .DS_Store
 
+# status-hook snapshot spool (local handoff history; the tracked STATUS.md is the live copy)
+.status-history/
+
 # generated code-visualization artifact (architecture.json + star.html)
 .constellation/
 
