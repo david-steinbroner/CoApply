@@ -36,23 +36,25 @@ You are orchestrating a job application package for $USER_NAME. Your job is to c
   "tier": "$TIER",
   "discoveryFp": "$DISCOVERY_FP",
   "artifacts": [
-    { "name": "jd-parsed", "status": "pending", "path": "00-jd-parsed.json" },
-    { "name": "dedup-check", "status": "pending", "path": "00-dedup-check.md" },
-    { "name": "role-analysis", "status": "pending", "path": "01-role-analysis.md" },
-    { "name": "fit-score", "status": "pending", "path": "02-fit-score.json" },
-    { "name": "company-research", "status": "pending", "path": "03-company-research.md" },
-    { "name": "positioning", "status": "pending", "path": "04-positioning.md" },
-    { "name": "work-sample-ideas", "status": "pending", "path": "05-work-sample-ideas.md" },
-    { "name": "cover-letter", "status": "pending", "path": "06-cover-letter.md" },
-    { "name": "cover-letter-docx", "status": "pending", "path": "06-cover-letter.docx" },
-    { "name": "outreach", "status": "pending", "path": "07-outreach.md" },
-    { "name": "resume-update", "status": "pending", "path": "08-resume-update.md" },
-    { "name": "application-questions", "status": "conditional", "path": "09-application-questions.md" },
-    { "name": "interview-prep", "status": "pending", "path": "10-interview-prep.md" },
-    { "name": "followup-plan", "status": "pending", "path": "11-followup-plan.json" }
+    { "name": "jd-parsed", "class": "mechanical", "model": null, "status": "pending", "path": "00-jd-parsed.json" },
+    { "name": "dedup-check", "class": "mechanical", "model": null, "status": "pending", "path": "00-dedup-check.md" },
+    { "name": "role-analysis", "class": "reasoning", "model": null, "status": "pending", "path": "01-role-analysis.md" },
+    { "name": "fit-score", "class": "reasoning", "model": null, "status": "pending", "path": "02-fit-score.json" },
+    { "name": "company-research", "class": "reasoning", "model": null, "status": "pending", "path": "03-company-research.md" },
+    { "name": "positioning", "class": "reasoning", "model": null, "status": "pending", "path": "04-positioning.md" },
+    { "name": "work-sample-ideas", "class": "reasoning", "model": null, "status": "pending", "path": "05-work-sample-ideas.md" },
+    { "name": "cover-letter", "class": "voice", "model": null, "status": "pending", "path": "06-cover-letter.md" },
+    { "name": "cover-letter-docx", "class": "tool", "model": null, "status": "pending", "path": "06-cover-letter.docx" },
+    { "name": "outreach", "class": "voice", "model": null, "status": "pending", "path": "07-outreach.md" },
+    { "name": "resume-update", "class": "voice", "model": null, "status": "pending", "path": "08-resume-update.md" },
+    { "name": "application-questions", "class": "voice", "model": null, "status": "conditional", "path": "09-application-questions.md" },
+    { "name": "interview-prep", "class": "voice", "model": null, "status": "pending", "path": "10-interview-prep.md" },
+    { "name": "followup-plan", "class": "reasoning", "model": null, "status": "pending", "path": "11-followup-plan.json" }
   ]
 }
 ```
+
+Each artifact carries its static `class` (which model tier it draws from) and a `model` slot that starts `null` and is filled with the **actual model you pass** when you dispatch that agent (Step 3's Model map). `cover-letter-docx` is class `tool` — a format conversion, not an LLM agent — so its `model` stays `null`. This makes `_run.json` the **tiering ground-truth**: a finished run records exactly which model each agent ran on, so the tier map can be checked against reality rather than assumed (see `scripts/check-tiering.py`).
 
 **Phase field (drives the live dashboard's gate animation).** Update `_run.json.phase` as the run advances:
 - `triage` — set at init, during Wave A1.
@@ -144,6 +146,8 @@ Worth applying?  (yes / abort / redirect: ... — or run a different tier: full 
 | **voice** — writes text published as the user | cover-letter, outreach, resume-update, interview-prep, application-questions | `sonnet` | `sonnet` | `opus` |
 
 Rationale baked in: mechanical agents stay on `haiku` even on `full` (paying a premium model to parse a JD into JSON is waste), and the cover letter never drops below `sonnet`, even on `lite` (it's the core deliverable — `lite`'s savings come from running *fewer* agents, not a cheaper letter). If an agent is ever unlisted, omit the `model` param so it inherits the session model.
+
+**Record the ground-truth (do this every dispatch).** When you set an agent's Task `model` parameter, also write that exact value into its `artifacts[]` entry's `model` field in `_run.json` — at the same moment you update its `status`. Record the alias you passed (`haiku` / `sonnet` / `opus`); if you omitted `model` so the agent inherited the session model, record `"inherited"`. This is not bookkeeping for its own sake: it turns the tier system from an assumption into a checkable fact — `scripts/check-tiering.py` reads a finished `_run.json` and confirms each agent's recorded `model` matches `Model map[tier][class]`. Never leave a dispatched agent's `model` as `null` (null = never dispatched).
 
 If the user says **abort** → set `_run.json.phase = "aborted"`, record a one-line `abortReason` AND a structured `abortCategory`, stop. Wave A2 never runs — this is where the gate saves the expensive agents. (Root run-state is `phase`; `status` is only for `artifacts[]`.)
 

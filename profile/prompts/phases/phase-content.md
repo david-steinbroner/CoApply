@@ -28,7 +28,7 @@ For **resume-update**:
 - Inline: contents of `00-jd-parsed.json`, the list of available resume variant PDFs from the user's profile
 - Read-yourself paths: all resume markdowns under `${PROFILE_DIR}/resumes/`, `${PROFILE_DIR}/skills-experience.md`, `${CLAUDE_PLUGIN_ROOT}/profile/prompts/shared/humanizer-rules.md`
 
-**After Wave B1 returns:** verify each file exists + non-empty. Retry-once policy.
+**After Wave B1 returns:** verify each file exists + non-empty. Retry-once policy. On success, record each dispatched agent's `model` into its `_run.json.artifacts[]` entry (the exact alias you passed on its Task call — `master-apply.md` Step 3, "Record the ground-truth").
 
 ## Wave B2 — Follow-up content (batch size 3)
 
@@ -59,7 +59,7 @@ For **interview-prep**:
 For **followup-plan**:
 - Inline: contents of `00-jd-parsed.json`, the `$SOURCE` tag, today's date
 
-**After Wave B2 returns:** verify + retry-once.
+**After Wave B2 returns:** verify + retry-once — and record each dispatched agent's `model` into its `_run.json.artifacts[]` entry (the alias you passed on its Task call).
 
 ## Phase B output contract
 

@@ -2,6 +2,24 @@
 
 All notable changes to CoApply. Versioned on the `plugin.json` version line.
 
+## [0.11.3] — 2026-07-03 — per-agent model recorded in `_run.json` (tiering ground-truth)
+
+- **Each dispatched agent's model is now written into `_run.json`.** The Model map (tier × agent-class →
+  model) already told the orchestrator which model to pass on each Task call; until now nothing recorded
+  what it *actually* passed. The initial `artifacts[]` template now carries a static `class`
+  (`mechanical` / `reasoning` / `voice`, or `tool` for the docx conversion) and a `model` slot that
+  starts `null` and is filled with the exact alias passed at dispatch (`master-apply.md` Step 3 gained a
+  "Record the ground-truth" rule; both phase-dispatch files record it alongside each `status` update).
+  A finished run now shows which model every agent ran on — the tier system becomes a checkable fact, not
+  an assumption. Closes the roadmap #3 follow-up: the tiering dogfood no longer relies on the orchestrator
+  self-reporting what it passed.
+- **New `scripts/check-tiering.py` — the independent verifier.** Reads a finished `_run.json` and confirms
+  each dispatched agent's recorded `model` matches `Model map[tier][class]`; flags `MISMATCH`,
+  `NOT-RECORDED`, or `INHERITED`. Stdlib-only, no personal data — a user can run it on any of their own
+  runs (`check-tiering.py <run-folder>`), and it's the objective pass/fail for the dogfood.
+- **`audit.sh` §14** now also fails the build if `master-apply.md` loses the record-the-model instruction
+  or if `check-tiering.py` goes missing / stops encoding all three tiers.
+
 ## [0.11.2] — 2026-07-03 — `make hub` — start the hub with no Claude, no tokens
 
 - **New standalone launcher `scripts/hub.sh` + a `make hub` shim.** `/coapply:hub` starts the hub via

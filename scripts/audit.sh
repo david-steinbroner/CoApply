@@ -266,6 +266,15 @@ _tagged=$(grep -hE 'instructed by `\$\{CLAUDE_PLUGIN_ROOT\}/profile/prompts/agen
   profile/prompts/phases/phase-research.md profile/prompts/phases/phase-content.md 2>/dev/null \
   | grep -cE '\[(mechanical|reasoning|voice)\]')
 [ "${_tagged:-0}" = "13" ] && note "clean — 13 agent dispatches tagged." || note "WARN: expected 13 tagged dispatches, found ${_tagged:-0}."
+# Ground-truth: the orchestrator must RECORD the model it passed into _run.json (not just
+# pass it), so the tier map is checkable after the fact — not orchestrator self-report.
+if grep -qi 'Record the ground-truth' "$_mm" && grep -q 'artifacts\[\].*model' "$_mm"; then
+  note "clean — master-apply.md instructs recording each agent's model into _run.json."
+else note "FAIL: master-apply.md lost the 'Record the ground-truth' instruction (per-agent model → _run.json)."; fail=1; fi
+# The independent verifier must exist and encode all three tiers.
+if [ -f scripts/check-tiering.py ] && grep -q '"lite"' scripts/check-tiering.py && grep -q '"standard"' scripts/check-tiering.py && grep -q '"full"' scripts/check-tiering.py; then
+  note "clean — scripts/check-tiering.py present with all three tiers."
+else note "FAIL: scripts/check-tiering.py missing or not encoding lite/standard/full."; fail=1; fi
 
 section "15. Discovery — 3-point network boundary + vendor/company + fingerprint guards"
 # The whole discovery path must stay on the durable side of the line: public ATS JSON

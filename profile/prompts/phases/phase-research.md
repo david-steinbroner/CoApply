@@ -29,7 +29,7 @@ Wave A1 agents each get the raw `$JD_TEXT` inlined (jd-parser runs in this same 
 1. Verify each expected file exists under the run folder and is non-empty.
 2. For any missing file: re-dispatch that single agent once. Wait 60s first if the failure reason looked rate-limity.
 3. If still missing: update `_run.json.artifacts[].status = "failed"`, report to the user, wait for instruction.
-4. Update `_run.json.artifacts[].status = "done"` for each successful file.
+4. Update `_run.json.artifacts[].status = "done"` for each successful file, and record each agent's `model` (the exact alias you passed on its Task call — `master-apply.md` Step 3, "Record the ground-truth") into that artifact's `model` field.
 
 **Special: Application questions.** When verifying `00-jd-parsed.json`, also inspect its `applicationQuestions` array. If non-empty, set `_run.json.artifacts` for `application-questions` to `pending` (it'll run in Phase B). If empty, set to `skipped`.
 
@@ -58,7 +58,7 @@ Work-sample-suggester gets one more (as file path): `01-role-analysis.md` from t
 
 **Why paths, not inline contents:** these files are large, static, and identical across runs. Inlining them in the Task prompt + having each agent Read them = double work. Pass the path; the agent reads it once.
 
-**After Wave A2 returns:** verify + retry-once, same as A1.
+**After Wave A2 returns:** verify + retry-once, same as A1 — including recording each dispatched agent's `model` into its `_run.json.artifacts[]` entry (the alias you passed on its Task call).
 
 ## Phase A output contract
 
