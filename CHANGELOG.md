@@ -2,6 +2,52 @@
 
 All notable changes to CoApply. Versioned on the `plugin.json` version line.
 
+## [0.12.0] — 2026-08-07 — the orchestrator stops hoarding context; docx retired
+
+Every run was carrying tens of thousands of tokens of duplicated text through the orchestrator's
+own context. Nothing was broken — it just paid for the same bytes many times over. Four fixes, all
+prompt-level, no new scripts, no contract change. Verified against a 10-agent adversarial review of
+the codebase (the original plan for this work proposed a nested sub-orchestrator architecture; the
+review established that three one-line edits beat it, with none of the risk).
+
+- **The domain lens no longer reads the whole `principles.md`.** `master-apply.md` Step 3 said "scan
+  its lookup section" with no bound, so a default Read pulled the entire file — a reference doc that
+  can run to tens of thousands of tokens — to produce *one line* of the gate card. It now Reads
+  `offset: 1, limit: 60` and extends only if the lookup table is visibly cut off. **The single
+  biggest win in this release.**
+- **Run artifacts are passed as paths, not pasted into prompts.** The engine already had the
+  "pass the path, let the agent Read it" rule — but it applied only to static profile files and
+  explicitly exempted the JD. So `jd.txt` was inlined into all four Wave A1 prompts, and
+  `00-jd-parsed.json` was re-inlined into up to nine downstream prompts. Both now travel as paths.
+  The rule is restated once, generally: *inline only what exists nowhere on disk* — conversation-
+  derived context, a mode override, the `$SOURCE` tag, today's date.
+  - Updated in lockstep so the engine can't contradict itself: `phase-research.md` (both waves + the
+    dispatch template), `phase-content.md` (all six inline sites), `master-apply.md`'s constraints,
+    `skills/resume/SKILL.md`'s re-dispatch rule, and **all 12 agent instruction files**, each of
+    which had declared it receives its inputs inline.
+- **The orchestrator stops reading content rules it never uses.** Step 1 had it load
+  `source-routing.md` (already read by the start skill), plus `format-rules.md` and
+  `humanizer-rules.md` — which govern *agent* output, and which every agent reads itself. The
+  orchestrator doesn't write content, and Step 7's lint carries its own banned-phrase list inline.
+  Step 1 now reads nothing.
+
+### Fixed
+
+- **`/coapply:resume` could never re-run an `application-questions` artifact.** Resume re-dispatched
+  only artifacts whose status was `pending` or `failed`, but `master-apply.md` Step 0 initializes
+  `application-questions` as `conditional` — so it fell through the whitelist and was stranded
+  permanently. Resume now matches on "anything **not** `done` and **not** `skipped`", which is the
+  correct rule (`skipped` = the tier deliberately left it out; everything else is work still owed)
+  and is robust to statuses added later.
+
+### Removed
+
+- **`.docx` cover-letter generation.** Retired: it was full-tier-only, already best-effort, and the
+  markdown was always the real deliverable — any editor opens it and exports to Word or PDF.
+  Removes `master-apply.md` Step 5, the `cover-letter-docx` artifact entry, the tier-table mention,
+  the post-run line, and the four user-facing tier descriptions in `skills/setup` and `skills/tier`.
+  (Resume *import* still reads `.docx` — unrelated and unchanged.)
+
 ## [0.11.4] — 2026-07-04 — hub: bigger, crisper disclosure arrows
 
 - **The expand/collapse arrows in the hub are now a real affordance.** They had been sized

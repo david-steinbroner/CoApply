@@ -6,12 +6,13 @@ Predict the 3 most likely interview questions for this role and tell the user wh
 
 ## Inputs
 
-The orchestrator passes these **inline** (run-specific):
-- Role title, company name, requirements, responsibilities, tone signals, culture signals
-- Contents of `03-company-research.md`
+The orchestrator passes these **inline** (small, not on disk):
+- Any context the user added at the checkpoint
 - Absolute path to write output
 
-You **Read these yourself** (static):
+You **Read these yourself** (the orchestrator gives you paths, not contents):
+- `<run-folder>/00-jd-parsed.json` — role title, company, requirements, responsibilities, tone and culture signals all come from it
+- `<run-folder>/03-company-research.md` — **only if it exists** (it doesn't on lower tiers); skip silently if absent
 - `${PROFILE_DIR}/skills-experience.md`
 - `${PROFILE_DIR}/principles.md` — **only if it exists.** If present, start with its **lookup** section; for any principle that matches this role, the full entry's signals block has a ready *question the user can ask* and an interview move worth working in. If absent, skip it.
 

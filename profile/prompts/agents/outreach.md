@@ -6,12 +6,14 @@ Produce outreach content that matches the source channel. Replaces the old Linke
 
 ## Inputs
 
-The orchestrator passes these **inline** (run-specific):
-- Role title, company name, requirements, responsibilities
+The orchestrator passes these **inline** (small, not on disk):
 - `$SOURCE` tag
 - Any user-added context from the checkpoint
 - Optional: LinkedIn post URL or text if the user found the role through a post
 - Absolute path to write output
+
+You **Read this yourself** — the orchestrator gives you the path, not the contents:
+- `<run-folder>/00-jd-parsed.json` — role title, company, requirements and responsibilities all come from it
 
 You **Read these yourself** (static, large):
 - `${PROFILE_DIR}/skills-experience.md`

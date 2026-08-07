@@ -128,7 +128,7 @@ Explain the three tiers (relative cost only — lite is cheapest, full is most),
 
 - **lite** — cheapest. Triage → the go/no-go gate → positioning + a cover letter. The essentials.
 - **standard** *(recommended)* — lite, plus outreach, resume guidance, interview prep, follow-up, role analysis, and light company research.
-- **full** — most expensive. Everything in standard, plus live company web research, a work-sample suggestion, application questions, and a `.docx`.
+- **full** — most expensive. Everything in standard, plus live company web research, a work-sample suggestion, and application questions.
 
 Once they choose, write the config (replace `<choice>` with their pick — one of `lite`, `standard`, `full`):
 

@@ -22,7 +22,7 @@ Spawn these agents in parallel (one message, multiple Task calls, `run_in_backgr
 **Batch 2 of A1 (1 agent):**
 - Task: agent_type `general-purpose`, `[reasoning]`, instructed by `${CLAUDE_PLUGIN_ROOT}/profile/prompts/agents/fit-score.md` — writes `02-fit-score.json`
 
-Wave A1 agents each get the raw `$JD_TEXT` inlined (jd-parser runs in this same wave, so `00-jd-parsed.json` isn't available yet to its siblings).
+Wave A1 agents each get the **path** to the raw JD — `<run-folder>/jd.txt` — and Read it themselves. (`master-apply.md` Step 0 writes `jd.txt` before any agent is dispatched, so it is always on disk by now. jd-parser runs in this same wave, so `00-jd-parsed.json` isn't available yet to its siblings — the raw file is what they get.) Do **not** paste `$JD_TEXT` into the prompts: a JD is a few thousand tokens and inlining it four times is the single most wasteful thing this wave can do.
 
 **After Wave A1 returns:**
 
@@ -45,9 +45,9 @@ The available A2 agents (set each Task's `model` per the Model map — active ti
 - Task: agent_type `general-purpose`, `[reasoning]`, instructed by `${CLAUDE_PLUGIN_ROOT}/profile/prompts/agents/positioning.md` — writes `04-positioning.md`
 - Task: agent_type `general-purpose`, `[reasoning]`, instructed by `${CLAUDE_PLUGIN_ROOT}/profile/prompts/agents/prototype-suggester.md` — writes `05-work-sample-ideas.md`
 
-Each gets inlined into its prompt:
-- The parsed JD (contents of `00-jd-parsed.json`)
+Each gets in its prompt:
 - The run folder path (so it knows where to write)
+- The **path** to the parsed JD — `<run-folder>/00-jd-parsed.json` — which the agent Reads itself. Do not inline its contents.
 
 Positioning and work-sample-suggester additionally get (as **file paths**, not inline contents — they Read these themselves):
 - `${PROFILE_DIR}/skills-experience.md`
@@ -56,7 +56,7 @@ Positioning and work-sample-suggester additionally get (as **file paths**, not i
 
 Work-sample-suggester gets one more (as file path): `01-role-analysis.md` from the run folder.
 
-**Why paths, not inline contents:** these files are large, static, and identical across runs. Inlining them in the Task prompt + having each agent Read them = double work. Pass the path; the agent reads it once.
+**Why paths, not inline contents:** inlining a file the agent could open is double work — it burns orchestrator context on every dispatch and buys nothing. This applies to *both* kinds of file: static profile files (large and identical across runs) and this run's own artifacts (already on disk in the run folder). Pass the path; the agent reads it once.
 
 **After Wave A2 returns:** verify + retry-once, same as A1.
 
@@ -91,8 +91,12 @@ PATHS (absolute — your instruction file may show ${PROFILE_DIR} or ${RUNS_DIR}
 - PROFILE_DIR = <the real absolute ${PROFILE_DIR}>
 - run folder = <absolute run folder path under ${RUNS_DIR}>
 
-INPUTS (inlined — do not re-fetch):
-<all inline context the agent needs>
+READ THESE YOURSELF (absolute paths — do not expect their contents inlined):
+<the run artifacts this agent depends on, e.g. <run folder>/jd.txt or <run folder>/00-jd-parsed.json>
+<any ${PROFILE_DIR} files the agent's instruction file calls for>
+
+INPUTS (inlined — only what exists nowhere on disk):
+<conversation-derived context only: user-added notes from the checkpoint, a mode override, the $SOURCE tag, today's date>
 
 OUTPUT CONTRACT:
 Write your output to: <absolute path in run folder>

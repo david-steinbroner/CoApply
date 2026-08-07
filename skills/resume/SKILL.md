@@ -35,12 +35,14 @@ Pick up exactly where the run left off — and **never skip the human checkpoint
 - **`aborted`** → do not resume by default. Ask: "This run was aborted (<reason>). Reopen it anyway?" Continue only on an explicit yes.
 - **`triage`** → finish any missing Wave A1 agents (jd-parser, dedup-check, role-analysis, fit-score), then **go to the checkpoint** (`master-apply.md` Step 3). Do NOT run A2/B yet.
 - **`awaiting_checkpoint`** → the run paused at the gate. **Re-present the go/no-go checkpoint** — rebuild the Step 3 summary from the existing triage files (fit, provisional mode, cost-to-finish, tier, dedup) and wait for the user's decision. Do NOT run A2/B until they say go. *Resuming must never bypass the gate.*
-- **`strategy`** → the gate was already cleared. Resume Wave A2 (only the active tier's agents) for any `pending`/`failed` artifact, then Phase B.
-- **`content`** → resume only the `pending`/`failed` Phase B agents for the active tier.
+- **`strategy`** → the gate was already cleared. Resume Wave A2 (only the active tier's agents) for any **unfinished** artifact, then Phase B.
+- **`content`** → resume only the **unfinished** Phase B agents for the active tier.
+
+**What counts as unfinished:** any artifact whose `status` is **not** `done` and **not** `skipped`. Match on that, not on a list of known status values — `skipped` means the active tier deliberately left it out, `done` means it exists, and *everything else* (`pending`, `failed`, `conditional`, or any status added later) is work still owed. A whitelist of `pending`/`failed` silently strands anything else: an `application-questions` artifact is initialized `conditional` by `master-apply.md` Step 0, so a whitelist would never re-run it.
 
 ## Step 3 — Re-dispatch (follow the master)
 
-For whatever needs to run, follow `master-apply.md`'s rules: active-tier agent set, batch size ≤3, retry-once, inline run-specific context (the JD + prior-wave files), and **substitute real absolute paths** into every subagent prompt.
+For whatever needs to run, follow `master-apply.md`'s rules: active-tier agent set, batch size ≤3, retry-once, **pass run artifacts as paths** (the JD and prior-wave files are already on disk in the run folder — hand the agent `<run folder>/jd.txt` or `<run folder>/00-jd-parsed.json` and let it Read them; inline only conversation-derived context), and **substitute real absolute paths** into every subagent prompt.
 
 ## Step 4 — Update state
 

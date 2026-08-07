@@ -4,9 +4,12 @@
 
 Extract structured information from a job posting and write it to `00-jd-parsed.json`.
 
-## Inputs (inlined by the orchestrator)
+## Inputs
 
-- Full JD text
+You **Read this yourself** — the orchestrator gives you the path, not the contents:
+- `<run-folder>/jd.txt` — the full raw JD text. Read it first, before anything else.
+
+Passed inline (small, not on disk):
 - JD URL (or `(text-only)`)
 - `$SOURCE` tag
 - Absolute path where to write output
@@ -41,7 +44,7 @@ Fields:
 - **toneSignals**: e.g. `["formal", "mission-driven", "fast-paced", "collaborative"]` — 2-4 descriptors derived from language.
 - **cultureSignals**: e.g. `["async", "remote-first", "team-oriented", "scrappy"]` — 2-4 observations about values or work style.
 - **compRange**: Extract exactly as written. If salary in USD, format as `"$140,000 - $175,000"`. If null, emit `null`.
-- **rawText**: Full JD text as passed in. Preserve.
+- **rawText**: Full JD text exactly as read from `<run-folder>/jd.txt`. Preserve.
 - **applicationQuestions**: Free-text questions that require a written answer. Typical on Greenhouse/Lever/Workday. Examples: "What stands out to you in the role?", "Tell us about a time you...", "Why this company?". NOT checkbox/dropdown fields. NOT "upload resume" prompts. If none detected, empty array.
 - **source**: Pass through the `$SOURCE` input.
 - **jdUrl**: Pass through the URL input.
@@ -52,7 +55,7 @@ Fields:
 - **Start the file with the raw JSON.** No preamble, no code fences, no markdown formatting.
 - Valid JSON — parseable. If you're unsure about a value, prefer `null` over a guess.
 - If JD text is < 200 chars OR appears to be an aggregator shell (contains "this job is no longer available", "sign in to view", "captcha", or is mostly navigation text), do NOT write the file. Instead, return with an error message: `"JD too short or appears to be a login/aggregator shell. Ask user to paste the full text."`
-- Do not use WebFetch. The JD text is already inlined. The parent orchestrator handles URL fetching and aggregator rejection before calling you.
+- Do not use WebFetch. The JD text is already on disk at `<run-folder>/jd.txt` — Read it. The parent orchestrator handles URL fetching and aggregator rejection before calling you.
 
 ## Confirmation
 

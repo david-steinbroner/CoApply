@@ -6,12 +6,12 @@ Pick the best resume variant + PDF to attach, then suggest 0-3 bullet swaps if t
 
 ## Inputs
 
-The orchestrator passes these **inline** (run-specific):
-- Role title, company name, requirements, responsibilities
+The orchestrator passes these **inline** (small, not on disk):
 - Available PDF files (the PDF exports that live alongside the user's resume variants in `${PROFILE_DIR}/resumes/`)
 - Absolute path to write output
 
-You **Read these yourself** (static):
+You **Read these yourself** (the orchestrator gives you paths, not contents):
+- `<run-folder>/00-jd-parsed.json` — role title, company, requirements and responsibilities all come from it
 - All of the user's resume variants in `${PROFILE_DIR}/resumes/` (every `*.md` file)
 - `${PROFILE_DIR}/skills-experience.md`
 - `${CLAUDE_PLUGIN_ROOT}/profile/prompts/shared/humanizer-rules.md`

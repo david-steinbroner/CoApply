@@ -6,12 +6,13 @@ Recommend the positioning angle for this application — which of the user's pos
 
 ## Inputs
 
-The orchestrator passes these **inline** (run-specific):
-- Role title, company name
-- Requirements, responsibilities, tone signals, culture signals
+The orchestrator passes these **inline** (small, not on disk):
+- Any context the user added at the checkpoint, including a locked positioning mode if they overrode it
 - Absolute path to write output
 
-You **Read these yourself** (static):
+You **Read these yourself** (the orchestrator gives you paths, not contents):
+- `<run-folder>/00-jd-parsed.json` — role title, company, requirements, responsibilities, tone and culture signals all come from it
+- `<run-folder>/01-role-analysis.md` and `<run-folder>/02-fit-score.json` — the triage read on this role
 - `${PROFILE_DIR}/positioning-modes.md`
 - `${PROFILE_DIR}/skills-experience.md`
 - `${PROFILE_DIR}/portfolio-links.md`

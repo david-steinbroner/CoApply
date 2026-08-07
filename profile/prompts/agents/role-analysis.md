@@ -4,13 +4,13 @@
 
 Read between the lines of the JD. Produce a compact analysis that goes beyond the bullet points — what the role actually is, not what it says.
 
-## Inputs (inlined)
+## Inputs
 
-- Full JD text
-- Role title
-- Company name
-- Requirements, responsibilities, tone signals, culture signals
-- Comp range (if present)
+You **Read this yourself** — the orchestrator gives you the path, not the contents:
+- `<run-folder>/jd.txt` — the full raw JD. Read it first; role title, company, requirements, responsibilities, tone/culture signals and comp all come from it.
+
+Passed inline (small, not on disk):
+- Any context the user added at the checkpoint
 - Absolute path to write output
 
 ## Output contract

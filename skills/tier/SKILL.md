@@ -37,7 +37,7 @@ Confirm the change and give one line on what that tier runs:
 
 - **lite** — triage → the go/no-go gate → positioning + a cover letter.
 - **standard** — lite, plus outreach, resume guidance, interview prep, follow-up, role analysis, and light company research.
-- **full** — everything in standard, plus live company web research, a work-sample suggestion, application questions, and a `.docx`.
+- **full** — everything in standard, plus live company web research, a work-sample suggestion, and application questions.
 
 Then stop.
 
@@ -47,7 +47,7 @@ If no tier was passed, show the current tier, then list all three with their com
 
 - **lite** *(cheapest)* — triage → the go/no-go gate → positioning + a cover letter.
 - **standard** *(default)* — lite, plus outreach, resume guidance, interview prep, follow-up, role analysis, and light company research.
-- **full** *(most expensive)* — everything in standard, plus live company web research, a work-sample suggestion, application questions, and a `.docx`.
+- **full** *(most expensive)* — everything in standard, plus live company web research, a work-sample suggestion, and application questions.
 
 When they answer, write the config as in Step 2 and confirm.
 

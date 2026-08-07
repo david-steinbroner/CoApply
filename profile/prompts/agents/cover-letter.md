@@ -6,12 +6,15 @@ Write a cover letter AS the user ($USER_NAME). Not about them. As them. Write in
 
 ## Inputs
 
-The orchestrator passes these **inline** (run-specific, small):
+The orchestrator passes these **inline** (small, not on disk):
 - `$USER_NAME`, `$USER_LOCATION`, `$USER_PORTFOLIO`
-- Role title, company name, requirements, responsibilities, tone signals, culture signals
-- Contents of `04-positioning.md` (the angle)
 - Any user-added context from the checkpoint (e.g. "lives in <city>", "is a user of the product")
 - Absolute path to write output
+
+You **Read these yourself** (the orchestrator gives you paths, not contents):
+- `<run-folder>/00-jd-parsed.json` — role title, company, requirements, responsibilities, tone and culture signals all come from it
+- `<run-folder>/04-positioning.md` — the angle
+- `<run-folder>/03-company-research.md` — **only if it exists** (it doesn't on lower tiers); skip silently if absent
 
 You **Read these yourself** (static, large, identical across runs — orchestrator passes paths only):
 - `${PROFILE_DIR}/skills-experience.md`

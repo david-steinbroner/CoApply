@@ -44,7 +44,6 @@ You are orchestrating a job application package for $USER_NAME. Your job is to c
     { "name": "positioning", "status": "pending", "path": "04-positioning.md" },
     { "name": "work-sample-ideas", "status": "pending", "path": "05-work-sample-ideas.md" },
     { "name": "cover-letter", "status": "pending", "path": "06-cover-letter.md" },
-    { "name": "cover-letter-docx", "status": "pending", "path": "06-cover-letter.docx" },
     { "name": "outreach", "status": "pending", "path": "07-outreach.md" },
     { "name": "resume-update", "status": "pending", "path": "08-resume-update.md" },
     { "name": "application-questions", "status": "conditional", "path": "09-application-questions.md" },
@@ -62,15 +61,14 @@ You are orchestrating a job application package for $USER_NAME. Your job is to c
 - `done` — set in Step 8 on success.
 - `aborted` — set on abort (see Step 3), alongside `abortReason` and `abortCategory`.
 
-## Step 1 — Load shared context (once, for your own reference)
+## Step 1 — Shared context (read nothing here)
 
-Read these to orient (agents read their own context):
+You do not write content, so you do not need the content rules. Specifically:
 
-- `${CLAUDE_PLUGIN_ROOT}/profile/prompts/shared/source-routing.md`
-- `${CLAUDE_PLUGIN_ROOT}/profile/prompts/shared/format-rules.md`
-- `${CLAUDE_PLUGIN_ROOT}/profile/prompts/shared/humanizer-rules.md`
+- **`source-routing.md`** — the start skill already read it to resolve `$SOURCE` before handing off to you. Do **not** re-read it; it is already in your context, including the fetcher hints referenced at the bottom of this file.
+- **`format-rules.md` and `humanizer-rules.md`** — these govern *agent* output. Each agent Reads them itself. The voice lint you run in Step 7 carries its own banned-phrase list inline, so you never need the source files.
 
-Do NOT rely on this context persisting into Task agents.
+Read them only if a specific step below tells you to. Do NOT rely on any of this context persisting into Task agents — they read their own.
 
 ## Step 1.5 — Dealbreaker pre-screen (cheap; before ANY agent)
 
@@ -103,7 +101,9 @@ Follow `${CLAUDE_PLUGIN_ROOT}/profile/prompts/phases/phase-research.md` — run 
 
 Runs on **Wave A1 (triage) outputs only**. You (the orchestrator) draft a *provisional* mode and one-line angle inline from `01-role-analysis.md` + `02-fit-score.json` + the JD. Label them provisional; the positioning agent finalizes after a go.
 
-**Domain lens (optional):** if `${PROFILE_DIR}/principles.md` exists, scan its lookup section and pick the 1–2 most relevant entries for the `— Domain lens:` line below. If it does not exist, omit that line entirely.
+**Domain lens (optional):** if `${PROFILE_DIR}/principles.md` exists, pick the 1–2 most relevant entries for the `— Domain lens:` line below. If it does not exist, omit that line entirely.
+
+**Read it bounded — never whole.** This file is a reference doc and can be very large (tens of thousands of tokens); the gate needs only its lookup table, which lives near the top. Read it with `offset: 1, limit: 60`. If the lookup table is visibly cut off at the end of that window, extend by another 40 lines and stop as soon as the table is complete. Do **not** Read the file unbounded, and do not read its full entries — the lookup rows carry everything the gate line needs.
 
 Before showing the summary, compute two things:
 - **Billing label (live):** Bash-check `[ -n "$ANTHROPIC_API_KEY" ]` — if set, label `per-token (API key detected)`; else `subscription allowance`. (Heuristic: we detect the key, not Claude Code's exact billing.)
@@ -133,7 +133,7 @@ Worth applying?  (yes / abort / redirect: ... — or run a different tier: full 
 |---|---|---|
 | **lite** | positioning | cover-letter |
 | **standard** | positioning + company-research | cover-letter, outreach, resume-update, interview-prep, followup-plan |
-| **full** | company-research + positioning + work-sample-suggester | cover-letter, outreach, resume-update, interview-prep, followup-plan, application-questions (if present), + docx |
+| **full** | company-research + positioning + work-sample-suggester | cover-letter, outreach, resume-update, interview-prep, followup-plan, application-questions (if present) |
 
 **Model map (tier × agent class → model).** Tier controls not just *which* agents run but *which model* each runs on. Every agent belongs to one class; when you dispatch it, set the Task tool's **`model` parameter** to the value below for the active tier. The model is a **parameter of the Task call itself**, not text in the agent's prompt. The phase-dispatch files tag each agent with its class in brackets (e.g. `[voice]`).
 
@@ -178,15 +178,6 @@ Run only the content agents the **active tier** lists (Step 3 tier table):
 - **full:** Wave B1 = cover-letter, outreach, resume-update; Wave B2 = interview-prep, followup-plan, and application-questions **if** `00-jd-parsed.json.applicationQuestions` is non-empty (else mark it `skipped`).
 - Mark every tier-skipped agent `skipped` in `_run.json`. Batch size ≤3. Between batches: verify files + retry-once.
 
-## Step 5 — Cover letter docx (full tier only; never fatal)
-
-Only on the **full** tier, after `06-cover-letter.md` is confirmed non-empty, try to produce `06-cover-letter.docx` — in this order, stopping at the first that works:
-1. If a `docx` skill is available, invoke it via Skill.
-2. Else if `pandoc` is on PATH (Bash `command -v pandoc`), run `pandoc <md> -o <docx>`.
-3. Else **skip gracefully — do NOT fail the run.** Mark `cover-letter-docx` `skipped` and tell the user: "Cover letter is ready as markdown at `06-cover-letter.md` — open in any editor, or print/export to PDF/Word."
-
-On `lite` / `standard`, skip this step entirely and mark `cover-letter-docx` `skipped`. The markdown is the deliverable.
-
 ## Step 7 — Voice lint safety net
 
 Each user-facing agent (cover-letter, outreach, application-questions) self-lints. This is the safety net. Run ONE **case-insensitive** bash call (`grep -niE`) over only the user-facing files the active tier actually produced (always `06-cover-letter.md`; `07-outreach.md` and `09-application-questions.md` only if they exist) for:
@@ -223,7 +214,7 @@ Applied package ready at: <absolute run folder path>
 
 <paste the render-receipt.sh output here, verbatim>
 
-Cover letter: 06-cover-letter.md   <append "· docx: 06-cover-letter.docx" only if a docx was produced>
+Cover letter: 06-cover-letter.md
 <Outreach: 07-outreach.md — LinkedIn search URL + message   (only if produced)>
 <Resume guidance: 08-resume-update.md   (only if produced)>
 <Interview prep: 10-interview-prep.md   (only if produced)>
@@ -253,7 +244,8 @@ CoApply logs nowhere by default. ONLY if the user connected an optional tracker 
 - **Max 3 parallel Task agents per batch.** Hard limit.
 - **File-based phase handoff.** All inter-phase data flows through files on disk.
 - **Retry-once policy.** Agent failure → wait 60s, retry once. Then mark `failed`, report, wait.
-- **Inline only run-specific context.** Inline the parsed JD + prior-wave artifacts the agent depends on. Do NOT inline static profile files — pass their `${PROFILE_DIR}/...` paths and let the agent Read them.
+- **Inline only what exists nowhere on disk.** If a thing is already a file — this run's artifacts (`jd.txt`, `00-jd-parsed.json`, prior-wave outputs) *and* static profile files alike — pass its absolute path and let the agent Read it. Inline only conversation-derived context: notes the user added at the checkpoint, a mode override, the `$SOURCE` tag, today's date. Inlining a file the agent could open burns orchestrator context on every dispatch and buys nothing.
+- **Read large reference files bounded.** Never Read a whole large profile file into your own context to extract one line from it (see the Domain lens rule in Step 3). Use `offset`/`limit`.
 - **Do NOT pre-read agent instruction files yourself.**
 - **Verify in batches, not per-agent.**
 - **Do NOT write content yourself.** Always dispatch via Task.

@@ -6,13 +6,12 @@ Score the user's fit for this role (1-10) based on real experience mapping. Cap 
 
 ## Inputs
 
-The orchestrator passes these **inline** (run-specific):
-- Role title, company name
-- Requirements, responsibilities
-- Comp range (if present)
+The orchestrator passes these **inline** (small, not on disk):
+- Any context the user added at the checkpoint
 - Absolute path to write output
 
-You **Read this yourself** (static):
+You **Read these yourself** (the orchestrator gives you paths, not contents):
+- `<run-folder>/jd.txt` — the full raw JD. Role title, company, requirements, responsibilities and comp all come from it.
 - `${PROFILE_DIR}/skills-experience.md`
 
 ## Output contract

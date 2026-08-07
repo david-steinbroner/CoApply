@@ -6,13 +6,13 @@ Answer free-text application questions the JD platform surfaces (typical on Gree
 
 ## Inputs
 
-The orchestrator passes these **inline** (run-specific):
-- Role title, company name, tone signals, culture signals
-- Array of `applicationQuestions` (from `00-jd-parsed.json.applicationQuestions`)
-- Contents of `04-positioning.md`
+The orchestrator passes these **inline** (small, not on disk):
+- Any context the user added at the checkpoint
 - Absolute path to write output
 
-You **Read these yourself** (static):
+You **Read these yourself** (the orchestrator gives you paths, not contents):
+- `<run-folder>/00-jd-parsed.json` — role title, company, tone and culture signals, **and the `applicationQuestions` array you are answering**, all come from it
+- `<run-folder>/04-positioning.md` — the chosen angle
 - `${PROFILE_DIR}/skills-experience.md`
 - `${PROFILE_DIR}/voice-profile.md`
 - `${PROFILE_DIR}/facts.md` — **only if it exists.** The user's everyday facts (location, target comp, work-authorization, sponsorship, start date / notice). Use these to answer factual questions accurately. Never invent a fact that isn't here or elsewhere in the profile — if a question needs a fact you don't have, say so in your output rather than guessing.

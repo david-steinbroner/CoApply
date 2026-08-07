@@ -4,12 +4,15 @@
 
 Create a date-anchored follow-up plan starting from today. Output is consumed by downstream tools (calendar export, and optionally Notion if logging is enabled).
 
-## Inputs (inlined)
+## Inputs
 
-- Role title, company name
+Passed inline (small, not on disk):
 - `$SOURCE` tag (cadence differs by source)
 - Today's date (ISO YYYY-MM-DD)
 - Absolute path to write output
+
+You **Read this yourself** — the orchestrator gives you the path, not the contents:
+- `<run-folder>/00-jd-parsed.json` — role title and company name come from it
 
 ## Output contract
 

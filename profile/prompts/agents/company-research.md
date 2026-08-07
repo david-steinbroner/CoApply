@@ -4,11 +4,13 @@
 
 Produce a compact briefing on the organization — what they do, type and size, recent news, culture, and any red flags worth the user knowing about before applying. The organization may be any kind of employer (private company, public company, startup, nonprofit, agency, hospital, school/district, government body, firm, etc.) — adapt the lens to the org type rather than assuming a venture-backed tech company.
 
-## Inputs (inlined)
+## Inputs
 
-- Company name
-- Role title (for context — what part of the company the user would work in)
-- Industry/category from the JD
+You **Read this yourself** — the orchestrator gives you the path, not the contents:
+- `<run-folder>/00-jd-parsed.json` — company name, role title and the industry/category all come from it. Read it first.
+
+Passed inline (small, not on disk):
+- Any context the user added at the checkpoint
 - Absolute path to write output
 
 ## Tools available

@@ -6,11 +6,13 @@ Suggest 3 work samples / proof artifacts the user could produce and submit along
 
 ## Inputs
 
-The orchestrator passes these **inline** (run-specific):
-- Role title, company name
-- Requirements, responsibilities, tone signals, culture signals
+The orchestrator passes these **inline** (small, not on disk):
+- Any context the user added at the checkpoint
 - Absolute path to write output
-- Absolute path to `01-role-analysis.md` in the run folder (Read it yourself — it's small, written by a sibling agent in the same wave)
+
+You **Read these yourself** (the orchestrator gives you paths, not contents):
+- `<run-folder>/00-jd-parsed.json` — role title, company, requirements, responsibilities, tone and culture signals all come from it
+- `<run-folder>/01-role-analysis.md` — written by a sibling agent in the earlier wave
 
 Run-folder siblings (Read these from the run folder if they exist — same wave, may or may not be done when you start):
 - `04-positioning.md` — if present, factor in the chosen mode
