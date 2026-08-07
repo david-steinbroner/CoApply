@@ -66,7 +66,8 @@ Then read `${PROFILE_DIR}/identity.md` and resolve these identity tokens (inject
 - `$USER_FIRST_NAME`: the first whitespace-delimited token of `$USER_NAME`.
 - `$USER_LOCATION`: the `Location` field — location-aware lines; skip if empty/absent.
 - `$USER_PORTFOLIO`: the `Portfolio` field — portfolio links; skip if empty or `(none)`.
-- `$USER_TARGETS`: the `Target roles` field — **replaces every field assumption** in fit-score, triage, and role-analysis. Treat it as "the user's field" wherever a discipline is implied.
+- `$USER_TARGETS`: the `Target roles` field — **replaces every field assumption** in fit-score, triage, and role-analysis. Treat it as "the user's field" wherever a discipline is implied. It is a list of job titles; its span is also the user's level range.
+- `$USER_ROLE_NOTES`: the `Also consider` field, verbatim (empty string if the field is absent — older profiles won't have it). Qualifiers that are *not* job titles: level flexibility, employment type, domain strengths, hard constraints. Pass it alongside `$USER_TARGETS` to every agent that receives targets. Where it conflicts with an inference you'd draw from the title list alone, **the notes win** — they are the user's own words about their search.
 
 If `identity.md` is missing one of these fields, use a sensible empty/skip behavior; do not invent a value.
 
@@ -131,7 +132,7 @@ Follow that master prompt exactly. It handles the rest (research, checkpoint, co
 
 ## Step 5 — Pass required inputs to the master
 
-The master prompt needs these inputs — inject them at the top of your next action, together with the identity tokens from Step 0 (`$USER_NAME`, `$USER_FIRST_NAME`, `$USER_LOCATION`, `$USER_PORTFOLIO`, `$USER_TARGETS`) and the resolved absolute paths (`${CLAUDE_PLUGIN_ROOT}`, `${PROFILE_DIR}`, `${RUNS_DIR}`):
+The master prompt needs these inputs — inject them at the top of your next action, together with the identity tokens from Step 0 (`$USER_NAME`, `$USER_FIRST_NAME`, `$USER_LOCATION`, `$USER_PORTFOLIO`, `$USER_TARGETS`, `$USER_ROLE_NOTES`) and the resolved absolute paths (`${CLAUDE_PLUGIN_ROOT}`, `${PROFILE_DIR}`, `${RUNS_DIR}`):
 
 - `$SOURCE`: the source tag from Step 3
 - `$JD_URL`: the canonicalized URL, or `(text-only)` if pasted text

@@ -18,7 +18,7 @@ A resumed run needs the SAME inputs a fresh run does. Resolve them with one **ba
 "${CLAUDE_PLUGIN_ROOT}/scripts/profile-status.sh"
 ```
 
-It prints `PROFILE_DIR=…` and `RUNS_DIR=…`; use those as your absolute paths. Then read `${PROFILE_DIR}/identity.md` → `$USER_NAME`, `$USER_FIRST_NAME`, `$USER_LOCATION`, `$USER_PORTFOLIO`, `$USER_TARGETS`. These get injected into every agent you re-dispatch.
+It prints `PROFILE_DIR=…` and `RUNS_DIR=…`; use those as your absolute paths. Then read `${PROFILE_DIR}/identity.md` → `$USER_NAME`, `$USER_FIRST_NAME`, `$USER_LOCATION`, `$USER_PORTFOLIO`, `$USER_TARGETS`, `$USER_ROLE_NOTES` (the `Also consider` field; empty if absent). These get injected into every agent you re-dispatch.
 
 ## Step 1 — Pick the run (always confirm)
 

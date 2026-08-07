@@ -7,7 +7,7 @@ You are orchestrating a job application package for $USER_NAME. Your job is to c
 ## Inputs (injected by the start skill)
 
 - `${CLAUDE_PLUGIN_ROOT}`, `${PROFILE_DIR}`, `${RUNS_DIR}` — absolute paths, resolved by the command. Engine prompts under `${CLAUDE_PLUGIN_ROOT}/profile/prompts/`; user profile at `${PROFILE_DIR}`; output at `${RUNS_DIR}`. **When you dispatch a subagent, substitute the real absolute path for these — a subagent can't resolve the variables itself.**
-- `$USER_NAME`, `$USER_LOCATION`, `$USER_PORTFOLIO`, `$USER_TARGETS` — from `${PROFILE_DIR}/identity.md`
+- `$USER_NAME`, `$USER_LOCATION`, `$USER_PORTFOLIO`, `$USER_TARGETS`, `$USER_ROLE_NOTES` — from `${PROFILE_DIR}/identity.md`
 - `$SOURCE` — source tag (LinkedIn, Wellfound, Greenhouse, company website, referral, other)
 - `$JD_URL` — canonicalized URL, or `(text-only)` if pasted text
 - `$JD_TEXT` — full JD text
@@ -72,9 +72,9 @@ Read them only if a specific step below tells you to. Do NOT rely on any of this
 
 ## Step 1.5 — Dealbreaker pre-screen (cheap; before ANY agent)
 
-Before spending a single agent, do a quick inline read of the JD against `$USER_TARGETS` and `$USER_LOCATION` only (do NOT read large profile files — keep this near-free). Flag only HARD dealbreakers visible in the JD:
+Before spending a single agent, do a quick inline read of the JD against `$USER_TARGETS`, `$USER_ROLE_NOTES` and `$USER_LOCATION` only (do NOT read large profile files — keep this near-free). Flag only HARD dealbreakers visible in the JD:
 - **Field mismatch** — the role is clearly a different discipline than `$USER_TARGETS`.
-- **Seniority mismatch** — plainly above or below the user's target level.
+- **Seniority mismatch** — plainly above or below the user's target level. `$USER_TARGETS` is a title list, so its *span* (e.g. associate through VP) is the level range, and `$USER_ROLE_NOTES` may widen or constrain it further. If the notes say level is not a filter, **do not flag seniority at all**.
 - **Unmeetable hard requirement** — a stated license/credential, work authorization, or on-site location that's a clear blocker.
 
 If a hard dealbreaker is present, surface it and let the user decide BEFORE triage runs:

@@ -158,9 +158,20 @@ def _content_terms(phrase):
 # word with the user's target roles ("product", "growth")?  It cannot tell a *manager* of a
 # domain from a *designer* or *engineer* in it — a "Principal Product Designer" shares
 # "product" and slips into a manager's ledger, polluting every seniority band. This is the
-# FUNCTION half. It is field-agnostic by the same construction as GENERIC_ROLE_WORDS:
-# OFF_FUNCTION_SEEDS is a generic dictionary of profession/discipline nouns — it privileges
-# no single field — and a title is dropped ONLY when it names one of these AND the user's
+# FUNCTION half. Its field-agnosticism comes from the MECHANISM, not from the word list: a
+# title is dropped only when the user's own targets don't claim the word, so the same code
+# drops designers for a manager and managers for a designer.
+#
+# Be honest about the list itself: OFF_FUNCTION_SEEDS is a best-effort, INCOMPLETE dictionary
+# of profession nouns, and it is thinnest outside credentialed white-collar work (it names
+# nurse/attorney/accountant/engineer but no trades, hourly, care or warehouse nouns). So it
+# under-drops for some fields rather than mis-dropping for them — a coverage gap, not a bias
+# in what it does to a given user. Widening it is NOT the cheap win it looks like: several
+# obvious candidates (assistant, coordinator, specialist, administrator, intern) are already
+# GENERIC_ROLE_WORDS or STOPWORDS, so adding them would make the code both strip a word as a
+# level qualifier and drop the title for naming a profession — and a STOPWORD can never reach
+# `protected`, making its ban global and un-overridable by any user's targets. audit.sh §17
+# asserts those two sets stay disjoint. A title is dropped ONLY when it names a seed AND the user's
 # OWN target roles do not claim it (a UX designer's profile lists "designer", which protects
 # designer titles for THEM). The same code drops designers for a manager and managers for a
 # designer; nothing about any one field is baked in. Pure/no-network like the rest of triage.

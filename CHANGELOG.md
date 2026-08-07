@@ -2,6 +2,63 @@
 
 All notable changes to CoApply. Versioned on the `plugin.json` version line.
 
+## [0.13.0] — 2026-08-07 — `Target roles` is a title list, not a sentence
+
+Discovery consumes `Target roles` **verbatim** in three deterministic scripts: `discover-querygen.py`
+splits it into web-search queries, `discover-triage.py` and `discover-surface.py` tokenize it into match
+terms. Nothing said so, and `profile.example`'s own example (`"senior product management roles"`) invited
+a sentence. A prose value degrades both ends at once.
+
+**What that actually did**, measured on a real profile whose `Target roles` was a well-meant paragraph
+ending "Seniority is NOT a filter — do not screen a role out for being below senior level":
+
+- the six queries sent to the web were `"<field> any level actively seeking" · "open to associate" ·
+  "mid" · "senior" · "staff" · "principal"` — discovery was searching public job boards for the bare
+  word **"senior"**, so the corpus everything downstream filtered was noise at the source;
+- every ordinary word in the sentence became a match term, and one shared content word admits a title,
+  so an industry word surfaced every function in that industry — an assistant, a coordinator and an
+  architect all landed in the ledger on `platform`/`operations`;
+- the field also minted 25 sentence-fragment category lanes in the hub.
+
+Rewritten as a comma-separated title list, the same ledger went **323 → 263 rows with zero
+correctly-classified roles lost**, lanes collapsed to 2, and the six queries became real titles.
+
+- **`Target roles` is now specified as job titles only** (`profile.example/identity.md`) — no domains,
+  industries, tools or adjectives, broadest variants first, with cross-field examples (nurse, accountant,
+  teacher). Notes that only the first 6 entries become search queries.
+- **New `Also consider` field** for everything that qualifies a search but isn't a title — level
+  flexibility, employment type, domain strengths, hard constraints. Resolved as `$USER_ROLE_NOTES` and
+  **wired at the same time** (`skills/start`, `skills/resume`, `master-apply.md`): the pre-spend
+  dealbreaker check now reads it, and an explicit "if the notes say level is not a filter, don't flag
+  seniority" rule. A new field nothing reads would have silently restored the level screen the sentence
+  existed to remove. Optional and backward-compatible — absent means empty.
+- **`/coapply:discover` warns on a prose value and never rewrites it.** A model-authored target list is
+  an invented role that then decides which jobs a human ever sees — fabrication in the one place the
+  skill promises none. The check is a deterministic shape test; the user's string still runs verbatim.
+- **`import-resume.md` generates the right shape**, so `/coapply:setup` stops producing the malformed
+  input, and routes non-title qualifiers into `Also consider`.
+- **Audit hardening.** §2's field-assumption scan is now case-**insensitive** — its patterns were
+  lowercase, so a Title-Cased job title in a template passed on capitalization alone; §2 and §3 iterate
+  `SCAN_PATHS` instead of their own hardcoded lists; `discover-triage.py` and `discover-querygen.py`
+  joined `SCAN_PATHS`.
+- **New audit §17 — off-function seed disjointness.** Asserts `OFF_FUNCTION_WORDS` stays disjoint from
+  triage's `STOPWORDS` and from `GENERIC_ROLE_WORDS`.
+
+**Rejected, recorded so it isn't re-proposed:** widening `_OFF_FUNCTION_SEEDS` with
+`assistant, coordinator, architect, intern, specialist, administrator` to catch the leaked titles. Five of
+the six are already `GENERIC_ROLE_WORDS` (the code would strip the word as a level qualifier *and* drop the
+title for naming a profession), and `intern` is a STOPWORD — `_phrase_terms()` filters stopwords out of
+`protected`, so no user could ever claim it and the ban would be global and un-overridable. It also drops
+real roles in other fields (*Clinical Nurse Specialist*, *Nurse Coordinator*, *Assistant Principal*,
+*Database Administrator*). The gate never fired on the leaked titles anyway — the defect was upstream.
+§17 now fails the audit if anyone tries it.
+
+**No migration.** `merge()` Pass B re-gates the whole accumulated ledger under current logic on every run,
+so tightening is retroactive — no ledger reset, no backfill. The `discover-surface.py` change is a comment
+correction only: the seed list's claim to privilege "no single field" was false (42 seeds, every
+credentialed white-collar profession, no trades/hourly/care nouns). Its field-agnosticism comes from the
+`protected` mechanism, not the word list, and the comment now says so.
+
 ## [0.12.0] — 2026-08-07 — the orchestrator stops hoarding context; docx retired
 
 Every run was carrying tens of thousands of tokens of duplicated text through the orchestrator's
@@ -150,7 +207,7 @@ client-side from the title, so no `server.py`, API/contract, `surfaced.json` sch
 - **Seniority ladder (field-agnostic)** — each role is placed on a generic rank ladder keyed *only* off
   seniority qualifiers, never a job noun, so it holds for any field (a nurse, an accountant): `Associate /
   Junior < Individual Contributor (no qualifier) < Senior < Lead / Staff / Principal < Director < VP <
-  C-suite`. A plain "Product Manager" correctly lands as IC, below "Senior PM".
+  C-suite`. A plain "Staff Accountant" correctly lands as IC, below "Senior Accountant".
 - **Group by Seniority (new default) or Lane** — a `Group` segmented control above the surfaced field.
   Roles now cluster into clear ladder bands instead of fuzzy category lanes; switch back to Lane anytime.
 - **Level filter + Seniority sort** — multi-select `Level` chips in the lens (pick any bands), plus a new

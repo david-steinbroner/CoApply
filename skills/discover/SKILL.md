@@ -54,6 +54,29 @@ field. This is what triage ranks titles against. If it's empty, discovery still 
 show *everything* that passes the per-company filters (triage says so in its reasons) — mention
 that and suggest setting target roles in `identity.md` for a useful ranking.
 
+**Shape check — warn, never rewrite.** `Target roles` is consumed *verbatim* by three
+deterministic scripts: querygen splits it into search queries, triage and surface tokenize it
+into match terms. A list of job titles behaves well; a sentence does not — its ordinary words
+become both search queries and match terms, so discovery ends up searching for words like
+"senior" and surfacing every posting that merely shares one of them. If the field reads as prose
+rather than a list — **fewer than 2 comma-separated chunks, or most chunks longer than 5 words**
+— print this once before running, then continue unchanged:
+
+> Heads up: your `Target roles` reads as a sentence. Discovery searches and matches on it
+> word-for-word, so sentence words become search queries and any posting sharing one of them gets
+> surfaced. A comma-separated list of job titles (broadest first) will sharpen this a lot — and
+> anything that isn't a title (level flexibility, domains, constraints) belongs in
+> `Also consider:` instead. See `identity.md`.
+
+**Do NOT rewrite, derive, or "clean up" the string** — not in your head, not on disk. A
+model-authored target list is an invented role that then decides which jobs a human ever sees,
+in the one place this skill guarantees no fabrication surface (see the triage note at Step 4).
+Warn and run what the user actually wrote.
+
+Also resolve **`$USER_ROLE_NOTES`** = the `Also consider` field (empty string if absent — older
+profiles won't have it). It is **not** passed to any discovery script; it exists so `/coapply:start`
+and the fit review get the user's qualifiers. Never append it to `--targets`.
+
 Paths used below:
 - Watchlist (user-authored): `${PROFILE_DIR}/watchlist.md`
 - Optional synonyms (user-authored, engine ships none): `${PROFILE_DIR}/discover-synonyms.txt`
@@ -143,8 +166,9 @@ noise; it prints a "what came in / what I kept" receipt to **stderr** — surfac
 `${RUNS_DIR}/.discovery_auto_tokens.json` and take its `tokens` array (`{ats, token, url}` each).
 
 If `tokens` is **empty**: tell the user the search surfaced no first-party ATS boards this time
-(results were non-ATS, or all reposter noise), and suggest broadening `Target roles` in
-`identity.md`, trying different keywords, or running again later. Stop.
+(results were non-ATS, or all reposter noise), and suggest adding more **title variants** to
+`Target roles` in `identity.md` — titles, not domains — trying different keywords, or running
+again later. Stop.
 
 **A4 — Build the ephemeral watchlist (union with the manual list).** Read
 `${PROFILE_DIR}/watchlist.md` and collect any **real** data rows (per Step 2's test). With the
@@ -246,8 +270,10 @@ a compact markdown table, one row per kept posting, columns:
 
 `#` = `rank`; `Match` = the `matched` terms joined; `Reason` = the descriptive `reason`; `Link` =
 the `url`. If `kept` is empty, say nothing matched the target roles this time (point at the triage
-stderr summary, which counts what was filtered out and why), and suggest either broadening
-`Target roles` in `identity.md`/the row filters, or adding companies. Then stop.
+stderr summary, which counts what was filtered out and why), and suggest either adding more
+**title variants** to `Target roles` in `identity.md` (titles, not domains — a domain word
+surfaces every function in that industry), loosening the row filters, or adding companies.
+Then stop.
 
 Then ask the user to choose — make all three moves explicit:
 - **Apply** to one or more (e.g. "1 and 3") → Step 6 hand-off.

@@ -11,7 +11,10 @@ note() { printf '  %s\n' "$1"; }
 section() { printf '\n=== %s ===\n' "$1"; }
 
 # Scan the shipping engine + templates + manifest + docs — NOT a user's real profile.
-SCAN_PATHS=(skills profile profile.example .claude-plugin README.md PRINCIPLES.md SECURITY.md CLAUDE.md CHANGELOG.md scripts/discover-surface.py hub)
+# Every path here is scanned by §1 (personal data), §2 (field assumptions) and §3 (absolute
+# paths). Keep the matcher scripts listed: they carry the word lists that decide which jobs a
+# user ever sees, which is exactly where a field assumption would do the most damage.
+SCAN_PATHS=(skills profile profile.example .claude-plugin README.md PRINCIPLES.md SECURITY.md CLAUDE.md CHANGELOG.md scripts/discover-surface.py scripts/discover-triage.py scripts/discover-querygen.py hub)
 
 section "1. Personal-data leak scan"
 # Anything personally identifying should never appear in the engine.
@@ -24,12 +27,14 @@ if [ -n "$hits" ]; then echo "$hits"; note "FAIL: personal-data tokens found in 
 
 section "2. Field-assumption scan (engine must be field-agnostic)"
 # High-signal tells that the engine assumes the user is a PM / in tech.
+# Case-INSENSITIVE on purpose: without -i, "Product Manager" in a template or example sails
+# past a lowercase pattern, so a field assumption passes the audit on capitalization alone.
 FIELD='Growth PM|Compliance PM|product manager|product-manager|pm-builder|pm-growth|fintech\b'
-hits=$(grep -rInE "$FIELD" skills profile profile.example .claude-plugin README.md scripts/discover-surface.py hub 2>/dev/null)
+hits=$(grep -rInEi "$FIELD" "${SCAN_PATHS[@]}" 2>/dev/null)
 if [ -n "$hits" ]; then echo "$hits"; note "FAIL: field/PM assumptions found — genericize them."; fail=1; else note "clean — no PM/field assumptions."; fi
 
 section "3. Stray absolute paths / unresolved engine vars"
-hits=$(grep -rInE '/Users/|/Projects/apply' skills profile profile.example scripts/discover-surface.py hub 2>/dev/null)
+hits=$(grep -rInE '/Users/|/Projects/apply' "${SCAN_PATHS[@]}" 2>/dev/null)
 if [ -n "$hits" ]; then echo "$hits"; note "FAIL: hardcoded absolute paths found."; fail=1; else note "clean — no hardcoded absolute paths."; fi
 
 section "4. Structure & invariants"
@@ -469,6 +474,43 @@ else note "FAIL: no skill consumes .coapply_queue.json — the hub's queue actio
 if grep -q 'profile-status.sh' "$_HK" && grep -q '\${CLAUDE_PLUGIN_ROOT}/hub/server.py' "$_HK"; then
   note "clean — hub launcher is a skill that resolves paths then launches the server with the real RUNS_DIR."
 else note "FAIL: hub launcher skill is missing its profile-status.sh resolve or its server launch line."; fail=1; fi
+
+section "17. Off-function gate — seed words must stay overridable by a user's own targets"
+# The off-function gate is field-agnostic only because a user's OWN target roles can protect a
+# word from it (a designer targeting "Product Designer" keeps designer titles). Two ways to
+# silently break that, both of which look like an obvious improvement at the time:
+#   · a seed that is also a STOPWORD  → _phrase_terms() filters stopwords out of `protected`,
+#     so NO user could ever claim it: the ban becomes global and un-overridable.
+#   · a seed that is also a GENERIC_ROLE_WORD → the code would both strip the word as a level
+#     qualifier and drop the title for naming a profession. Contradictory by construction.
+# Candidates that trip this are exactly the tempting ones: assistant, coordinator, specialist,
+# administrator, intern. Assert disjointness so the mistake fails the audit, not review.
+_disjoint=$(python3 - <<'PY' 2>&1
+import importlib.util, pathlib, sys
+def load(name, rel):
+    spec = importlib.util.spec_from_file_location(name, pathlib.Path("scripts") / rel)
+    mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod); return mod
+try:
+    surface = load("_surf", "discover-surface.py")
+    triage = load("_tri", "discover-triage.py")
+except Exception as e:
+    print(f"ERROR: could not import matcher scripts: {e}"); sys.exit(0)
+off = set(getattr(surface, "OFF_FUNCTION_WORDS", set()))
+stop = set(getattr(triage, "STOPWORDS", set()))
+generic = set(getattr(surface, "GENERIC_ROLE_WORDS", set()))
+bad_stop, bad_generic = sorted(off & stop), sorted(off & generic)
+if bad_stop:
+    print(f"FAIL: off-function seeds are also STOPWORDS (no user could ever protect them): {bad_stop}")
+if bad_generic:
+    print(f"FAIL: off-function seeds are also GENERIC_ROLE_WORDS (stripped AND dropped): {bad_generic}")
+if not bad_stop and not bad_generic:
+    print(f"OK {len(off)} seeds, disjoint from {len(stop)} stopwords and {len(generic)} generic role words")
+PY
+)
+case "$_disjoint" in
+  OK*) note "clean — ${_disjoint}." ;;
+  *)   echo "$_disjoint"; note "FAIL: off-function seeds collide with stopwords/generic role words."; fail=1 ;;
+esac
 
 # A human-judgment gate the script CAN'T verify. Printed every run so it can't be skipped.
 section "Manual gate — confirm before you ship (not automatable)"

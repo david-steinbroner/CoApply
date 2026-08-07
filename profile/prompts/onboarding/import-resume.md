@@ -103,6 +103,20 @@ High-confidence, low-risk. Pull `Name`, `Location`, `Portfolio` if present. For
 `Target roles`, you may note what the recent titles suggest, but **mark it as inferred**
 ("inferred from your last two titles — change it if you're aiming elsewhere"), never asserted.
 
+**Draft `Target roles` as a comma-separated list of job titles — never a sentence.** Three
+deterministic discovery scripts consume this field verbatim: one splits it into web-search
+queries, two tokenize it into match terms. Prose makes ordinary words into search queries and
+into admission tickets for any posting sharing one of them. So: take the literal titles on the
+resume, add their obvious ladder variants in the same field (the rungs the user could plausibly
+target, broadest first), and include the field's common abbreviation if it has one. Put **nothing
+but titles** here — no domains, industries, tools, or adjectives. Only the first 6 entries become
+search queries, so order matters. If the resume gives no clear title, leave it **blank** rather
+than guessing.
+
+Route everything that is *not* a title — level flexibility, contract vs. full-time, domain
+strengths, hard constraints — into **`Also consider`**, which the fit review reads and discovery
+never tokenizes. If the resume implies none of it, leave `Also consider` blank.
+
 **Fields the resume doesn't give → leave the value BLANK** (empty after the `**Field:**`
 label), and keep the italic guidance comment so the user knows to add it. **Never** write a
 `<placeholder>` token as the value, and **never** write parenthetical filler like
