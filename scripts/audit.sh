@@ -17,13 +17,43 @@ section() { printf '\n=== %s ===\n' "$1"; }
 SCAN_PATHS=(skills profile profile.example .claude-plugin README.md PRINCIPLES.md SECURITY.md CLAUDE.md CHANGELOG.md scripts/discover-surface.py scripts/discover-triage.py scripts/discover-querygen.py scripts/check-letter.sh hub)
 
 section "1. Personal-data leak scan"
-# Anything personally identifying should never appear in the engine.
-# (Author attribution in LICENSE / plugin.json / README "How this was built" is expected and excluded.)
-# Note: the author's name is fine as attribution (LICENSE / plugin.json / README). The real
-# leak risk is personal *experience/proof* data, personal *paths*, and account IDs.
-PII='/Users/david|Projects/apply|24f6373b491f809|joinmosaic|\bFold\b|\bMosaic\b|Spin Wheel|Friends of Fold|Flash Stacks|Sensor Tower|Smilebooth'
-hits=$(grep -rInE "$PII" "${SCAN_PATHS[@]}" 2>/dev/null | grep -viE 'run-folder|scaffold')
-if [ -n "$hits" ]; then echo "$hits"; note "FAIL: personal-data tokens found in the engine."; fail=1; else note "clean — no personal-data tokens."; fi
+# The engine must never carry a user's personal proof data: employers, internal
+# project names, account IDs, home paths. Author attribution (LICENSE, plugin.json,
+# README) is expected and is not what this looks for.
+#
+# The person-specific token list is deliberately NOT in this file. This script is
+# public, and a hardcoded list of one person's employers and internal project names
+# is itself the leak it exists to prevent - it publishes their work history and
+# advertises that the engine was written around a single user. So: structural
+# patterns, which name nobody, live here; personal tokens live in a gitignored local
+# file that each maintainer keeps for their own profile.
+#
+# See scripts/audit-pii-local.example for the format.
+PII_LOCAL="scripts/.audit-pii-local"
+_pii_hits=""
+_pii_scan() { # <ere> -> append matches
+  [ -n "$1" ] || return 0
+  local h; h=$(grep -rInE "$1" "${SCAN_PATHS[@]}" 2>/dev/null | grep -viE 'run-folder|scaffold')
+  [ -n "$h" ] && _pii_hits="${_pii_hits}${h}
+"
+  return 0
+}
+# Structural: account/session-ID-shaped strings. Names nobody, so it can live here.
+_pii_scan '[0-9a-f]{15,}'
+if [ -f "$PII_LOCAL" ]; then
+  _pii_pat=$(grep -vE '^[[:space:]]*(#|$)' "$PII_LOCAL" | paste -sd'|' -)
+  _pii_scan "$_pii_pat"
+  _pii_state="local token list applied"
+else
+  _pii_state="UNCHECKED — no $PII_LOCAL, so structural patterns only"
+fi
+if [ -n "${_pii_hits//[[:space:]]/}" ]; then
+  printf '%s' "$_pii_hits"; note "FAIL: personal-data tokens found in the engine."; fail=1
+elif [ "$_pii_state" = "local token list applied" ]; then
+  note "clean — no personal-data tokens (structural + local token list)."
+else
+  note "clean (structural) — $_pii_state."
+fi
 
 section "2. Field-assumption scan (engine must be field-agnostic)"
 # High-signal tells that the engine assumes the user is a PM / in tech.

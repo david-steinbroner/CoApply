@@ -2,6 +2,29 @@
 
 All notable changes to CoApply. Versioned on the `plugin.json` version line.
 
+## [0.15.4] — 2026-08-10 — the leak detector was the leak
+
+`audit.sh` §1 proves no personal data reaches the engine. It did that by carrying, in a **public**
+file, a hardcoded list of the maintainer's employers, internal project names, a former employer's
+domain, an account ID and a home path.
+
+Anyone opening the script read a work history. And a generic-engine guarantee asserted by a list of
+one person's employers advertises the opposite of what it claims - that the engine was written around
+a single user.
+
+Structural patterns stay in the script, because they name nobody: account/session-ID-shaped strings,
+plus the absolute-path sweep §3 already ran. Person-specific tokens move to `scripts/.audit-pii-local`,
+gitignored, one ERE per line, with `scripts/audit-pii-local.example` documenting the format and the
+reason it lives outside the repo.
+
+Missing local file is not treated as a pass. §1 reports `UNCHECKED - structural patterns only` and
+says so in its result line, the same rule `check-letter.sh` holds: "I could not check" never renders
+as "clean". A contributor without the file still gets a usable audit; a maintainer sees plainly that
+the token sweep did not run.
+
+Verified in both directions - the detector still fails the build when a real token is planted in an
+engine file, and no personal token remains in any tracked file in the repo.
+
 ## [0.15.3] — 2026-08-10 — README: two false claims removed, the reasoning added
 
 The README promised things the tool no longer does and stayed quiet about the parts worth reading.

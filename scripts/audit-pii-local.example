@@ -1,0 +1,33 @@
+# CoApply — local personal-data tokens for audit.sh §1   (EXAMPLE — copy, don't edit in place)
+#
+#   cp scripts/audit-pii-local.example scripts/.audit-pii-local
+#
+# `.audit-pii-local` is gitignored and never published. Put your own identifying
+# tokens here so the audit can catch them if one ever leaks into the engine.
+#
+# Why this file is separate: audit.sh is public. A list of your employers and
+# internal project names committed into a public script IS the leak it's meant to
+# prevent - it publishes your work history and shows the engine was built around
+# one person. Structural patterns that name nobody stay in audit.sh; the personal
+# ones live here, on your machine only.
+#
+# Format: one extended-regex (ERE) per line. Blank lines and #comments ignored.
+# Every line is OR'd together and run against the engine's scanned paths.
+#
+# Without this file the audit still runs - it reports §1 as structural-only rather
+# than claiming a clean it didn't earn. Same rule as check-letter.sh: "I couldn't
+# check" is never printed as "clean".
+#
+# Add the things that would identify YOU, for example:
+#   - your home directory path
+#   - each employer's name (\b...\b so short names don't match inside other words)
+#   - internal product/feature names only your team would recognize
+#   - a former employer's domain
+#   - any account, tenant, or workspace ID you've pasted while testing
+
+# /Users/yourname
+# \bAcmeCorp\b
+# \bNorthwind\b
+# examplecompany\.com
+# Widget Wizard
+# [0-9a-f]{16,}

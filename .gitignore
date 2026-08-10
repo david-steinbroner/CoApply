@@ -32,3 +32,6 @@ __pycache__/
 # private planning docs (roadmap, specs, decisions, brains-trust runs).
 # deliberately NOT public — this repo is, the backlog isn't. see docs/README.md.
 /docs/
+
+# maintainer-local personal token list for audit.sh §1 (never publish)
+scripts/.audit-pii-local
