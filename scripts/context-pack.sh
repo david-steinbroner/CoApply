@@ -57,6 +57,22 @@ cand="$(
     # tab-delimited candidate rows and the per-line read below, which would make
     # the receipt log claim a file was used while its content was never emitted.
     printf '%s' "$f" | grep -q '[[:cntrl:]]' && continue
+    # Defensive provenance skip. /coapply:add warns before saving machine-written
+    # text as a "good example", but that guard is one overridable prompt and it
+    # never sees a file copied into examples/ by hand. Feeding generated writing
+    # back in as a voice reference teaches the tool to imitate a machine and
+    # drifts the user's voice, so the last read before use checks too.
+    #
+    # Both markers matter, and the second is why a watermark alone fails open:
+    #   coapply:generated - CoApply's own output
+    #   coapply:external  - a letter produced elsewhere (letterMode: prompt) and
+    #                       stamped on the way back in. CoApply's watermark can
+    #                       never appear on another model's output, so without
+    #                       this the external path is completely unguarded.
+    if grep -qE 'coapply:(generated|external)' "$f" 2>/dev/null; then
+      _log "SKIP${TAB}$f${TAB}machine-written (provenance marker)"
+      continue
+    fi
     b="$(wc -c < "$f" | tr -d ' ')"
     h="$(sed -n '1p' "$f" | tr '\t' ' ')"
     printf '%s\t%s\t%s\n' "$b" "$f" "$h"

@@ -682,7 +682,31 @@ grep -qi 'never both' profile/prompts/phases/phase-content.md \
 _cfg_clobber=$(grep -rn '> *"\${PROFILE_DIR}/coapply\.config\.json"' skills/ profile/ 2>/dev/null)
 [ -z "$_cfg_clobber" ] || { note "FAIL: a skill writes coapply.config.json whole-file — use scripts/config-set.sh (it merges)."; printf '%s\n' "$_cfg_clobber"; fail=1; }
 [ -f scripts/config-set.sh ] || { note "FAIL: scripts/config-set.sh is missing — config writes have no merge path."; fail=1; }
-[ "$fail" = 0 ] && note "clean — gate, invariants, run-tier record, docx removal, watermark, letter slot, and config merge all intact."
+# (h) Provenance: the last read before use must drop machine-written examples. The
+#     add-time warning is one overridable prompt and never sees a hand-copied file.
+#     Both markers are required - checking only coapply:generated fails open on every
+#     externally-written letter, because CoApply's watermark can't appear on one.
+# (Deliberately no string-presence check on context-pack.sh: both marker names appear
+#  in its own explanatory comment, so grep passes even with the matcher broken. The
+#  behavioural test below is the real guard - a decorative assert is worse than none.)
+grep -q 'coapply:external' "$_ma" \
+  || { note "FAIL: master-apply.md no longer stamps externally-written letters — they'd re-enter as 'the user's own voice'."; fail=1; }
+# Behavioural: a marked example must actually be dropped, not merely mentioned.
+_cp_p=$(mktemp -d); _cp_r=$(mktemp -d); mkdir -p "$_cp_p/examples"
+printf 'ranking proof shipping constraint\n' > "$_cp_r/jd.txt"
+printf 'hand written prose about shipping under constraint\n' > "$_cp_p/examples/cover-letter--a--own.md"
+printf 'machine prose about shipping under constraint\n<!-- coapply:external run=x -->\n' > "$_cp_p/examples/cover-letter--b--ext.md"
+_cp_out=$(bash scripts/context-pack.sh "$_cp_p" cover-letter "$_cp_r/jd.txt" "$_cp_r" 2>/dev/null)
+case "$_cp_out" in
+  *"machine prose"*) note "FAIL: context-pack.sh emitted an example carrying a provenance marker."; fail=1 ;;
+  *"hand written prose"*) note "clean — marked examples are dropped, unmarked ones still load." ;;
+  *) note "FAIL: context-pack.sh emitted no example at all — the skip is over-broad."; fail=1 ;;
+esac
+rm -rf "$_cp_p" "$_cp_r"
+# (i) Pasted user content must never be interpolated into a shell command.
+grep -q 'Write tool' skills/add/SKILL.md \
+  || { note "FAIL: /coapply:add no longer writes pasted content with the Write tool — shell interpolation of user text is an injection path."; fail=1; }
+[ "$fail" = 0 ] && note "clean — gate, invariants, run-tier record, docx removal, watermark, letter slot, config merge, and provenance all intact."
 
 section "Manual gate — confirm before you ship (not automatable)"
 note "[ ] Dogfooded every new/changed skill on a REALISTIC input — including a vague one — and read the output."

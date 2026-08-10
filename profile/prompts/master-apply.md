@@ -249,6 +249,14 @@ When your letter comes back, save it into the run folder and check it:
 
 Resolve both paths to real absolute paths before printing — never print a literal `${...}` to the user. If they paste the letter into the chat instead of saving it, write it to the run folder yourself first (ask for a filename, default `06-cover-letter.md`), then run the check on it and report the result. Exit 3 is reported, not treated as a pass and not treated as a failure — same handling as everywhere else.
 
+**Stamp any letter that came back from an external model**, so it can never be re-ingested later as a voice example:
+
+```bash
+grep -q 'coapply:external' "<letter-path>" || printf '\n<!-- coapply:external run=%s -->\n' "$RUN_ID" >> "<letter-path>"
+```
+
+This is the counterpart to the `coapply:generated` watermark in Step 8, and it exists because that watermark **cannot** appear on another model's output. Without the stamp, a letter written elsewhere looks like the user's own hand-written prose to every later provenance check, and teaching CoApply to imitate a machine's voice is exactly what those checks are for.
+
 Next: review 06-cover-letter.md, make it yours, and submit it yourself — then /coapply:start your next role (or /coapply:list to see all your runs).
 ```
 

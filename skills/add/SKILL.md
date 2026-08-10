@@ -117,20 +117,37 @@ COUNT=$(grep -c '^- ' "$PB" 2>/dev/null || echo 0); echo "rules_now=$COUNT"
   (overwrite). On **prune**: show the numbered list and let them pick which to drop.
 
 ### Example → examples/
-First guard against re-ingesting CoApply's own output:
-```bash
-printf '%s' "<content>" | grep -q 'coapply:generated' && echo "GENERATED" || echo "OK"
-```
-- If `GENERATED`: warn — *"This looks like CoApply's own output. Using its own writing
-  as a 'good example' teaches it to imitate itself and drifts your voice over time. Add
-  it anyway only if you've rewritten it in your own words. Proceed? (no / yes-it's-mine)"*
-  Default to **no**.
+First guard against re-ingesting machine-written text. **Do not pipe the pasted content
+through a shell command** — pasted text can contain quotes, `$`, backticks or `%`, which
+either break the command or get expanded by it. Check the content you already have in
+context for either provenance marker:
+
+- `coapply:generated` — CoApply's own output (Step 8 watermark)
+- `coapply:external` — a letter produced by another model and stamped on the way back in
+
+Both matter. CoApply's watermark can never appear on another model's output, so checking
+only for `coapply:generated` passes every externally-written letter straight through.
+
+- If either marker is present: warn — *"This looks like machine-written text, not your own
+  writing. Using it as a 'good example' teaches CoApply to imitate a model rather than you,
+  and your voice drifts over time. Add it anyway only if you've rewritten it in your own
+  words. Proceed? (no / yes-it's-mine)"* Default to **no**.
 - Otherwise save with a header so it can be matched to future jobs:
+  Create the directory, then **write the file with the Write tool** — not with `printf`
+  and a shell redirect:
+
   ```bash
   mkdir -p "$PROFILE_DIR/examples"
-  printf '<!-- role: <kind> | tags: <2-4 short tags you infer> | note: <one line> -->\n%s\n' "<content>" \
-    > "$PROFILE_DIR/examples/<kind>--<short-tag>--<slug>.md"
   ```
+
+  Write `$PROFILE_DIR/examples/<kind>--<short-tag>--<slug>.md` with this content: the
+  header line `<!-- role: <kind> | tags: <2-4 short tags you infer> | note: <one line> -->`
+  followed by the user's content, verbatim and unmodified.
+
+  **Why not `printf`:** the content is the user's, and passing it through a shell means a
+  stray `%` corrupts the output, while a quote, `$` or backtick can end the argument and
+  run as a command. The Write tool takes the text as data. This is user-pasted input, so
+  it never belongs in a command line.
   Pick `<kind>` (cover-letter / outreach / application-questions), a short tag, and a
   slug from the content. Keep filenames `<kind>--<tag>--<slug>.md`.
 

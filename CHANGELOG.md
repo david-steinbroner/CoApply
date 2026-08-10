@@ -2,6 +2,36 @@
 
 All notable changes to CoApply. Versioned on the `plugin.json` version line.
 
+## [0.16.1] — 2026-08-10 — provenance closes, and pasted text stops going through a shell
+
+**The provenance guard failed open, and 0.16.0 made that live.** `/coapply:add` screened pastes for
+the `coapply:generated` watermark - which CoApply stamps on its own output and therefore can *never*
+appear on another model's. With `letterMode: prompt` shipping, letters now routinely come back from
+elsewhere, and every one of them read as the user's own hand-written prose to that check.
+
+Three changes close it:
+
+- Letters that come back at paste-back are stamped `coapply:external`. That's the counterpart the
+  watermark could never be.
+- `/coapply:add` screens for **both** markers.
+- `context-pack.sh` skips files carrying either, and logs each drop. This is the one that matters:
+  the add-time warning is a single overridable prompt and it never sees a file copied into
+  `examples/` by hand, so the last read before use had to check too. It previously checked nothing at
+  all - any generated letter reaching that folder was fed straight back as a voice reference.
+
+**Pasted content stopped being interpolated into shell commands.** `/coapply:add` built the example
+file with `printf '<header>\n%s\n' "<content>" > path`. The user's pasted text went into a command
+line, where a stray `%` corrupts the output and a quote, `$` or backtick can end the argument and run
+as a command. It now writes the file with the Write tool, which takes text as data. User-pasted input
+does not belong on a command line.
+
+Audit §19 gains a **behavioural** provenance test - a marked example must actually be dropped and an
+unmarked one must still load - plus the external-stamp and Write-tool guards. A string-presence check
+on `context-pack.sh` was written and then deliberately removed: both marker names appear in that
+file's own explanatory comment, so it passed with the matcher broken. That is the same
+decorative-assert failure 0.15.2 fixed, and one that reports green while checking nothing is worse
+than none. Every remaining guard was negative-tested by breaking it.
+
 ## [0.16.0] — 2026-08-10 — the letter handoff ships as a mode, and it's the user's call
 
 `letterMode` selects which agent fills the single letter slot. **`engine`** (default) writes the
