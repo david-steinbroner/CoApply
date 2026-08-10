@@ -2,6 +2,36 @@
 
 All notable changes to CoApply. Versioned on the `plugin.json` version line.
 
+## [0.15.3] — 2026-08-10 — README: two false claims removed, the reasoning added
+
+The README promised things the tool no longer does and stayed quiet about the parts worth reading.
+
+**Two claims were false.** The `full` tier was still advertised as producing "a Word doc" - `.docx`
+generation was removed in 0.12.0, so anyone choosing `full` for that reason was choosing it for
+nothing. And the limits section said a richer dashboard was "on the roadmap" when the hub had already
+shipped. §19 of the audit now guards the first of those from creeping back into the engine; this fixes
+the shop window.
+
+**The trust receipt was undocumented** despite being the answer to the question a skeptical user
+actually has. It's now in "How it works," including the part that makes it worth trusting: it's
+rendered from the files on disk and the record of which agents completed, so a skipped agent's rules
+are not credited.
+
+**New "Design decisions" section.** The README explained what CoApply does and how to install it, but
+not one decision behind it - which is the only part that transfers to anyone evaluating the approach.
+Eight decisions with their reasoning: where the gate sits and why that position, why no-fabrication is
+enforced rather than requested (with the measurement that produced the ceiling-before-drafting rule),
+why the output bar is a script instead of a memory, why exit 3 exists at all, file-based handoff,
+per-agent model pricing, the audited generic-engine boundary, and the derived receipt.
+
+**Honest-limits section widened.** Added the real edges: no per-step cost tracing, `--auto` discovery
+is broad rather than exhaustive, the receipt records availability rather than proving obedience, and
+none of this is a guarantee of an interview.
+
+`/coapply:add` was missing from the command list entirely - it's the only way to teach CoApply a voice
+example or a standing rule, so leaving it undocumented hid the feature that makes the tool improve
+with use.
+
 ## [0.15.2] — 2026-08-10 — the audit starts guarding the decisions it had been ignoring
 
 Three shipped decisions were protected by nothing, and one long-standing check could never fail.
