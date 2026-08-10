@@ -2,6 +2,50 @@
 
 All notable changes to CoApply. Versioned on the `plugin.json` version line.
 
+## [0.14.0] — 2026-08-10 — `check-letter.sh`: the letter bar becomes a test
+
+`docs/features/letter-handoff/spec.md` §1a defines the mechanical bar every cover letter must
+clear. Until now that bar existed as prose plus a memory of one good run — which meant it was
+enforced exactly as often as someone remembered to enforce it. `scripts/check-letter.sh` runs
+those gates for real: banned phrases, em-dashes, word count, forbidden claims, caveat coverage.
+
+Nothing is hardcoded. The banned list is parsed at runtime out of `shared/anti-ai-detection.md`,
+`shared/humanizer-rules.md` and the user's own `voice-profile.md` / `playbooks/cover-letter.md`;
+the word range comes from wherever the user stated one; the claim ceilings come from the user's
+own caveat blocks. A rule the script can't derive is reported **UNCHECKED**, never invented.
+
+**The caveat trap, handled.** Spec §2 warns that caveat blocks are not findable by fixed-string
+grep — on a real profile only 2 of 9 used the header `Caveat for downstream agents`, the rest
+being typed variants (`Jargon caveat`, `Timing caveat`, `Naming caveat`, `Currency caveat`) plus a
+bare `Never claim …` line. A header match finds 2 and reports coverage, which is worse than not
+checking. The broad matcher here found all 9 on that profile — plus 3 more the spec's own count
+had missed, including a `do not assert a sequence` line and a playbook honesty gate.
+
+Semantics still can't be machine-derived, so the script **finds** the caveats and requires their
+ceilings be **declared once** in a `.letter-ceilings` file (`--init-ceilings` generates it,
+pre-filled). `forbid <id> <regex>` fails a letter; `ack <id>` records a caveat as reviewed with
+nothing greppable. Undeclared caveats exit **3 (INCOMPLETE)** — never a green 0. A declared id
+that no longer matches any caveat is flagged stale, because the caveat's wording changed and the
+old ceiling may no longer say what the profile says.
+
+The ceilings file is a hidden dotfile read from the run folder or the profile root. No new file
+in the profile schema, so `/coapply:setup` and the templates are untouched.
+
+**Verified against the reference artifacts.** `letter-gpt-v1-failing.md` fails on the vendor
+overclaim; `letter-gpt-v2-PASSING.md` is clean on claims and over on length (478 vs its stated
+range) — exactly the result spec §3 records; `letter-claude-baseline.md` fails on `I wired those
+systems together`. That last one is the live engine bug from spec §3, and it reproduces on real
+run output today: the in-engine agent reads the caveats and nothing verified it honored them.
+The fix to the cover-letter agent is still owed.
+
+Audit §18 covers all of it, including the two ways this could silently start passing everything:
+ban extraction losing its heading scope (which would ban `" - "`, from a line that lives under a
+*mandatory* heading, and fail every letter with an aside), and caveat discovery regressing to a
+header grep.
+
+Scope note: standalone tool. `master-apply.md` Step 7's in-engine self-lint is unchanged; moving
+the lint to paste-back ships with the prompt agent.
+
 ## [0.13.0] — 2026-08-07 — `Target roles` is a title list, not a sentence
 
 Discovery consumes `Target roles` **verbatim** in three deterministic scripts: `discover-querygen.py`

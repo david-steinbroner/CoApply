@@ -14,7 +14,7 @@ section() { printf '\n=== %s ===\n' "$1"; }
 # Every path here is scanned by §1 (personal data), §2 (field assumptions) and §3 (absolute
 # paths). Keep the matcher scripts listed: they carry the word lists that decide which jobs a
 # user ever sees, which is exactly where a field assumption would do the most damage.
-SCAN_PATHS=(skills profile profile.example .claude-plugin README.md PRINCIPLES.md SECURITY.md CLAUDE.md CHANGELOG.md scripts/discover-surface.py scripts/discover-triage.py scripts/discover-querygen.py hub)
+SCAN_PATHS=(skills profile profile.example .claude-plugin README.md PRINCIPLES.md SECURITY.md CLAUDE.md CHANGELOG.md scripts/discover-surface.py scripts/discover-triage.py scripts/discover-querygen.py scripts/check-letter.sh hub)
 
 section "1. Personal-data leak scan"
 # Anything personally identifying should never appear in the engine.
@@ -511,6 +511,65 @@ case "$_disjoint" in
   OK*) note "clean — ${_disjoint}." ;;
   *)   echo "$_disjoint"; note "FAIL: off-function seeds collide with stopwords/generic role words."; fail=1 ;;
 esac
+
+section "18. check-letter.sh — §1a gates, and the caveat trap it exists to survive"
+# The letter checker is only worth having if it fails LOUDLY in the two ways a letter
+# actually goes wrong: a banned phrase, and a claim above what the profile allows. Every
+# assertion below is a way the checker could silently start passing everything.
+_cl_t="$(mktemp -d)"; _cl_p="$_cl_t/profile"; mkdir -p "$_cl_p/playbooks"
+# Two caveats in the shapes that broke the naive implementation: a TYPED VARIANT
+# ("Jargon caveat") and a BARE negative with no caveat header at all. Only one of the
+# two would be found by grepping for "Caveat for downstream agents" — which is exactly
+# how a header-matching checker reports coverage while missing most of the ceilings.
+cat > "$_cl_p/skills-experience.md" <<'EOF'
+**Jargon caveat for downstream agents:** Don't lead with the name "Widget Engine" in external copy.
+- **They have never used the Acme platform.** Never claim they are an Acme customer.
+EOF
+_cl_caveats=$(bash scripts/check-letter.sh --init-ceilings --profile "$_cl_p" 2>/dev/null | grep -c '^#ack ')
+if [ "$_cl_caveats" = "2" ]; then note "clean — finds BOTH caveat shapes (typed variant + bare negative), not just the headered one."
+else note "FAIL: --init-ceilings found $_cl_caveats of 2 caveats — the header-grep trap is back."; fail=1; fi
+
+# A ban list is only trustworthy if it comes from the rules files at runtime. Assert a real
+# banned phrase from the shipped shared rules is caught with no per-user configuration.
+printf 'I have a proven track record of shipping things that work for people.\n' > "$_cl_t/bad.md"
+bash scripts/check-letter.sh "$_cl_t/bad.md" --profile "$_cl_p" --words 1-1000 >/dev/null 2>&1
+[ "$?" = "1" ] && note "clean — a banned phrase from the shared rules fails the letter (exit 1)." \
+                || { note "FAIL: banned-phrase gate did not fail a letter containing one."; fail=1; }
+
+# The " - " regression. humanizer-rules.md says `Use hyphens " - " for asides, never em
+# dashes` under a MANDATORY heading. If extraction ever stops being heading-scoped, " - "
+# enters the ban list and every letter with an aside fails. Silent, total, plausible.
+printf 'We shipped it - fast - and the numbers held.\n' > "$_cl_t/aside.md"
+bash scripts/check-letter.sh "$_cl_t/aside.md" --profile "$_cl_p" --words 1-1000 >/dev/null 2>&1
+[ "$?" != "1" ] && note "clean — a hyphen aside is not treated as a banned phrase." \
+                || { note "FAIL: ban extraction is no longer heading-scoped — \" - \" got banned."; fail=1; }
+
+printf 'We shipped it fast and the numbers held.\n' > "$_cl_t/clean.md"
+# Undeclared ceilings must NEVER read as a pass. Exit 3 (INCOMPLETE) is the whole point:
+# a green check that skipped the claim gate is worse than no check at all.
+bash scripts/check-letter.sh "$_cl_t/clean.md" --profile "$_cl_p" --words 1-1000 >/dev/null 2>&1
+[ "$?" = "3" ] && note "clean — undeclared caveats exit 3 (INCOMPLETE), never 0." \
+               || { note "FAIL: a letter with undeclared caveats did not report INCOMPLETE."; fail=1; }
+
+# With every caveat declared and nothing violated, it must actually pass — a checker that
+# can't reach 0 gets ignored, and an ignored gate is a removed gate.
+_cl_ids=$(bash scripts/check-letter.sh --init-ceilings --profile "$_cl_p" 2>/dev/null | sed -n 's/^#ack //p')
+{ printf 'words 1-1000\n'; for _i in $_cl_ids; do printf 'ack %s\n' "$_i"; done; } > "$_cl_t/ceil"
+bash scripts/check-letter.sh "$_cl_t/clean.md" --profile "$_cl_p" --ceilings "$_cl_t/ceil" >/dev/null 2>&1
+[ "$?" = "0" ] && note "clean — a clean letter with all caveats declared exits 0." \
+               || { note "FAIL: a clean, fully-declared letter did not pass."; fail=1; }
+
+# And a declared ceiling must bite.
+{ printf 'words 1-1000\n'; for _i in $_cl_ids; do printf 'ack %s\n' "$_i"; printf 'forbid %s Acme customer\n' "$_i"; done; } > "$_cl_t/ceil2"
+printf 'I was an Acme customer for years.\n' > "$_cl_t/claim.md"
+bash scripts/check-letter.sh "$_cl_t/claim.md" --profile "$_cl_p" --ceilings "$_cl_t/ceil2" >/dev/null 2>&1
+[ "$?" = "1" ] && note "clean — a declared forbid pattern fails the letter." \
+               || { note "FAIL: a declared ceiling did not catch a claim that violates it."; fail=1; }
+
+bash scripts/check-letter.sh "$_cl_t/nope.md" --profile "$_cl_p" >/dev/null 2>&1
+[ "$?" = "2" ] && note "clean — unreadable input exits 2 (distinct from a real failure)." \
+               || { note "FAIL: missing letter file did not exit 2."; fail=1; }
+rm -rf "$_cl_t"
 
 # A human-judgment gate the script CAN'T verify. Printed every run so it can't be skipped.
 section "Manual gate — confirm before you ship (not automatable)"
