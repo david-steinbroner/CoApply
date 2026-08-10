@@ -1,6 +1,6 @@
 ---
 name: tier
-description: View or change your CoApply budget tier (lite/standard/full).
+description: View or change your CoApply budget tier (lite/standard/full) and how your cover letter is produced (engine/prompt).
 ---
 
 # CoApply — budget tier
@@ -23,15 +23,25 @@ Use the resolved absolute path wherever this file shows `${PROFILE_DIR}`.
 
 ## Step 1 — Read the current tier
 
-Read `${PROFILE_DIR}/coapply.config.json`. The shape is `{"tier": "<lite|standard|full>"}`. If the file is absent or has no valid `tier`, treat the current tier as **`standard`** (the default).
+Read `${PROFILE_DIR}/coapply.config.json`. The shape is `{"tier": "<lite|standard|full>", "letterMode": "<engine|prompt>"}`. If the file is absent or a key is missing/invalid, the defaults are tier **`standard`** and letter mode **`engine`**.
 
 ## Step 2 — If a tier was passed in `$ARGUMENTS`, set it
 
 If `$ARGUMENTS` contains one of `lite`, `standard`, or `full`, write it to the config (replace `<choice>`):
 
 ```bash
-printf '{"tier": "%s"}\n' "<choice>" > "${PROFILE_DIR}/coapply.config.json"
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/config-set.sh" "${PROFILE_DIR}" tier "<choice>"
 ```
+
+**Never write the config with `printf ... > config`.** It replaces the whole file, so setting the tier that way silently deletes the user's letter-mode setting (and anything added later). `config-set.sh` merges one key and leaves the rest alone.
+
+If `$ARGUMENTS` instead contains `engine` or `prompt`, set the **letter mode** the same way:
+
+```bash
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/config-set.sh" "${PROFILE_DIR}" letterMode "<choice>"
+```
+
+Then confirm in one line: **`engine`** writes the finished cover letter here and checks it against the user's own rules; **`prompt`** writes a paste-ready briefing instead, for the model they prefer, and checks the letter when they paste it back. Both draw on the same profile, and both hold the same claim ceilings.
 
 Confirm the change and give one line on what that tier runs:
 
@@ -42,6 +52,8 @@ Confirm the change and give one line on what that tier runs:
 Then stop.
 
 ## Step 3 — Otherwise, show the menu and ask
+
+If nothing was passed, show the current tier **and** the current letter mode, then list the three tiers with their composition and relative cost, and ask which to switch to. Mention the letter mode as a second, independent switch — don't bury it, and don't imply it changes the price.
 
 If no tier was passed, show the current tier, then list all three with their composition and relative cost, and ask which to switch to:
 

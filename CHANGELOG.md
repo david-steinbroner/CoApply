@@ -2,6 +2,54 @@
 
 All notable changes to CoApply. Versioned on the `plugin.json` version line.
 
+## [0.16.0] — 2026-08-10 — the letter handoff ships as a mode, and it's the user's call
+
+`letterMode` selects which agent fills the single letter slot. **`engine`** (default) writes the
+finished letter here; **`prompt`** writes a paste-ready briefing for whatever model the user prefers.
+Set it once with `/coapply:tier`, or switch for one run at the gate.
+
+**This supersedes the recorded "full replacement" decision, and the reason generalizes.** CoApply is
+a public tool. Retiring the in-engine letter for everyone would bake one person's working preference
+into every install - the same category of mistake as `audit.sh` §1 hardcoding one person's employers
+(0.15.4). Whether a letter is written here or elsewhere is a preference, not a correctness question,
+so it belongs to each user. Full replacement also contradicted three shipped things: the README's
+headline promise, the `lite` tier defined as "just the cover letter", and the receipt's playbook
+credit.
+
+Tier and mode are independent - tier decides *how many* agents run, mode decides *which* agent fills
+the letter slot - so every tier works in both modes, and `lite` still spends the least without
+writing a worse letter.
+
+**The new agent builds to `spec.md` §1c**, which was written from a two-round live test. It opens by
+declaring the fact sheet **closed** ("do not add, extrapolate, or estimate any fact, number, company,
+title, or date not written below"), because a model cannot fabricate from facts it was never given.
+It states the content gates in the first ~20 lines *and* repeats them as a final self-check, since
+burying them mid-payload is exactly how the failing round failed. It treats length as a cost: the
+16.4 KB version had its load-bearing instructions skimmed past and missed every gate, the 34% smaller
+rebuild landed all of them, so the agent is told to cut facts the letter won't use. The exemplar is
+one of the user's own letters selected at runtime by `context-pack.sh`, never baked into the engine.
+And it leaves **zero decisions** for the user - the agent picks the spine and says so, rather than
+shipping a switch to resolve before pasting.
+
+Ceilings work the same way in both modes: applied while writing the fact, then stated in one plain
+sentence beside it. Never a rule list appended and hoped over.
+
+**The lint moves to paste-back for the prompt path** - the agreed compensating control. Step 7 no
+longer greps `06-letter-prompt.md`, which would have been actively wrong: a briefing legitimately
+*names* banned phrases in order to forbid them, so linting it flags the prohibition as the violation.
+The letter gets the full gate when it comes back, via `check-letter.sh`.
+
+**Config writes now merge.** `/coapply:tier` and `/coapply:setup` wrote `coapply.config.json` with
+`printf ... > config`, correct only while the file held exactly one key. Adding `letterMode` would
+have made changing the tier silently delete it - and the tracker ID was already exposed to the same
+bug. New `scripts/config-set.sh` merges a single key, with a real parser when `python3` is present
+and a flat-JSON fallback when it isn't, and rejects any key or value that could inject structure.
+Both paths tested, including preserving unrelated keys.
+
+Audit §19 gains the guards: both letter agents present, `$LETTER_MODE` still resolving, phase-content
+still stating that exactly one runs, no whole-file config writes anywhere in the skills, and
+`config-set.sh` present. Negative-tested by breaking each.
+
 ## [0.15.4] — 2026-08-10 — the leak detector was the leak
 
 `audit.sh` §1 proves no personal data reaches the engine. It did that by carrying, in a **public**

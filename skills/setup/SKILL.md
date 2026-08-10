@@ -133,10 +133,12 @@ Explain the three tiers (relative cost only — lite is cheapest, full is most),
 Once they choose, write the config (replace `<choice>` with their pick — one of `lite`, `standard`, `full`):
 
 ```bash
-printf '{"tier": "%s"}\n' "<choice>" > "${PROFILE_DIR}/coapply.config.json"
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/config-set.sh" "${PROFILE_DIR}" tier "<choice>"
 ```
 
 Confirm it's saved, and note they can change it anytime with `/coapply:tier`.
+
+**Always write the config through `config-set.sh`, never `printf ... > config`.** A whole-file write replaces every other setting the user has — the tracker ID below, their letter mode, anything added later. The helper merges one key.
 
 ## Step 5 — Optional: connect a tracker
 
@@ -148,7 +150,7 @@ Offer this as clearly optional and **off by default** — most people skip it:
 - **If they want it:** ask for their Notion database ID, then add it to the config (preserving the tier already written):
 
   ```bash
-  printf '{"tier": "%s", "notion_db_id": "%s"}\n' "<choice>" "<notion-db-id>" > "${PROFILE_DIR}/coapply.config.json"
+  bash "${CLAUDE_PLUGIN_ROOT}/scripts/config-set.sh" "${PROFILE_DIR}" notion_db_id "<notion-db-id>"
   ```
 
   Confirm it's saved and remind them application data will now be sent to Notion. They can remove `notion_db_id` from the config anytime to turn logging back off.

@@ -75,7 +75,7 @@ Other commands:
 - `/coapply:discover` — surface roles as a gate; you pick which ones become `/coapply:start` commands (no batch-applying). **Watchlist mode** (default) checks each company on a list **you keep** — their public job board, filtered to your targets. Add companies with `/coapply:discover add <careers or board URL>`. **Auto mode** (`/coapply:discover --auto`) needs **no list**: it turns your target roles into web searches scoped to public ATS boards (Greenhouse / Lever / Ashby), finds companies hiring there, and runs them through the same gate. Auto mode is **broad, not exhaustive** — it surfaces what a web index already has indexed on those **public ATS** boards, and is **strongest for tech/startup roles** (a corpus limitation, not a bias); it's **not** LinkedIn/Indeed and never scrapes them. Its one privacy note: auto mode sends your role/location keywords (not personal data) to a **search provider**, a third party watchlist mode never touches. Public ATS boards only, over plain HTTP — never aggregator scraping or logging into job sites.
 - `/coapply:add` — teach CoApply your preferences in plain words. Drop in a letter you're proud of as a voice example, add a writing rule you keep repeating, or record an everyday fact it should know. It screens what you paste and refuses true secrets (SSNs, passwords, account numbers) rather than storing them.
 - `/coapply:setup` — first-time setup (templates, billing check, budget tier).
-- `/coapply:tier` — change your budget tier (lite / standard / full) anytime.
+- `/coapply:tier` — change your budget tier (lite / standard / full), and choose how your cover letter gets written (see below).
 - `/coapply:list` — see your recent applications.
 - `/coapply:resume <run>` — pick a run back up if it got interrupted.
 - `/coapply:feedback` — hit a bug or have an idea? Describe it in plain words; CoApply either points you to the issue page to write it yourself, or drafts a ready-to-paste issue from your words — your choice. You review and post it; it never submits for you.
@@ -114,6 +114,17 @@ CoApply isn't one big prompt — it's a team of focused specialists working in s
 ```
 
 Everything it writes is drawn from **your** profile and matched to **your** voice, with built-in rules that keep it from sounding like generic AI.
+
+### Two ways to get the letter
+
+Some people want the letter written for them. Some already have a model they like writing with and want to keep it. Both are supported, and it's your call — set it once with `/coapply:tier`, or switch for a single run at the gate.
+
+| Mode | What you get |
+|---|---|
+| **`engine`** *(default)* | CoApply writes the finished cover letter and checks it against your own rules before handing it over. |
+| **`prompt`** | CoApply writes a **paste-ready briefing** instead — your selected facts, the role, one of your own letters as a voice reference, and the instructions — for whatever model you prefer. Paste the letter back and it gets checked the same way. |
+
+The briefing isn't a generic "write me a cover letter" prompt. It states that the fact sheet is **closed**, so the other model can't invent a number or a job title you never had, and it carries your claim ceilings written out in plain sentences next to the facts they govern. That last part came out of testing: an agent that read your entire profile still overclaimed, while a model handed one explicit ceiling sentence stayed under it. Stated ceilings beat inference — so both modes state them.
 
 **And it shows its work.** Every run ends with a trust receipt — *"What shaped this application"* — listing which of your own writing rules and saved examples actually fed the run. It's rendered by a script from the files on disk and the record of which agents completed, not from the model's account of itself, so it can't flatter you. If an agent was skipped, its rules aren't credited.
 

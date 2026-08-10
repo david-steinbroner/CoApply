@@ -669,7 +669,20 @@ grep -qi 'docx' profile/prompts/onboarding/import-resume.md \
 #     This is what stops the tool from learning its own voice back as a user example.
 grep -q 'coapply:generated' "$_ma" || { note "FAIL: master-apply.md no longer watermarks generated artifacts."; fail=1; }
 grep -q 'coapply:generated' skills/add/SKILL.md || { note "FAIL: /coapply:add no longer screens for CoApply's own output."; fail=1; }
-[ "$fail" = 0 ] && note "clean — gate, invariants, run-tier record, docx removal, and watermark all intact."
+# (f) The letter slot: both agents exist and exactly one fills the slot per run. If the
+#     mode ever stops selecting, the run either writes two letters or none.
+for _la in cover-letter letter-prompt; do
+  [ -f "profile/prompts/agents/$_la.md" ] || { note "FAIL: missing letter agent profile/prompts/agents/$_la.md."; fail=1; }
+done
+grep -q 'LETTER_MODE' "$_ma" || { note "FAIL: master-apply.md no longer resolves \$LETTER_MODE — the letter slot has no selector."; fail=1; }
+grep -qi 'never both' profile/prompts/phases/phase-content.md \
+  || { note "FAIL: phase-content.md no longer states that exactly one letter agent runs."; fail=1; }
+# (g) Config writes must merge, never replace. A whole-file write silently deletes every
+#     other setting the user has - the tracker ID, the letter mode, anything added later.
+_cfg_clobber=$(grep -rn '> *"\${PROFILE_DIR}/coapply\.config\.json"' skills/ profile/ 2>/dev/null)
+[ -z "$_cfg_clobber" ] || { note "FAIL: a skill writes coapply.config.json whole-file — use scripts/config-set.sh (it merges)."; printf '%s\n' "$_cfg_clobber"; fail=1; }
+[ -f scripts/config-set.sh ] || { note "FAIL: scripts/config-set.sh is missing — config writes have no merge path."; fail=1; }
+[ "$fail" = 0 ] && note "clean — gate, invariants, run-tier record, docx removal, watermark, letter slot, and config merge all intact."
 
 section "Manual gate — confirm before you ship (not automatable)"
 note "[ ] Dogfooded every new/changed skill on a REALISTIC input — including a vague one — and read the output."

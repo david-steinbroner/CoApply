@@ -2,24 +2,39 @@
 
 Dispatched from `master-apply.md` after the user confirms at the Phase A checkpoint.
 
-**Run only the content agents the active tier calls for** (tier table in `master-apply.md` Step 3): **lite** = cover-letter only · **standard** = cover-letter, outreach, resume-update, interview-prep, followup-plan · **full** = those + application-questions (if present). Mark tier-skipped agents `skipped`.
+**Run only the content agents the active tier calls for** (tier table in `master-apply.md` Step 3): **lite** = the letter slot only · **standard** = the letter slot, outreach, resume-update, interview-prep, followup-plan · **full** = those + application-questions (if present). Mark tier-skipped agents `skipped`.
+
+"The letter slot" is whichever of the two letter agents `$LETTER_MODE` selects — see Wave B1. Tier decides *how many* agents run; the mode decides *which* letter agent fills that one slot. They're independent, so every tier works in both modes.
 
 ## Wave B1 — Primary content
 
-On **lite**: run ONLY cover-letter, then skip the rest of B1 and all of B2. On **standard** and **full**: spawn these 3 in parallel (batch size 3).
+On **lite**: run ONLY the letter slot, then skip the rest of B1 and all of B2. On **standard** and **full**: spawn these 3 in parallel (batch size 3).
 
 **Model:** set each Task's `model` parameter per the **Model map** in `master-apply.md` Step 3 — active tier × the agent's class (tagged in brackets below). The model is a Task-call parameter, not prompt text.
 
-- Task: agent_type `general-purpose`, `[voice]`, instructed by `${CLAUDE_PLUGIN_ROOT}/profile/prompts/agents/cover-letter.md` — writes `06-cover-letter.md`
+**The letter slot has two modes** — the user's choice, from `$LETTER_MODE` (Step 3). Exactly one of
+these two runs, never both, and the other is recorded `skipped` with `note: "letterMode"`:
+
+- **`engine`** (default) — Task: agent_type `general-purpose`, `[voice]`, instructed by `${CLAUDE_PLUGIN_ROOT}/profile/prompts/agents/cover-letter.md` — writes `06-cover-letter.md`
+- **`prompt`** — Task: agent_type `general-purpose`, `[voice]`, instructed by `${CLAUDE_PLUGIN_ROOT}/profile/prompts/agents/letter-prompt.md` — writes `06-letter-prompt.md`
+
+The rest of Wave B1 is unaffected by the mode:
+
 - Task: agent_type `general-purpose`, `[voice]`, instructed by `${CLAUDE_PLUGIN_ROOT}/profile/prompts/agents/outreach.md` — writes `07-outreach.md`
 - Task: agent_type `general-purpose`, `[voice]`, instructed by `${CLAUDE_PLUGIN_ROOT}/profile/prompts/agents/resume-update.md` — writes `08-resume-update.md`
 
 **Inline rule:** inline only what exists *nowhere on disk* — conversation-derived context the user added at the checkpoint (e.g. "lives in <city>", a mode override). Everything already written to a file — the parsed JD, prior-wave artifacts, and static profile files alike — is passed as a **path**; the agent Reads it itself. Inlining a file the agent could open is double work: it burns orchestrator context on every dispatch and buys nothing.
 
-For **cover-letter**:
+For **cover-letter** (mode `engine`):
 - Inline: any conversation-derived context the user added at the checkpoint
 - Read-yourself run-artifact paths: `<run-folder>/00-jd-parsed.json`, `<run-folder>/04-positioning.md`
 - Read-yourself paths to give the agent: `${PROFILE_DIR}/skills-experience.md`, `${PROFILE_DIR}/voice-profile.md`, `${CLAUDE_PLUGIN_ROOT}/profile/prompts/shared/humanizer-rules.md`, `${CLAUDE_PLUGIN_ROOT}/profile/prompts/shared/anti-ai-detection.md`, `${CLAUDE_PLUGIN_ROOT}/profile/prompts/shared/format-rules.md`
+
+For **letter-prompt** (mode `prompt`):
+- Inline: any conversation-derived context the user added at the checkpoint
+- Read-yourself run-artifact paths: `<run-folder>/00-jd-parsed.json`, `<run-folder>/04-positioning.md`, and `<run-folder>/03-company-research.md` **if the tier produced one**
+- Read-yourself paths to give the agent: `${PROFILE_DIR}/skills-experience.md`, `${PROFILE_DIR}/voice-profile.md`, `${CLAUDE_PLUGIN_ROOT}/profile/prompts/shared/humanizer-rules.md`, `${CLAUDE_PLUGIN_ROOT}/profile/prompts/shared/anti-ai-detection.md`
+- It also runs `context-pack.sh` itself to select the exemplar — pass it the run folder, not example contents
 
 For **outreach**:
 - Inline: the `$SOURCE` tag, any user-added context

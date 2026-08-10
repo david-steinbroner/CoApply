@@ -124,16 +124,26 @@ Show the user this compact summary, then wait for instruction:
 — Cost to finish: ~<estimate> on the <$TIER> tier (<billing label>)
 — Tier: <$TIER>  — change permanently with /coapply:tier, or pick another just for this run below
 
-Worth applying?  (yes / abort / redirect: ... — or run a different tier: full / standard / lite)
+Worth applying?  (yes / abort / redirect: ... — or run a different tier: full / standard / lite,
+                  or switch the letter: engine / prompt)
 ```
 
 **Tier → what runs** (active tier = the user's `$TIER`, or whatever they pick at this gate):
 
 | Tier | Wave A2 (strategy) | Phase B (content) |
 |---|---|---|
-| **lite** | positioning | cover-letter |
-| **standard** | positioning + company-research | cover-letter, outreach, resume-update, interview-prep, followup-plan |
-| **full** | company-research + positioning + work-sample-suggester | cover-letter, outreach, resume-update, interview-prep, followup-plan, application-questions (if present) |
+| **lite** | positioning | the letter slot |
+| **standard** | positioning + company-research | the letter slot, outreach, resume-update, interview-prep, followup-plan |
+| **full** | company-research + positioning + work-sample-suggester | the letter slot, outreach, resume-update, interview-prep, followup-plan, application-questions (if present) |
+
+**The letter slot → `$LETTER_MODE`.** Tier decides how many agents run; the mode decides which agent fills the single letter slot. They are independent, so every tier works in either mode.
+
+| Mode | Agent | Writes | What the user gets |
+|---|---|---|---|
+| **`engine`** (default) | `cover-letter.md` | `06-cover-letter.md` | a finished letter, linted here |
+| **`prompt`** | `letter-prompt.md` | `06-letter-prompt.md` | a paste-ready briefing for the model of their choice |
+
+Resolve it as: whatever the user picks at this gate, else `letterMode` in `coapply.config.json`, else `engine`. Record the resolved value in `_run.json.letterMode`, and record the agent that did **not** run as `skipped` with `note: "letterMode"` — so the trust receipt credits only the one that ran.
 
 **Model map (tier × agent class → model).** Tier controls not just *which* agents run but *which model* each runs on. Every agent belongs to one class; when you dispatch it, set the Task tool's **`model` parameter** to the value below for the active tier. The model is a **parameter of the Task call itself**, not text in the agent's prompt. The phase-dispatch files tag each agent with its class in brackets (e.g. `[voice]`).
 
@@ -141,9 +151,9 @@ Worth applying?  (yes / abort / redirect: ... — or run a different tier: full 
 |---|---|---|---|---|
 | **mechanical** — structured extraction/lookup; voice irrelevant | jd-parser, dedup-check | `haiku` | `haiku` | `haiku` |
 | **reasoning** — analysis, research, strategy | role-analysis, fit-score, positioning, company-research, prototype-suggester, followup-plan | `haiku` | `sonnet` | `sonnet` |
-| **voice** — writes text published as the user | cover-letter, outreach, resume-update, interview-prep, application-questions | `sonnet` | `sonnet` | `opus` |
+| **voice** — writes text published as the user | cover-letter, letter-prompt, outreach, resume-update, interview-prep, application-questions | `sonnet` | `sonnet` | `opus` |
 
-Rationale baked in: mechanical agents stay on `haiku` even on `full` (paying a premium model to parse a JD into JSON is waste), and the cover letter never drops below `sonnet`, even on `lite` (it's the core deliverable — `lite`'s savings come from running *fewer* agents, not a cheaper letter). If an agent is ever unlisted, omit the `model` param so it inherits the session model.
+Rationale baked in: mechanical agents stay on `haiku` even on `full` (paying a premium model to parse a JD into JSON is waste), and whichever agent fills the letter slot never drops below `sonnet`, even on `lite` (it's the core deliverable — `lite`'s savings come from running *fewer* agents, not a cheaper letter). If an agent is ever unlisted, omit the `model` param so it inherits the session model.
 
 If the user says **abort** → set `_run.json.phase = "aborted"`, record a one-line `abortReason` AND a structured `abortCategory`, stop. Wave A2 never runs — this is where the gate saves the expensive agents. (Root run-state is `phase`; `status` is only for `artifacts[]`.)
 
@@ -180,7 +190,13 @@ Run only the content agents the **active tier** lists (Step 3 tier table):
 
 ## Step 7 — Voice lint safety net
 
-Each user-facing agent (cover-letter, outreach, application-questions) self-lints. This is the safety net. Run ONE **case-insensitive** bash call (`grep -niE`) over only the user-facing files the active tier actually produced (always `06-cover-letter.md`; `07-outreach.md` and `09-application-questions.md` only if they exist) for:
+Each user-facing agent self-lints. This is the safety net.
+
+**On `letterMode: engine`**, the letter has already been through the full §1a gate — `cover-letter.md` runs `check-letter.sh` on its own output, which derives the banned list, the word range and the user's claim ceilings from their own files. Don't duplicate it here; just carry its reported result into Step 9 if it was INCOMPLETE or couldn't run.
+
+**On `letterMode: prompt`**, no letter exists yet, so there is nothing to lint at this step. `06-letter-prompt.md` is a briefing, not published text — do not run the banned-phrase grep against it. Its instructions legitimately *name* banned phrases in order to forbid them, so linting it would flag the prohibition as the violation. The letter gets its gate at paste-back (Step 9).
+
+Then run ONE **case-insensitive** bash call (`grep -niE`) over the remaining user-facing files the active tier actually produced (`07-outreach.md` and `09-application-questions.md`, only if they exist) for:
 - The banned-phrase list (`passionate|I thrive|I excel|resonates|aligns closely|opportunity to discuss|I would welcome|I look forward|Spearheaded|Leveraged|Orchestrated|Facilitated|Championed|Streamlined|Furthermore|Additionally|Moreover|This demonstrates|This experience shows|proven track record|results-driven|synergy|intersection of`)
 - Em-dashes (`—`)
 
@@ -193,7 +209,7 @@ Update all artifact statuses to `done` / `skipped` / `failed`. Add `completedAt`
 Then **watermark the generated user-facing artifacts** so CoApply can recognize its own output later (this powers the "don't feed the tool its own writing back as an example" guard). Append a trailing comment to each produced markdown artifact if it isn't already tagged — it's an HTML comment, invisible in rendered markdown:
 
 ```bash
-for f in 06-cover-letter.md 07-outreach.md 09-application-questions.md; do
+for f in 06-cover-letter.md 06-letter-prompt.md 07-outreach.md 09-application-questions.md; do
   p="<run-folder>/$f"
   [ -f "$p" ] && ! grep -q 'coapply:generated' "$p" && printf '\n<!-- coapply:generated v0.2.0 run=%s -->\n' "$RUN_ID" >> "$p"
 done
@@ -214,7 +230,8 @@ Applied package ready at: <absolute run folder path>
 
 <paste the render-receipt.sh output here, verbatim>
 
-Cover letter: 06-cover-letter.md
+<Cover letter: 06-cover-letter.md            (letterMode: engine)>
+<Letter prompt: 06-letter-prompt.md — paste into the model of your choice   (letterMode: prompt)>
 <Outreach: 07-outreach.md — LinkedIn search URL + message   (only if produced)>
 <Resume guidance: 08-resume-update.md   (only if produced)>
 <Interview prep: 10-interview-prep.md   (only if produced)>
@@ -222,6 +239,15 @@ Cover letter: 06-cover-letter.md
 
 Open files? (all / main / folder / no)
 <Log to a tracker? (yes / no)   — only if the user connected an optional tracker (Step 10)>
+
+**On `letterMode: prompt`, add the paste-back line.** The compensating control for not writing the letter here is that the letter still gets gated — just later, on the way back in. Tell the user plainly:
+
+```
+When your letter comes back, save it into the run folder and check it:
+  bash "${CLAUDE_PLUGIN_ROOT}/scripts/check-letter.sh" "<run-folder>/<your-letter>.md" --profile "${PROFILE_DIR}"
+```
+
+Resolve both paths to real absolute paths before printing — never print a literal `${...}` to the user. If they paste the letter into the chat instead of saving it, write it to the run folder yourself first (ask for a filename, default `06-cover-letter.md`), then run the check on it and report the result. Exit 3 is reported, not treated as a pass and not treated as a failure — same handling as everywhere else.
 
 Next: review 06-cover-letter.md, make it yours, and submit it yourself — then /coapply:start your next role (or /coapply:list to see all your runs).
 ```
