@@ -46,9 +46,11 @@ for s in start resume list help setup tier add feedback discover hub; do
 done
 [ -d commands ] && { note "FAIL: commands/ exists — entry points must be skills (\${CLAUDE_PLUGIN_ROOT} doesn't resolve in commands)."; fail=1; }
 grep -q '"name": "coapply"' .claude-plugin/plugin.json || { note "FAIL: plugin name is not 'coapply'."; fail=1; }
-# Count the employee-mode agents (expect 13).
+# Count the employee-mode agents. The real invariant is cross-checked in §14: every
+# agent file must have a tagged dispatch. A bare count here would just be a magic
+# number to bump, so record it for §14 to compare against.
 agents=$(ls profile/prompts/agents/*.md 2>/dev/null | wc -l | tr -d ' ')
-[ "$agents" = "13" ] || note "WARN: expected 13 agents, found $agents."
+[ "$agents" -gt 0 ] 2>/dev/null || { note "FAIL: no agent instruction files found under profile/prompts/agents/."; fail=1; }
 [ "$fail" = 0 ] && note "structure OK."
 
 section "5. resolve-profile-dir.sh works without python3/jq (POSIX fallback)"
@@ -89,6 +91,27 @@ case "$_rr_ok" in *"2 of your own writing rules"*) note "clean — counts rules 
 printf '# Rules\n- Real rule one.\n- Real rule two.\n\n```\n- not a rule\n- also not\n```\n' > "$_rr_p/playbooks/cover-letter.md"
 _rr_fence=$(bash scripts/render-receipt.sh "$_rr_p" "$_rr_r" 2>/dev/null)
 case "$_rr_fence" in *"2 of your own writing rules"*) note "clean — fenced '- ' lines are not counted as rules." ;; *) note "FAIL: fenced lines miscounted: [$_rr_fence]"; fail=1 ;; esac
+# The receipt must credit only artifacts that actually completed. Crediting a
+# skipped/failed agent's playbook is the receipt reporting a PLAN as a FACT — the
+# one failure this file cannot have. Regression guard for 0.15.1.
+printf -- '- Letter rule one.\n- Letter rule two.\n' > "$_rr_p/playbooks/cover-letter.md"
+printf -- '- Position rule one.\n- Position rule two.\n- Position rule three.\n' > "$_rr_p/playbooks/positioning.md"
+printf '{"tier":"full","artifacts":[{"name":"positioning","status":"done","path":"a"},{"name":"cover-letter","status":"skipped","path":"b"}]}\n' > "$_rr_r/_run.json"
+_rr_skip=$(bash scripts/render-receipt.sh "$_rr_p" "$_rr_r" 2>/dev/null)
+case "$_rr_skip" in
+  *"3 of your own writing rules"*) note "clean — a skipped artifact's playbook is not credited (3, not 5)." ;;
+  *"5 of your own writing rules"*) note "FAIL: receipt credited a SKIPPED artifact's playbook — it is reporting the tier plan, not the run record."; fail=1 ;;
+  *) note "FAIL: unexpected receipt with a skipped artifact: [$_rr_skip]"; fail=1 ;;
+esac
+# Same matcher must survive pretty-printed JSON. Splitting on `{` without stripping
+# newlines first matches nothing and silently falls back to the tier table — which
+# looks like a pass on the compact fixture above and fails on every real run file.
+printf '{\n  "tier": "full",\n  "artifacts": [\n    {\n      "name": "positioning",\n      "status": "done"\n    },\n    {\n      "name": "cover-letter",\n      "status": "skipped"\n    }\n  ]\n}\n' > "$_rr_r/_run.json"
+_rr_pretty=$(bash scripts/render-receipt.sh "$_rr_p" "$_rr_r" 2>/dev/null)
+case "$_rr_pretty" in
+  *"3 of your own writing rules"*) note "clean — artifact matcher handles pretty-printed _run.json too." ;;
+  *) note "FAIL: pretty-printed _run.json was not parsed (fell back to the tier table): [$_rr_pretty]"; fail=1 ;;
+esac
 rm -rf "$_rr_p" "$_rr_r"
 
 section "7. context-pack.sh — JD-ranked, byte-capped, logs its selection"
@@ -266,11 +289,26 @@ _untagged=$(grep -nE 'instructed by `\$\{CLAUDE_PLUGIN_ROOT\}/profile/prompts/ag
   profile/prompts/phases/phase-research.md profile/prompts/phases/phase-content.md 2>/dev/null \
   | grep -vE '\[(mechanical|reasoning|voice)\]')
 if [ -z "$_untagged" ]; then note "clean — every agent dispatch line carries a [class] tag."; else echo "$_untagged"; note "FAIL: an agent dispatch line has no [mechanical|reasoning|voice] class tag — it would silently inherit the session model."; fail=1; fi
-# Sanity: count tagged dispatches (expect 13 across the two phase files).
+# Every agent file must have a tagged dispatch. Cross-checking the two counts beats
+# a hardcoded number: adding a properly-wired agent passes without editing the audit,
+# while adding an agent file nobody dispatches (or deleting one still dispatched)
+# fails. That drift is exactly what a magic number lets through — it was WARN-only,
+# so it never failed a build regardless.
 _tagged=$(grep -hE 'instructed by `\$\{CLAUDE_PLUGIN_ROOT\}/profile/prompts/agents/[a-z-]+\.md' \
   profile/prompts/phases/phase-research.md profile/prompts/phases/phase-content.md 2>/dev/null \
   | grep -cE '\[(mechanical|reasoning|voice)\]')
-[ "${_tagged:-0}" = "13" ] && note "clean — 13 agent dispatches tagged." || note "WARN: expected 13 tagged dispatches, found ${_tagged:-0}."
+if [ "${_tagged:-0}" = "${agents:-0}" ]; then
+  note "clean — ${agents} agent files, ${_tagged} tagged dispatches (counts agree)."
+else
+  _disp_names=$(grep -hoE 'profile/prompts/agents/[a-z-]+\.md' \
+    profile/prompts/phases/phase-research.md profile/prompts/phases/phase-content.md 2>/dev/null \
+    | sed 's|.*/||' | sort -u)
+  _file_names=$(ls profile/prompts/agents/*.md 2>/dev/null | sed 's|.*/||' | sort -u)
+  note "FAIL: ${agents} agent file(s) but ${_tagged} tagged dispatch(es) — an agent is unwired or a dispatch is untagged."
+  printf '%s\n' "$(comm -23 <(printf '%s\n' "$_file_names") <(printf '%s\n' "$_disp_names") | sed 's/^/        file with no dispatch: /')"
+  printf '%s\n' "$(comm -13 <(printf '%s\n' "$_file_names") <(printf '%s\n' "$_disp_names") | sed 's/^/        dispatch with no file: /')"
+  fail=1
+fi
 
 section "15. Discovery — 3-point network boundary + vendor/company + fingerprint guards"
 # The whole discovery path must stay on the durable side of the line: public ATS JSON
@@ -572,6 +610,37 @@ bash scripts/check-letter.sh "$_cl_t/nope.md" --profile "$_cl_p" >/dev/null 2>&1
 rm -rf "$_cl_t"
 
 # A human-judgment gate the script CAN'T verify. Printed every run so it can't be skipped.
+section "19. Shipped decisions that nothing guarded — gate, watermark, docx, run-tier"
+# Everything here was decided, shipped, and then protected by nothing. Each line is a
+# decision that could silently reverse in a later edit with no test noticing.
+_ma=profile/prompts/master-apply.md
+# (a) The four non-negotiable invariants must stay stated where the orchestrator reads
+#     them. PRINCIPLES.md holding them is not enough — the orchestrator must carry them.
+for _inv in 'human gate' 'never fabricate' 'never auto-submit'; do
+  grep -qi "$_inv" "$_ma" || { note "FAIL: master-apply.md no longer states the invariant '$_inv'."; fail=1; }
+done
+# (b) The gate is a hard stop, and the expensive wave stays behind it.
+grep -qi 'MANDATORY GATE' "$_ma" || { note "FAIL: the mandatory gate heading is gone from master-apply.md."; fail=1; }
+grep -qi 'do NOT run Wave A2 yet' "$_ma" || { note "FAIL: the expensive wave is no longer explicitly held behind the gate."; fail=1; }
+# (c) The tier chosen AT the gate must be recorded to the run record. render-receipt.sh
+#     reads that record (§6); if the orchestrator stops writing it, the receipt silently
+#     reverts to reporting a stale standing tier and nothing else would catch it.
+grep -qiE '_run\.json\.tier|Record it in .*tier' "$_ma" \
+  || { note "FAIL: master-apply.md no longer records the gate-time tier to _run.json — the receipt would go stale silently."; fail=1; }
+# (d) .docx generation was removed (0.12.0) and the import path refuses to parse it
+#     (onboarding spec: paste / PDF / text only, no-deps). Both directions must hold.
+# (audit.sh is excluded: it is the auditor, and its own pattern string would match.)
+_docx_gen=$(grep -rniE '(write|generate|create|produce|export|convert).{0,24}\.docx' skills/ profile/prompts/ scripts/ 2>/dev/null \
+  | grep -v '^scripts/audit\.sh:')
+[ -z "$_docx_gen" ] || { note "FAIL: something instructs generating a .docx — it was removed in 0.12.0 (no-deps)."; printf '%s\n' "$_docx_gen"; fail=1; }
+grep -qi 'docx' profile/prompts/onboarding/import-resume.md \
+  || { note "FAIL: the resume import no longer tells the user it can't read Word files — it will try and silently corrupt."; fail=1; }
+# (e) The generated-content watermark: written on the way out, checked on the way in.
+#     This is what stops the tool from learning its own voice back as a user example.
+grep -q 'coapply:generated' "$_ma" || { note "FAIL: master-apply.md no longer watermarks generated artifacts."; fail=1; }
+grep -q 'coapply:generated' skills/add/SKILL.md || { note "FAIL: /coapply:add no longer screens for CoApply's own output."; fail=1; }
+[ "$fail" = 0 ] && note "clean — gate, invariants, run-tier record, docx removal, and watermark all intact."
+
 section "Manual gate — confirm before you ship (not automatable)"
 note "[ ] Dogfooded every new/changed skill on a REALISTIC input — including a vague one — and read the output."
 note "[ ] Premise check on anything user-facing (CoApply never fabricates, never acts for the user):"

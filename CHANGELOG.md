@@ -2,6 +2,35 @@
 
 All notable changes to CoApply. Versioned on the `plugin.json` version line.
 
+## [0.15.2] — 2026-08-10 — the audit starts guarding the decisions it had been ignoring
+
+Three shipped decisions were protected by nothing, and one long-standing check could never fail.
+
+**The agent-count assert was WARN-only.** It printed "expected 13, found N" and exited clean, in both
+places it appeared — so an agent file added without a dispatch, or a dispatch pointing at a file that
+no longer exists, passed the build. Worse, the number was hardcoded twice, which makes it a chore to
+bump rather than an invariant. It now cross-checks the two counts against each other: a properly-wired
+new agent passes with no audit edit, and drift fails and **names the offending file** in the output.
+
+**New §19 covers what nothing covered.** The orchestrator must still state the human-gate,
+no-fabrication and never-auto-submit invariants; the mandatory gate heading and the explicit hold on
+the expensive wave must both survive; `.docx` generation (removed 0.12.0, no-deps) must not creep
+back, while the import path must keep telling users it can't read Word files rather than trying and
+silently corrupting; and the generated-content watermark must stay written on the way out and screened
+on the way in, which is what stops the tool from learning its own voice back as a user example.
+
+§19 also asserts the orchestrator still records the **gate-time tier** to `_run.json`. That one is a
+pairing: 0.15.1 made the trust receipt read the run record, so if the orchestrator ever stops writing
+it, the receipt silently reverts to reporting a stale standing tier with nothing to catch it.
+
+**§6 gains the 0.15.1 regression guard** — a run with a skipped artifact must not credit that
+artifact's playbook (3 rules, not 5), asserted against both compact and pretty-printed run records.
+The pretty-printed case is the one that matters: the first cut of that parser matched nothing on
+multi-line JSON and fell back silently, which a compact-only fixture would have called green.
+
+Every new assert was negative-tested — the gate heading, the watermark, the tier record and the agent
+count were each broken on purpose and confirmed to fail the build.
+
 ## [0.15.1] — 2026-08-10 — the trust receipt reports what ran, not what was planned
 
 `render-receipt.sh` decided which playbooks shaped a run by reading the tier out of the **standing**
