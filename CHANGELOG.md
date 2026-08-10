@@ -2,6 +2,34 @@
 
 All notable changes to CoApply. Versioned on the `plugin.json` version line.
 
+## [0.15.1] — 2026-08-10 — the trust receipt reports what ran, not what was planned
+
+`render-receipt.sh` decided which playbooks shaped a run by reading the tier out of the **standing**
+`coapply.config.json` and expanding it through the tier table. Two things were wrong with that, and
+the second is the serious one.
+
+The tier in the standing config is not necessarily this run's tier - the user can switch at the gate,
+and that switch was invisible here. But even the correct tier only describes what a run was *supposed*
+to produce. Artifacts get skipped and they fail, and the receipt credited their playbooks anyway.
+
+Measured on a real run whose `cover-letter` artifact is `skipped`: the receipt claimed **27** of the
+user's writing rules shaped the application. Ten of those came from the cover-letter playbook, for a
+cover letter that was never written. It now reports **17**.
+
+A receipt that reports intent as fact is the one bug this file cannot have. Its entire job is
+answering "did it actually use my stuff?", and it was answering from a plan rather than a record.
+Ground truth is now `_run.json.artifacts[]`, filtered to `done`.
+
+The tier table survives as a fallback for when there's no run record to read, and it now prefers the
+run's own recorded tier over the standing config. A run record that exists but lists nothing completed
+also falls back, rather than rendering an empty receipt.
+
+Parsing stays dependency-free - no `jq`, no `python3` in the fail-closed trust path. Newlines are
+stripped before splitting on `{`, so the same matcher handles pretty-printed and compact JSON; the
+first cut split on `{` alone, which left a pretty-printed object's keys on separate lines and silently
+matched nothing, falling back on every real run. Only objects carrying both a `name` and a `status`
+count, so a stray status elsewhere in the file can't be mistaken for an artifact.
+
 ## [0.15.0] — 2026-08-10 — the letter agent gets a ceiling, and counts its own words
 
 Spec §3 listed two live bugs in the in-engine cover-letter agent. Both are now closed at the source

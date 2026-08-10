@@ -30,19 +30,64 @@ _unavailable() {
 PB_DIR="$PROFILE_DIR/playbooks"
 EX_DIR="$PROFILE_DIR/examples"
 
-# --- tier -> which roles produced output this run -------------------------------
-# Mirrors master-apply.md's tier table. general.md always applies.
-TIER="standard"
-CFG="$PROFILE_DIR/coapply.config.json"
-if [ -f "$CFG" ]; then
-  t="$(grep -o '"tier"[[:space:]]*:[[:space:]]*"[^"]*"' "$CFG" 2>/dev/null | head -1 | sed 's/.*:[[:space:]]*"//; s/"$//')"
-  case "$t" in lite|standard|full) TIER="$t" ;; esac
+# --- which roles actually produced output this run ------------------------------
+# Ground truth is `_run.json.artifacts[]`, NOT the tier table and NOT the standing
+# config. Two reasons, both of which produced a wrong receipt before:
+#
+#   1. The standing `coapply.config.json` tier is not necessarily THIS run's tier -
+#      the user can switch tier at the gate, and that switch was invisible here.
+#   2. Even the right tier only says what a run was *supposed* to produce. An agent
+#      that was skipped or failed still had its playbook counted, so the receipt
+#      claimed rules shaped an artifact that was never written. On a real run with
+#      `cover-letter: skipped`, the receipt credited the cover-letter playbook.
+#
+# A receipt that reports intent as if it were fact is the one bug this file cannot
+# have - its entire job is answering "did it actually use my stuff?" So: read the
+# artifacts, keep the ones that are `done`, and fall back to the tier table only
+# when there is no run record to read.
+RUN_JSON="$RUN_DIR/_run.json"
+
+# Extract `name`/`status` pairs without a JSON parser (no jq/python dependency in
+# the fail-closed trust path). Strip newlines FIRST, then put every object on its
+# own line - so this works on pretty-printed AND compact JSON alike. (Splitting on
+# `{` alone leaves a pretty-printed object's keys on separate lines, so no line
+# carries both keys and every artifact is silently dropped.) Only objects carrying
+# both keys count; an object with a status but no name is not an artifact.
+_run_artifacts_done() {
+  tr -d '\n\r' < "$RUN_JSON" 2>/dev/null | tr '{' '\n' | awk '
+    /"name"[[:space:]]*:/ && /"status"[[:space:]]*:/ {
+      n = ""; s = ""
+      if (match($0, /"name"[[:space:]]*:[[:space:]]*"[^"]*"/)) {
+        n = substr($0, RSTART, RLENGTH); sub(/.*:[[:space:]]*"/, "", n); sub(/"$/, "", n)
+      }
+      if (match($0, /"status"[[:space:]]*:[[:space:]]*"[^"]*"/)) {
+        s = substr($0, RSTART, RLENGTH); sub(/.*:[[:space:]]*"/, "", s); sub(/"$/, "", s)
+      }
+      if (n != "" && s == "done") print n
+    }'
+}
+
+ROLES=""
+if [ -f "$RUN_JSON" ]; then
+  ROLES="$(_run_artifacts_done | tr '\n' ' ')"
 fi
-case "$TIER" in
-  lite)     ROLES="positioning cover-letter" ;;
-  standard) ROLES="positioning cover-letter outreach resume-update interview-prep" ;;
-  full)     ROLES="positioning cover-letter outreach resume-update interview-prep application-questions" ;;
-esac
+
+# Fall back to the tier table only when the run record is missing or carried no
+# completed artifacts. Prefer this run's own recorded tier over the standing config.
+if [ -z "${ROLES// /}" ]; then
+  TIER="standard"
+  for src in "$RUN_JSON" "$PROFILE_DIR/coapply.config.json"; do
+    [ -f "$src" ] || continue
+    t="$(grep -o '"tier"[[:space:]]*:[[:space:]]*"[^"]*"' "$src" 2>/dev/null | head -1 | sed 's/.*:[[:space:]]*"//; s/"$//')"
+    case "$t" in lite|standard|full) TIER="$t"; break ;; esac
+  done
+  case "$TIER" in
+    lite)     ROLES="positioning cover-letter" ;;
+    standard) ROLES="positioning cover-letter outreach resume-update interview-prep" ;;
+    full)     ROLES="positioning cover-letter outreach resume-update interview-prep application-questions" ;;
+  esac
+fi
+
 # general.md applies to every run.
 ROLES="$ROLES general"
 
