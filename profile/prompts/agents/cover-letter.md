@@ -70,9 +70,28 @@ Apply the voice-profile.md and humanizer-rules.md inputs EXACTLY. Contractions a
 
 Apply the anti-ai-detection.md input EXACTLY. Never use: "proven track record," "results-driven," "synergy," "passionate," "I thrive," "I excel," "I would welcome the opportunity." Never open with "I am writing to express."
 
+## Claim ceilings (MANDATORY — do this while selecting facts, before you draft)
+
+The user's profile carries **constraint blocks**: lines that cap what may be claimed about a given fact. They exist because the user knows where their own ownership ended, and a letter that claims past that line is a fabrication in the one place this tool promises none.
+
+**Finding them is not a fixed-string search.** They appear in many shapes — headers that call themselves a caveat of some type, honesty guards, and bare negative rules ("never claim…", "don't lead with…", "do not assert…"). Collect them by meaning, not by matching one header. Look in `skills-experience.md` first, and in `identity.md`, `facts.md`, and `positioning-modes.md` if they exist.
+
+**Resolve them at fact-selection time, not after drafting.** For every fact you intend to put in the letter, ask whether a constraint block governs it. If one does, write the ceiling to yourself in one plain sentence before you draft — what you may say, and the words you may not use — then draft at or below it.
+
+The order matters and is not a stylistic preference. An agent that read every constraint block in a profile and drafted first still wrote a claim above what that profile allowed; the same constraint, stated as an explicit ceiling in one sentence before drafting, held. **Inference from a whole-profile read is not a control. A stated ceiling is.**
+
+Two failure modes to avoid:
+- **Ceiling stated too broadly.** Banning a whole subject the profile explicitly permits is worse than no ceiling — it strips true, load-bearing material out of the letter. Cap the *claim*, not the noun.
+- **Silent drop.** If a constraint makes your strongest proof point unusable, pick a different proof point. Never quietly write the claim anyway, and never water a fact down into something vague enough to be meaningless.
+
+State the outcome in your confirmation: how many constraint blocks governed the facts you used, and any that changed what you wrote.
+
 ## Validation (MANDATORY before writing the file)
 
-You MUST run all five checks before writing the output file. If any check fails, rewrite and re-check. Do NOT write the file with a known violation — the orchestrator's post-write lint is a safety net, not the primary check.
+You MUST run all checks below before writing the output file. If any check fails, rewrite and re-check. Do NOT write the file with a known violation — the orchestrator's post-write lint is a safety net, not the primary check.
+
+- **Word count:** count the words in your draft and confirm the number is inside the stated range. Do not estimate it. A draft that reads "about right" has measurably run over. If it's over, cut — don't renegotiate the range.
+- **Ceiling check:** re-read the ceilings you wrote above against your finished draft, claim by claim. This is the one check where an overclaim reads as *stronger* writing, so it will not feel like an error.
 
 - **Specificity test:** could this opening be sent to 100 different companies? If yes, rewrite.
 - **Company references:** name at least 2 specific things about the company, drawn from the JD or `03-company-research.md` (if it ran). If you lack enough real company facts (e.g. a lite run with no research), write a sharper role/JD-grounded opening instead — never invent company specifics.
@@ -88,8 +107,27 @@ State your self-lint result in your confirmation message: "self-lint: clean" or 
 - Follow format rules from shared/format-rules.md (no ## headers in the output — but markdown emphasis is fine if genuinely needed).
 - Plain markdown. Paragraphs separated by blank lines.
 
+## Machine check (run this after you write the file)
+
+Your self-lint is judgment; this is measurement. Run it on your own output:
+
+```bash
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/check-letter.sh" "<run-folder>/06-cover-letter.md" --profile "${PROFILE_DIR}"
+```
+
+It re-derives the banned phrases, the word range, and any declared claim ceilings from the engine's shared rules and the user's own profile, then checks your letter against them. Act on the exit code:
+
+- **0** — clean. Confirm and finish.
+- **1** — a gate was violated. Rewrite the offending lines and run it again. Do not hand back a letter that exits 1.
+- **3** — nothing was violated, but the user's profile has constraint blocks with no declared ceiling, so that gate could not be evaluated. **This is not a failure and must not block the letter.** Your own ceiling work above still stands. Report it, and tell the user they can make this gate real by running `check-letter.sh --init-ceilings` and saving the result as `.letter-ceilings` in their profile folder. Never write that file for them — stating a ceiling is theirs to do.
+- **2** — the check couldn't run (bad path, unreadable file). Say so plainly in your confirmation. Never report an unrun check as a pass.
+
+If the script is missing entirely, say that too and move on. A missing net is worth reporting; it isn't worth failing the run.
+
 ## Confirmation
 
 ```
 wrote 06-cover-letter.md — <word count> words, angle: <first 15 words of opening>
+ceilings: <n> constraint block(s) governed the facts used<, and what changed if any>
+check-letter: <clean | INCOMPLETE, n caveat(s) undeclared | not run: reason>
 ```

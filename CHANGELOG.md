@@ -2,6 +2,44 @@
 
 All notable changes to CoApply. Versioned on the `plugin.json` version line.
 
+## [0.15.0] — 2026-08-10 — the letter agent gets a ceiling, and counts its own words
+
+Spec §3 listed two live bugs in the in-engine cover-letter agent. Both are now closed at the source
+rather than caught downstream.
+
+**The overclaim.** The agent read the user's constraint blocks and drafted from them by inference,
+which is not a control. Measured: an agent that read *every* caveat in a profile still wrote a claim
+above what that profile allowed, while the same constraint stated as an explicit one-sentence ceiling
+held. So the agent now resolves ceilings **at fact-selection time, before drafting** - for each fact
+it intends to use, it finds the block that governs it and writes the ceiling down first. Ordering is
+the fix; a rule list appended to a draft is what failed.
+
+The instruction names the two ways this goes wrong, because both are tempting: a ceiling stated so
+broadly it bans a subject the profile explicitly permits (worse than no ceiling - it strips true
+material out), and the silent drop, where a constrained fact gets watered into something vague
+instead of swapped for a different proof point.
+
+Finding the blocks stays semantic, not a fixed-string grep - the agent is told they appear as typed
+caveat variants, honesty guards, and bare negative rules, and to collect them by meaning. This is the
+one part of the caveat trap an LLM handles better than `check-letter.sh`'s matcher.
+
+**The word count.** `letter-claude-baseline.md` ran 412 words against the agent's own stated 250-400.
+The range was a structure parameter with nothing verifying it, and an over-length draft reads fine.
+It is now a counted validation step: count, don't estimate, and cut rather than renegotiate.
+
+**And the agent now checks its own work.** After writing, it runs `scripts/check-letter.sh` on its own
+output and acts on the exit code - rewrite on 1, report honestly on 2. Exit **3 (INCOMPLETE)** is
+handled deliberately: undeclared ceilings mean the gate could not be evaluated, which is reported and
+pointed at `--init-ceilings`, but **never blocks the letter and is never reported as a pass**. The
+agent is explicitly forbidden from writing the user's ceilings file for them - stating a ceiling is
+the user's call, which is the same line `check-letter.sh` holds.
+
+Confirmation output now carries the ceiling count and the check result, so a run that skipped the
+machine gate says so instead of looking clean.
+
+Scope note: `master-apply.md` Step 7's inline lint is unchanged and still nets `07-outreach.md` and
+`09-application-questions.md`. Folding it into the full §1a gate ships with the paste-back move.
+
 ## [0.14.0] — 2026-08-10 — `check-letter.sh`: the letter bar becomes a test
 
 `docs/features/letter-handoff/spec.md` §1a defines the mechanical bar every cover letter must
