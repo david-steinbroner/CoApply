@@ -1,5 +1,9 @@
 # Changelog
 
+## Documentation preparation (2026-09-23)
+
+Simplified the public README around role fit, application help, setup, and human review. Preserved command, privacy, contribution, and license links. Prepared locally on `docs/public-profile-copy`; no engine or version change; publication approved on 2026-09-23.
+
 All notable changes to CoApply. Versioned on the `plugin.json` version line.
 
 ## [0.16.1] — 2026-08-10 — provenance closes, and pasted text stops going through a shell

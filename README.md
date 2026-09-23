@@ -1,304 +1,64 @@
 # CoApply
 
-**Your partner for the jobs you actually want. It drafts, you decide, you send — never an auto-bot.**
+Put more care into the jobs you actually want.
 
-You give CoApply a job description. It researches the company, scores how well you fit, **pauses to let you decide whether the role is worth it**, and then writes a cover letter, tailors your resume, drafts an outreach email, and preps you for the interview — all in your own voice, grounded in your real experience.
+CoApply helps you decide whether a role is worth pursuing, then prepare an application based on your own experience. Give it a job posting and your background. It researches the role, explains the fit, and waits for your decision before drafting.
 
-The "co-" is the whole point. CoApply works *with* you, not *for* you: it doesn't mass-submit, it doesn't scrape job sites, and it never applies on your behalf. You bring your story, you make the call on each job, and you hit submit yourself. CoApply just makes the application *genuinely good*.
+You review the work and send it yourself. CoApply does not submit applications for you.
 
----
+## What it helps with
 
-## What you need first
+- Understanding a role and how it fits your experience.
+- Drafting a cover letter and tailoring your resume.
+- Preparing outreach and interview notes.
+- Keeping application materials together so you can return to them later.
 
-CoApply runs inside **Claude Code** — a tool from Anthropic that lets Claude work on your computer. If you don't have it yet:
+The amount of research and writing depends on the budget tier you choose. You can change it with `/coapply:tier`.
 
-1. Go to **[claude.com/claude-code](https://claude.com/claude-code)** and follow the install steps for your computer (Mac, Windows, or Linux).
-2. You'll sign in with a Claude account. (Using Claude Code requires a paid Claude plan or API credits — that's Anthropic's cost, not ours.)
+## Get started
 
-That's the only prerequisite. **You don't need to touch GitHub or write code** — though you should be comfortable working inside Claude Code (a terminal-based tool). CoApply installs and sets up from there in a few short commands.
+CoApply runs in [Claude Code](https://claude.com/claude-code). You'll need your own Claude Code access; its usage costs and limits still apply.
 
----
+Inside Claude Code, run:
 
-## Install (about 2 minutes)
-
-1. **Open Claude Code.** Open your Terminal app and type:
-   ```
-   claude
-   ```
-   Press Enter. You're now in Claude Code — you'll see a prompt where you can type commands.
-
-2. **Add CoApply's catalog.** Type this and press Enter:
-   ```
-   /plugin marketplace add david-steinbroner/CoApply
-   ```
-   _(This just tells Claude Code where to find CoApply. Think of it like adding a channel — nothing is installed yet.)_
-
-3. **Install it.** Type:
-   ```
-   /plugin install coapply@coapply-marketplace
-   ```
-   Press Enter. Claude Code then walks you through three quick screens:
-   - **Where to install** → choose **Install for you (user scope)** — the default. This makes CoApply available in every folder you work in, not just one project.
-   - **Profile folder** → Claude Code asks for a folder to hold your profile and your applications. **Make a new empty folder first** (e.g. `~/coapply-profile`), then enter its path here. This folder is *yours* — your profile lives in it, every application is saved into it, and updates never touch it.
-   - **Confirmation** → you'll see a line like `Reloaded: 1 plugin…`. **That means it worked.**
-
-> **What just happened?** You didn't download anything manually or touch GitHub directly — Claude Code fetched CoApply for you and saved your profile-folder choice. **Next step:** fill that folder with your details by running `/coapply:setup` (just below).
-
----
-
-## Set up your profile (first time only)
-
-Run **`/coapply:setup`** — it copies the profile templates into your folder, checks how your runs are billed, and helps you pick a budget tier. Then open and fill in `identity.md`, `skills-experience.md`, and at least one file in `resumes/` — that's enough for a first run. Deepen the rest over time; **the more you add, the better CoApply gets.**
-
-Your profile lives on **your** computer and is never uploaded anywhere except to your own Claude.
-
----
-
-## Your first application
-
-In Claude Code, type `/coapply:start` followed by a job posting — a link or pasted text:
-
-```
-/coapply:start https://jobs.example.com/posting/12345
+```text
+/plugin marketplace add david-steinbroner/CoApply
+/plugin install coapply@coapply-marketplace
 ```
 
-or just `/coapply:start` on its own, and it'll ask you to paste the job description.
+Choose user scope if you want it available across projects. Create a separate, empty folder for your profile and application files, then select that folder when prompted.
 
-Here's what happens:
+Run `/coapply:setup` to fill in your background and choose a budget. Start with your identity, work experience, and a resume. Then paste a job link or description after:
 
-1. **CoApply researches and scores the role** against your profile.
-2. **It stops and shows you a fit read** — a score, the reasons, and any red flags. **This is your decision point.** You say *go* or *no-go*. Nothing expensive happens until you say go. (This is the whole point — you don't waste effort on jobs that aren't a fit.)
-3. **On "go," it writes the full package** — cover letter, resume guidance, outreach email, interview prep, follow-up plan — into a folder for that job.
-4. **You review it, make it yours, and submit it.** CoApply never submits for you.
-
-Other commands:
-- `/coapply:discover` — surface roles as a gate; you pick which ones become `/coapply:start` commands (no batch-applying). **Watchlist mode** (default) checks each company on a list **you keep** — their public job board, filtered to your targets. Add companies with `/coapply:discover add <careers or board URL>`. **Auto mode** (`/coapply:discover --auto`) needs **no list**: it turns your target roles into web searches scoped to public ATS boards (Greenhouse / Lever / Ashby), finds companies hiring there, and runs them through the same gate. Auto mode is **broad, not exhaustive** — it surfaces what a web index already has indexed on those **public ATS** boards, and is **strongest for tech/startup roles** (a corpus limitation, not a bias); it's **not** LinkedIn/Indeed and never scrapes them. Its one privacy note: auto mode sends your role/location keywords (not personal data) to a **search provider**, a third party watchlist mode never touches. Public ATS boards only, over plain HTTP — never aggregator scraping or logging into job sites.
-- `/coapply:add` — teach CoApply your preferences in plain words. Drop in a letter you're proud of as a voice example, add a writing rule you keep repeating, or record an everyday fact it should know. It screens what you paste and refuses true secrets (SSNs, passwords, account numbers) rather than storing them.
-- `/coapply:setup` — first-time setup (templates, billing check, budget tier).
-- `/coapply:tier` — change your budget tier (lite / standard / full), and choose how your cover letter gets written (see below).
-- `/coapply:list` — see your recent applications.
-- `/coapply:resume <run>` — pick a run back up if it got interrupted.
-- `/coapply:feedback` — hit a bug or have an idea? Describe it in plain words; CoApply either points you to the issue page to write it yourself, or drafts a ready-to-paste issue from your words — your choice. You review and post it; it never submits for you.
-- `/coapply:help` — a quick orientation.
-
----
-
-## How it works (the short version)
-
-CoApply isn't one big prompt — it's a team of focused specialists working in sequence, with **you as the gate in the middle**:
-
-```
-  You give it a job
-        │
-        ▼
-  ┌─────────────┐      ┌──────────────┐
-  │  Research    │ ───▶ │  Fit score    │
-  │ (company,    │      │  + reasons    │
-  │  the role)   │      └──────┬───────┘
-  └─────────────┘             │
-                              ▼
-                    ╔══════════════════╗
-                    ║   YOU DECIDE      ║   ← go / no-go checkpoint
-                    ║   go or no-go     ║
-                    ╚════════┬═════════╝
-                             │ (only on "go")
-                             ▼
-              ┌────────────────────────────────┐
-              │  Cover letter · Resume tailoring │
-              │  Outreach · Interview prep ·     │
-              │  Follow-up plan                  │
-              └────────────────────────────────┘
-                             │
-                             ▼
-                   You review & submit
+```text
+/coapply:start
 ```
 
-Everything it writes is drawn from **your** profile and matched to **your** voice, with built-in rules that keep it from sounding like generic AI.
+CoApply will show you its assessment and ask whether to continue. Check the facts and wording in every draft before using it.
 
-### Two ways to get the letter
+## Come back when you need it
 
-Some people want the letter written for them. Some already have a model they like writing with and want to keep it. Both are supported, and it's your call — set it once with `/coapply:tier`, or switch for a single run at the gate.
+- `/coapply:list` shows your recent applications.
+- `/coapply:resume` picks up an interrupted application.
+- `/coapply:add` saves preferences and examples of your writing.
+- `/coapply:discover` helps find roles on public job boards.
+- `/coapply:hub` opens an optional local view of your applications.
+- `/coapply:help` explains the available commands.
 
-| Mode | What you get |
-|---|---|
-| **`engine`** *(default)* | CoApply writes the finished cover letter and checks it against your own rules before handing it over. |
-| **`prompt`** | CoApply writes a **paste-ready briefing** instead — your selected facts, the role, one of your own letters as a voice reference, and the instructions — for whatever model you prefer. Paste the letter back and it gets checked the same way. |
+See [the command guide](COMMANDS.md) for the full reference.
 
-The briefing isn't a generic "write me a cover letter" prompt. It states that the fact sheet is **closed**, so the other model can't invent a number or a job title you never had, and it carries your claim ceilings written out in plain sentences next to the facts they govern. That last part came out of testing: an agent that read your entire profile still overclaimed, while a model handed one explicit ceiling sentence stayed under it. Stated ceilings beat inference — so both modes state them.
+To check for updates, run `/plugin marketplace update coapply-marketplace`, then restart Claude Code. Your profile and application files live separately from the plugin.
 
-**And it shows its work.** Every run ends with a trust receipt — *"What shaped this application"* — listing which of your own writing rules and saved examples actually fed the run. It's rendered by a script from the files on disk and the record of which agents completed, not from the model's account of itself, so it can't flatter you. If an agent was skipped, its rules aren't credited.
+## Privacy and limits
 
----
+Your files are saved on your computer and processed through your Claude Code session. Optional integrations can send information to the services you connect. Automatic job discovery also sends role and location search terms to a search provider.
 
-## Keeping CoApply up to date
+Discovery covers selected public job boards and won't find every opening. Drafts still need your judgment, and no application tool can promise an interview.
 
-CoApply improves over time — new capabilities, sharper prompts. Updating takes two steps inside Claude Code:
+Read [the project principles](PRINCIPLES.md) and [security guidance](SECURITY.md) for more detail.
 
-```
-/plugin marketplace update coapply-marketplace
-```
+## About
 
-If there's a new version, Claude Code downloads it. Then **restart Claude Code** — plugins load at startup, so a running session keeps using the old version until you reopen it. After restarting, run `/coapply:help`; the first line shows the version, so you can confirm you're on the new one.
+Built by David Steinbroner with Claude Code, with human decisions and review built into the workflow.
 
-**You will never lose your work when you update.** CoApply is built in two separate halves:
-- **The engine** (the part you just updated) — owned by us, replaced on update.
-- **Your stuff** (your profile and your applications) — owned by you, in a separate place the update never touches.
-
-So you always get the newest version *and* keep everything you've written.
-
----
-
-## Optional: fewer permission prompts
-
-A run does real work on your machine (creating your run folder, writing your application files, fetching the public job posting), so Claude Code asks permission before each such step. That's the right default — but if the "allow?" prompts get repetitive, you have two easy ways to cut them down.
-
-**1. Use "don't ask again."** When CoApply runs one of its own helper scripts (it resolves where your profile lives, gathers feedback context, and the like), the prompt offers **"Yes, and don't ask again."** Pick it once and Claude Code remembers that script for good. CoApply's commands now call these scripts plainly (rather than wrapped in shell substitution), which is what lets Claude Code save a clean, reusable rule — so a single "don't ask again" sticks instead of re-prompting.
-
-**2. Pre-approve the safe file commands.** A plugin can't grant permissions itself, so you opt in by adding the commands CoApply uses to write your files to your own `~/.claude/settings.json`:
-
-```json
-{
-  "permissions": {
-    "allow": [
-      "Bash(mkdir:*)",
-      "Bash(cp:*)",
-      "Bash(mv:*)",
-      "Bash(touch:*)",
-      "Bash(printf:*)",
-      "Bash(python3:*)",
-      "Bash(curl:*)"
-    ]
-  }
-}
-```
-
-Read-only commands (`cat`, `ls`, `grep`, `find`) already run without prompting, so they're not listed. (`printf` is here because setup writes your tiny `coapply.config.json` with it — leave it out if you'd rather confirm those writes.) This is entirely optional — leaving it off just means more confirmations, never less safety. Tighten or trim the list to your comfort.
-
-## Making it your own (optional)
-
-CoApply works great out of the box. When you want to tweak it:
-- **Budget tiers are live** — `/coapply:tier` (or `/coapply:setup`) sets `lite` / `standard` / `full` in a `coapply.config.json` you own; it survives updates. Tiers now control both *how many* specialists run **and which model each runs on**: routine work (parsing a posting, deduping) always runs on the cheapest model, analysis scales with tier, and your cover letter never drops below a mid model — so `lite` is genuinely cheaper without writing you a worse letter.
-- **A persistent next-step hint (optional).** CoApply already nudges you at session start and ends every command with a "Next:" line. If you want a reminder always pinned at the bottom of Claude Code, add a status line to your **own** `~/.claude/settings.json` (this is a Claude Code setting, not part of CoApply — and it replaces any status line you already use):
-  ```json
-  {
-    "statusLine": {
-      "type": "command",
-      "command": "echo '📋 CoApply · /coapply:start <job> · /coapply:list · /coapply:help'"
-    }
-  }
-  ```
-  For a richer, dynamic status line (model, cost, git branch), see Claude Code's [status line docs](https://code.claude.com/docs/en/statusline).
-- **Deeper changes** (rewriting how a specialist works) are possible too; see `CONTRIBUTING.md` and `CLAUDE.md`.
-
----
-
-## The hub — your visual command center
-
-**To open the hub, type `/coapply:hub` in Claude Code.** It opens at **http://127.0.0.1:7878/** — a private web page, served only on your own machine (`127.0.0.1`), that renders your whole funnel in one returnable place — **surfaced roles → the gate → your runs**. It's a thin window over the files you already have: it reads your discover ledger and run folder and never sends anything anywhere. (Already running? Re-running `/coapply:hub` just reuses it.)
-
-- **Browse what discover surfaced**, grouped by **seniority** (Associate → IC → Senior → Lead/Staff → Director → VP → C-suite) or by category lane — so you can see *what level* you're looking at at a glance.
-- **Filter & sort** with the lens — by level, status, remote, recurring, matched term, region, or free-text search; sort by relevance, freshness, persistence, seniority, and more.
-- **Stage roles into a queue** (a reversible shopping list — queuing sends nothing), then let `/coapply:start` work them one at a time, each still stopping at the human go/no-go gate.
-
-It's optional — CoApply works fully without it.
-
-**Prefer the terminal (and no token cost)?** From the repo directory, `make hub` (or `bash scripts/hub.sh`) starts the same hub directly — no Claude, no tokens. It runs in the foreground; Ctrl-C to stop.
-
-> **All commands in one place:** see [`COMMANDS.md`](COMMANDS.md) for the full command reference, or run `/coapply:help` inside Claude Code.
-
----
-
-## Your privacy
-
-- Your profile and your applications **stay on your computer.**
-- Nothing is sent anywhere except to **your own** Claude, the same as any Claude Code session — unless you explicitly connect an optional integration (like a Notion tracker, off by default).
-- CoApply **never** submits applications for you and **never** logs into job sites on your behalf.
-- We don't run a server, we don't see your data, and there's no account to sign up for beyond your own Claude.
-
----
-
-## Frequently asked
-
-**Do I need to know how to code or use GitHub?**
-No. If you can open the Terminal and type the two install commands, you're set.
-
-**Is it free?**
-CoApply itself is free. It runs on Claude Code, which needs a paid Claude plan or API credits (that's Anthropic's, not ours).
-
-**Will it apply to jobs for me automatically?**
-No, on purpose. You always review and submit yourself. That's what keeps your applications good.
-
-**Can it find jobs for me?**
-Yes — `/coapply:discover`. Either monitor a **watchlist** of companies you keep, or run **`/coapply:discover --auto`** to search public ATS boards (Greenhouse / Lever / Ashby) straight from your target roles — no list needed. Both end at the same gate, where you pick which finds become applications. It's broad, not exhaustive (public ATS boards only, strongest for tech/startup roles), and never scrapes aggregators or applies for you.
-
-**Do I need to save my work before I close?**
-No. CoApply writes everything to disk as it goes — every draft, and every edit to your profile, is a real file saved the moment it's made. Closing a session loses the *chat*, never your *work*. If you close in the middle of a run, just reopen and run `/coapply:resume` — finished pieces are kept, and only the unfinished one re-runs.
-
-**Can I run several applications at once, or edit my profile in another window?**
-- Run as many applications in parallel as you like — each gets its own folder, so they never collide. ✅
-- Running an application in one window while editing a profile doc in another is fine — just not the *same* file.
-- The one thing to avoid: two sessions editing the **same** profile file at the same time (e.g., both re-working the same reference doc). There's no merge step, so the last save wins and one change can be lost.
-
----
-
-## Cost & limits
-
-CoApply runs on **your** Claude Code's model access — it doesn't add a subscription or charge you anything itself. What a run costs depends on how your Claude Code is set up:
-
-- **On a Claude subscription (Pro/Max):** runs draw your plan's usage allowance — no per-token charge. A full run is token-heavy (a dozen agents), so a busy application day can eat into your limits.
-- **On an Anthropic API key:** runs bill per-token to that account.
-- *Heads-up:* if you have an `ANTHROPIC_API_KEY` set in your environment, Claude Code may bill per-token even on a subscription. `/coapply:setup` checks this for you.
-
-**You control the spend three ways:**
-1. **Tiers** — `lite` (just the cover letter, cheapest), `standard` (the core package — outreach, resume guidance, interview prep, follow-up, role analysis, and light company research), `full` (everything in standard, plus live company web research, a work-sample suggestion, and application questions). Set a default in `/coapply:setup`; change anytime with `/coapply:tier`.
-2. **The gate** — before any expensive work, CoApply stops, shows an estimated cost to finish, and lets you run full / standard / lite / or stop.
-3. **The pre-screen** — obvious no-go roles get flagged before *any* agent runs, so skipping a bad fit is nearly free.
-
-*Optional tracker:* if you want CoApply to log each application to a Notion database, you can connect one during `/coapply:setup`. It's off by default — most people skip it — and nothing is logged anywhere but your own machine unless you turn it on.
-
-## Principles & limits
-
-CoApply runs on a short set of invariants — it always passes a human gate, never auto-submits, never fabricates (every claim traces to your profile), stays in its lane (reads your profile, writes only to your own folders), and never sends your data anywhere but your own Claude — unless you opt into an integration like a Notion tracker. The full list: **[PRINCIPLES.md](PRINCIPLES.md)**.
-
-Available today:
-- Guided setup (`/coapply:setup`) copies the `profile.example/` templates into your folder and walks you through billing and a budget tier.
-- Budget tiers (`lite` / `standard` / `full`) are live — set a default in setup, change anytime with `/coapply:tier`.
-
-Honest about what it isn't yet:
-- Observability is the inspectable run folder, `_run.json`, and the hub. There's no cost/tracing dashboard — you can see *what ran*, not what each step cost.
-- A freelance/proposal mode is planned but not shipped.
-- `/coapply:discover --auto` is broad, not exhaustive: public ATS boards only, and strongest for tech/startup roles. That's a corpus limitation and it won't surface everything.
-- The trust receipt reports the rules and examples that were **available to** the agents that ran. It's an honest record derived from your files, not cryptographic proof a model obeyed every rule.
-- Nothing here is a guarantee of an interview. It makes your application genuinely better; the rest is the market.
-
----
-
-## Design decisions
-
-The interesting problems in a tool like this aren't in the code. They're the calls about where AI should and shouldn't have authority. These are the ones that shaped CoApply, and the reasoning behind each.
-
-- **The gate is the product, not a speed bump.** It sits after the cheap agents (parse, triage, fit-score) and before the expensive ones, so a no-go costs four small agents instead of a dozen. Putting it earlier would make it uninformed; putting it later would make it decorative. Nothing auto-advances past it, and no tier setting can skip it.
-
-- **No fabrication is enforced, not requested.** Every claim has to trace to something in your profile. Where your profile caps what you can claim about a piece of work, the agent resolves that ceiling *before* it drafts, not after. That ordering came from a measurement, not a preference: an agent that read every constraint in a profile and drafted from them still wrote an overclaim, while the same constraint stated as one explicit sentence up front held. Inference isn't a control.
-
-- **The output bar is a test, not a memory.** `scripts/check-letter.sh` runs the letter standard — banned phrases, length, claim ceilings — as a real script that exits non-zero. Every rule is derived at runtime from your own files; nothing is hardcoded. A rule it can't derive is reported **UNCHECKED** rather than assumed clean.
-
-- **"I couldn't check" is never the same as "clean."** That checker exits 0 for pass, 1 for a violation, and **3 for incomplete**. Collapsing 3 into 0 would have made the tool feel better and be worth less. The same instinct runs through the fit score: *low fit* and *something errored* are different answers, and the tool says which.
-
-- **Focused agents handing off through files, not one mega-prompt.** Each agent reads only what it needs and writes its output to disk. That's what makes a run inspectable, resumable after an interruption, and cheap to reason about when one step goes wrong. The run folder *is* the log.
-
-- **Pricing-to-value, per agent.** Tiers control both how many agents run and which model each one runs on. Parsing a posting always runs on the cheapest model; the cover letter never drops below a mid one. So the cheap tier is genuinely cheaper without quietly writing you a worse letter.
-
-- **The engine stays generic, and a script enforces it.** CoApply has to work for a nurse, a teacher, or an accountant, so no personal data and no field assumptions may live in the engine — all of that belongs in your profile. `scripts/audit.sh` fails the build if either leaks across that line, along with the invariants above. It's a boundary with a test, not a note in a doc.
-
-- **The trust receipt is derived, not self-reported.** It's rendered from the files on disk and the record of which agents actually completed, because a model summarizing its own diligence is exactly the wrong narrator for "did it use my stuff?"
-
----
-
-## How this was built
-
-CoApply was built by David Steinbroner with Claude Code — and it's a working example of the thing it does. The same principle runs through the tool and its own construction: direct AI with clear goals, keep a human at the gate, verify before anything ships, never settle for slop. The product thinking, the architecture, and the decisions are mine; Claude Code is the build loop. If you want to see what "AI-native but human-directed" actually looks like, the commit history is part of the demo.
-
-## License
-
-MIT — see [LICENSE](LICENSE). You're free to use, fork, and build on it.
+Contributions are covered in [CONTRIBUTING.md](CONTRIBUTING.md). Licensed under [MIT](LICENSE).
